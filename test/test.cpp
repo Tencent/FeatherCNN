@@ -78,13 +78,8 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 		delete [] input;
 		input = NULL;
 	}
-
-	//		if (output)
-	//		{
-	//			delete [] output;
-	//			output = NULL;
-	//		}
 }
+
 int main(int argc, char* argv[])
 {
 	if(argc == 5)

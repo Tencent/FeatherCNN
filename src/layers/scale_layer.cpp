@@ -44,5 +44,6 @@ int ScaleLayer::Init()
     {
 	    scale_kernel = scale<false>;
     }
+    return 0;
 }
 };
