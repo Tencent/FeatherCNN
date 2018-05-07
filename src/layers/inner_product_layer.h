@@ -73,7 +73,7 @@ class InnerProductLayer : public Layer
 			//Naive implementation doesn't require preprocess
 		}
 		MEMPOOL_CHECK_RETURN(private_mempool.Free(&buffer));
-			
+		return 0;	
 	}
 
 	int GenerateTopBlobs()

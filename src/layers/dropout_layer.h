@@ -37,6 +37,7 @@ class DropoutLayer : public Layer
 	int Init()
 	{
 		//Inplace layer, the top points to its own bottom.
+		return 0;
 	}
 
 

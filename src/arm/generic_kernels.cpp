@@ -179,7 +179,11 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
 		for(; j < stride; j += 4)
 		{	
 			float32x4_t v_input = vld1q_f32(input + i * stride + j);
+#ifdef __aarch64__
 			float32x4_t v_norm = vfmaq_f32(v_alpha, v_beta, v_input);
+#else
+			float32x4_t v_norm = vmlaq_f32(v_alpha, v_beta, v_input);
+#endif
 			if(has_scale)
 				v_norm = v_norm * v_scale;
 			if(has_bias)
