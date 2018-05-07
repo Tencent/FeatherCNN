@@ -2,6 +2,7 @@
 
 [![license](http://img.shields.io/badge/license-BSD3-blue.svg?style=flat)](https://github.com/Tencent/FeatherCNN/blob/master/LICENSE)
 [![Release Version](https://img.shields.io/badge/release-0.1.0-red.svg)](https://github.com/Tencent/FeatherCNN)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/FeatherCNN/pulls)
 
 ## Introduction
 
