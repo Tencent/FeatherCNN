@@ -54,7 +54,7 @@ An example:
 
 [**iOS Guide**](https://github.com/Tencent/FeatherCNN/wikis/iOS-Guide)
 
-[**Android Guide**](http:B//git.code.oa.com/haidonglan/Feather-dev/wikis/Android-Guide)
+[**Android Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-Guide)
 
 ## Usage
 
