@@ -1,4 +1,4 @@
-# FeatherCNN 
+<img width="420"  src="https://github.com/Tencent/FeatherCNN/wiki/Images/logo.png"/>
 
 [![license](http://img.shields.io/badge/license-BSD3-blue.svg?style=flat)](https://github.com/Tencent/FeatherCNN/blob/master/LICENSE)
 [![Release Version](https://img.shields.io/badge/release-0.1.0-red.svg)](https://github.com/Tencent/FeatherCNN/releases)
