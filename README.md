@@ -1,4 +1,4 @@
-# FeatherCNN 
+<img width="420"  src="https://github.com/Tencent/FeatherCNN/wiki/Images/logo.png"/>
 
 [![license](http://img.shields.io/badge/license-BSD3-blue.svg?style=flat)](https://github.com/Tencent/FeatherCNN/blob/master/LICENSE)
 [![Release Version](https://img.shields.io/badge/release-0.1.0-red.svg)](https://github.com/Tencent/FeatherCNN/releases)
@@ -54,7 +54,7 @@ An example:
 
 [**iOS Guide**](https://github.com/Tencent/FeatherCNN/wikis/iOS-Guide)
 
-[**Android Guide**](http:B//git.code.oa.com/haidonglan/Feather-dev/wikis/Android-Guide)
+[**Android Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-Guide)
 
 ## Usage
 
