@@ -86,3 +86,7 @@ forward_net.ExtractBlob(PTR_TO_YOUR_OUTPUT_BUFFER, BLOB_NAME);
 
 ## Performance Benchmarks
 We have tested FeatherCNN on a bunch of devices, see [**this page**](https://github.com/Tencent/FeatherCNN/wikis/Benchmarks) for details.
+
+## User Groups
+Telegram: https://t.me/FeatherCNN
+QQ: 728147343
