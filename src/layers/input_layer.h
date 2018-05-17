@@ -59,7 +59,7 @@ class InputLayer : public Layer
 	{
 		for (int i = 0; i < input_size(); ++i)
 		{
-			_top_blobs[_top[i]]->Alloc();
+//			_top_blobs[_top[i]]->Alloc();
 		}
 		return 0;
 	}
