@@ -1,12 +1,19 @@
-//  WinogradKernels_v10.cpp
-//  WinogradConvolution
+//Tencent is pleased to support the open source community by making FeatherCNN available.
+
+//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
+//in compliance with the License. You may obtain a copy of the License at
 //
-//  Created by LanHaidong on 31/08/2017.
-//  Copyright © 2017 Tencent. All rights reserved.
+//https://opensource.org/licenses/BSD-3-Clause
 //
+//Unless required by applicable law or agreed to in writing, software distributed 
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+//specific language governing permissions and limitations under the License.
 
 #include "winograd_kernels.h"
-//#include "haidonglan_arm_debug_helper.h"
+#include "helper.h"
 #include <stdlib.h>
 #include <arm_neon.h>
 #include <assert.h>
@@ -24,6 +31,7 @@ static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, c
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
 
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
+
 void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
 {
     for (int i = 0; i < M; i++)
@@ -501,7 +509,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     }
 }
 
-const int cache_block = 16;
+const int cache_block = 8;
 
 void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, int num_threads, float* pack_arr)
 {
@@ -720,6 +728,7 @@ static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, c
 		u2 = vld1q_f32(up + 8);
 		u3 = vld1q_f32(up + 12);
 		up += 16;
+#ifdef __aarch64__
 		vc00 = vfmaq_f32(vc00, u0, v0);
 		vc01 = vfmaq_f32(vc01, u0, v1);
 		vc02 = vfmaq_f32(vc02, u0, v2);
@@ -739,6 +748,27 @@ static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, c
 		vc31 = vfmaq_f32(vc31, u3, v1);
 		vc32 = vfmaq_f32(vc32, u3, v2);
 		vc33 = vfmaq_f32(vc33, u3, v3);
+#else
+		vc00 = vmlaq_f32(vc00, u0, v0);
+		vc01 = vmlaq_f32(vc01, u0, v1);
+		vc02 = vmlaq_f32(vc02, u0, v2);
+		vc03 = vmlaq_f32(vc03, u0, v3);
+
+		vc10 = vmlaq_f32(vc10, u1, v0);
+		vc11 = vmlaq_f32(vc11, u1, v1);
+		vc12 = vmlaq_f32(vc12, u1, v2);
+		vc13 = vmlaq_f32(vc13, u1, v3);
+
+		vc20 = vmlaq_f32(vc20, u2, v0);
+		vc21 = vmlaq_f32(vc21, u2, v1);
+		vc22 = vmlaq_f32(vc22, u2, v2);
+		vc23 = vmlaq_f32(vc23, u2, v3);
+
+		vc30 = vmlaq_f32(vc30, u3, v0);
+		vc31 = vmlaq_f32(vc31, u3, v1);
+		vc32 = vmlaq_f32(vc32, u3, v2);
+		vc33 = vmlaq_f32(vc33, u3, v3);
+#endif
 	}
 	float *wp = WTp;
 	vst1q_f32(wp, vc00);
@@ -803,6 +833,7 @@ static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, c
 		u2 = vld1q_f32(up + 8);
 		u3 = vld1q_f32(up + 12);
 		up += 16;
+#ifdef __aarch64__
 		vc00 = vfmaq_f32(vc00, u0, v0);
 		vc01 = vfmaq_f32(vc01, u0, v1);
 		vc02 = vfmaq_f32(vc02, u0, v2);
@@ -818,6 +849,23 @@ static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, c
 		vc30 = vfmaq_f32(vc30, u3, v0);
 		vc31 = vfmaq_f32(vc31, u3, v1);
 		vc32 = vfmaq_f32(vc32, u3, v2);
+#else
+		vc00 = vmlaq_f32(vc00, u0, v0);
+		vc01 = vmlaq_f32(vc01, u0, v1);
+		vc02 = vmlaq_f32(vc02, u0, v2);
+
+		vc10 = vmlaq_f32(vc10, u1, v0);
+		vc11 = vmlaq_f32(vc11, u1, v1);
+		vc12 = vmlaq_f32(vc12, u1, v2);
+
+		vc20 = vmlaq_f32(vc20, u2, v0);
+		vc21 = vmlaq_f32(vc21, u2, v1);
+		vc22 = vmlaq_f32(vc22, u2, v2);
+
+		vc30 = vmlaq_f32(vc30, u3, v0);
+		vc31 = vmlaq_f32(vc31, u3, v1);
+		vc32 = vmlaq_f32(vc32, u3, v2);
+#endif
 	}
 	float *wp = WTp;
 	vst1q_f32(wp, vc00);
@@ -872,6 +920,7 @@ static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, c
 		u2 = vld1q_f32(up + 8);
 		u3 = vld1q_f32(up + 12);
 		up += 16;
+#ifdef __aarch64__
 		vc00 = vfmaq_f32(vc00, u0, v0);
 		vc01 = vfmaq_f32(vc01, u0, v1);
 		vc10 = vfmaq_f32(vc10, u1, v0);
@@ -880,6 +929,16 @@ static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, c
 		vc21 = vfmaq_f32(vc21, u2, v1);
 		vc30 = vfmaq_f32(vc30, u3, v0);
 		vc31 = vfmaq_f32(vc31, u3, v1);
+#else
+		vc00 = vmlaq_f32(vc00, u0, v0);
+		vc01 = vmlaq_f32(vc01, u0, v1);
+		vc10 = vmlaq_f32(vc10, u1, v0);
+		vc11 = vmlaq_f32(vc11, u1, v1);
+		vc20 = vmlaq_f32(vc20, u2, v0);
+		vc21 = vmlaq_f32(vc21, u2, v1);
+		vc30 = vmlaq_f32(vc30, u3, v0);
+		vc31 = vmlaq_f32(vc31, u3, v1);
+#endif
 	}
 	float *wp = WTp;
 	vst1q_f32(wp, vc00);
@@ -926,10 +985,17 @@ static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, c
 		u2 = vld1q_f32(up + 8);
 		u3 = vld1q_f32(up + 12);
 		up += 16;
+#ifdef __aarch64__
 		vc00 = vfmaq_f32(vc00, u0, v0);
 		vc10 = vfmaq_f32(vc10, u1, v0);
 		vc20 = vfmaq_f32(vc20, u2, v0);
 		vc30 = vfmaq_f32(vc30, u3, v0);
+#else
+		vc00 = vmlaq_f32(vc00, u0, v0);
+		vc10 = vmlaq_f32(vc10, u1, v0);
+		vc20 = vmlaq_f32(vc20, u2, v0);
+		vc30 = vmlaq_f32(vc30, u3, v0);
+#endif
 	}
 	float *wp = WTp;
 	vst1q_f32(wp, vc00);
@@ -973,6 +1039,7 @@ static inline void winograd_f6k3_output_transform_inplace(
 	m5 = m7 + m1_sub_m2;
 	// Finised with M[0-7] as **inputs** here.
 
+#ifdef __aarch64__
 	const float32x4_t const_16 = vdupq_n_f32(16.0f);
 	m1 = vfmaq_f32(m1_sub_m2, const_16, m5_sub_m6);
 	m4 = vfmaq_f32(m1_add_m2, const_16, m3_add_m4);
@@ -995,6 +1062,30 @@ static inline void winograd_f6k3_output_transform_inplace(
 	const float32x4_t const_4 = vdupq_n_f32(4.0f);
 	m2 = vfmaq_f32(m2, m3_add_m4, const_4);
 	m3 = vfmaq_f32(m3, m5_sub_m6, const_4);
+#else
+	const float32x4_t const_16 = vdupq_n_f32(16.0f);
+	m1 = vmlaq_f32(m1_sub_m2, const_16, m5_sub_m6);
+	m4 = vmlaq_f32(m1_add_m2, const_16, m3_add_m4);
+
+	const float32x4_t const_8 = vdupq_n_f32(8.0f);
+	m2 = vmlaq_f32(m1_add_m2, const_8, m5_add_m6);
+	m3 = vmlaq_f32(m1_sub_m2, const_8, m3_sub_m4);
+
+	const float32x4_t const_32 = vdupq_n_f32(32.0f);
+	m0 = vmlaq_f32(m0, const_32, m5_add_m6);
+	m0 += m3_add_m4;
+
+	m5 = vmlaq_f32(m5, const_32, m3_sub_m4);
+	m5 += m5_sub_m6;
+
+	const float32x4_t const_2 = vdupq_n_f32(2.0f);
+	m1 = vmlaq_f32(m1, m3_sub_m4, const_2);
+	m4 = vmlaq_f32(m4, m5_add_m6, const_2);
+
+	const float32x4_t const_4 = vdupq_n_f32(4.0f);
+	m2 = vmlaq_f32(m2, m3_add_m4, const_4);
+	m3 = vmlaq_f32(m3, m5_sub_m6, const_4);
+#endif
 	
 	const float32x4_t const_0 = vdupq_n_f32(0.0f);
 	m6 = const_0;
@@ -1165,12 +1256,16 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
       }
 }
 
+size_t getPackArraySize_F6x6_3x3(int inChannels)
+{
+	return cache_block * inChannels *  64;/**depth in floats*/
+}
 
-void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, int num_threads)
+void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
 	int nBlocks = nRowBlocks * nColBlocks;
 	int depth = 16;
-	float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t) * num_threads);
+	//float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t));
 #ifdef WINOGRAD_BENCH
     Timer tmr;
     tmr.startBench();
@@ -1186,7 +1281,7 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     //printf("=====UT=====\n");
     //print_floats(UT, inChannels * outChannels, 64);
     TensorGEMM(WT,VT,UT,
-		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_arr);
+		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array);
     //printf("=============TensorGEMMOut==============\n");
     //print_floats(WT, outChannels , nBlocks * 4* 16);
 #ifdef WINOGRAD_BENCH
@@ -1218,10 +1313,10 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
 #ifdef WINOGRAD_BENCH
     tmr.endBench("Output transform:");
 #endif
-    free(pack_arr);
+    //free(pack_arr);
 }
 
-void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float *WT, float *VT, float *UT, float *input, int inChannels, int inputh, int inputw, WinogradOutType outType, float *biasArr, int num_threads)
+void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float *WT, float *VT, float *UT, float *input, int inChannels, int inputh, int inputw, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
     //assert((inputw - 2) % 6 == 0);
     //assert((inputh - 2) % 6 == 0);
@@ -1232,5 +1327,5 @@ void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float *W
     //printf("-----------------\n");
     //printf("Block dim = %dx%d\n", nRowBlocks, nColBlocks);
     //printf("ldout = %d\n", ldout);
-    winogradNonFusedTransform_inner(output, ldout, WT, VT, UT, inChannels, outChannels, input, inputh, inputw, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, num_threads);
+    winogradNonFusedTransform_inner(output, ldout, WT, VT, UT, inChannels, outChannels, input, inputh, inputw, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, pack_array, num_threads);
 }
