@@ -83,6 +83,11 @@ The output can be extracted from the net by the name of blobs. The blob names ar
 ```cpp
 forward_net.ExtractBlob(PTR_TO_YOUR_OUTPUT_BUFFER, BLOB_NAME);
 ```
+BTW, you can also get the blob's data size by calling
+```cpp
+size_t data_size = 0;
+forward_net.GetBlobDataSize(&data_size, BLOB_NAME);
+```
 
 ## Performance Benchmarks
 We have tested FeatherCNN on a bunch of devices, see [**this page**](https://github.com/Tencent/FeatherCNN/wikis/Benchmarks) for details.
