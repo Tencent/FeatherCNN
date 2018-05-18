@@ -184,6 +184,9 @@ void block_sgemm_external_pack_threading_8x8( int M, int N, int L, float *a, flo
             sgemm_tiny_scale = sgemm_8x7;
             break;
     }
+
+    if(num_threads>8)	num_threads = 8;
+
     const int factor = 1;
     unsigned int tN = N / num_threads / factor;
     //tN = tN + (8 - tN % 8) % 8;
