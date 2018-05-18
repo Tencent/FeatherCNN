@@ -188,42 +188,35 @@ void block_sgemm_external_pack_threading_8x8( int M, int N, int L, float *a, flo
     unsigned int tN = N / num_threads / factor;
     //tN = tN + (8 - tN % 8) % 8;
     tN = (tN + 7) & 0xFFFFFFF8;
+    unsigned int lastSN = N - (num_threads * factor - 1) * tN;
+    while(lastSN <= 0)
+    {
+	    --num_threads;
+	    lastSN = N - (num_threads * factor - 1) * tN;
+    }
+    num_threads = (num_threads <= 0) ? 1 : num_threads;
+    //num_threads change to 1 -> SN and tN will not be used.
+    //otherwise, num_threads is left unchanged and lastSN is still effective.
+
     //printf("tN %d, N %d, num_threads %d\n", tN, N, num_threads);
 
 #ifdef __APPLE__
-    block_sgemm_pack_8x8(eM, N, L, a, L, b, N, c, N, num_threads);
+    block_sgemm_pack_8x8(eM, N, L, a, L, b, N, c, N);
 #else
     if (num_threads == 1 || N <= 8 || N - (num_threads * factor - 1) * tN <= 0)
     {
-            block_sgemm_pack_8x8(eM, N, L, a, L, b, N, c, N, num_threads);
+            block_sgemm_pack_8x8(eM, N, L, a, L, b, N, c, N);
     }
     else
     {
-#if 0
-#pragma omp parallel for num_threads(num_threads) schedule(static)
-        for(int i = 0; i < num_threads * factor; ++i){
-            //int sN = (tN < N - i * tN) ? tN : N - i * tN;
-	    int sN = tN;
-	    if(i  == num_threads * factor - 1)
-		sN = N - i * tN;
-            //printf("sN %d\n", sN);
-            block_sgemm_pack_8x8(eM, sN, L, a, L, b + i * tN, N, c + i * tN, N);
-        }
-#else
-	
 #pragma omp parallel num_threads(num_threads)
 	{
 		int tid = omp_get_thread_num();
-#if 0
-                int sN = (tN < (N - tid * tN)) ? tN : N - tid * tN;
-#else
 		int sN = tN;
 		if(tid == num_threads - 1)
 			sN = N - tid * tN;
-#endif
 		block_sgemm_pack_8x8(eM, sN, L, a, L, b + tid * tN, N, c + tid * tN, N);
 	}
-#endif
     }
 #endif
 }

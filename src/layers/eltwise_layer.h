@@ -26,6 +26,7 @@ namespace feather{
 			:Layer(layer_param, rt_param)
 		{
 			_fusible = true;
+			fuse_relu = false;
 		}
 
 		int Forward()
@@ -53,9 +54,9 @@ namespace feather{
 				printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
 				fuse_relu = true;
 				return 1;
-			}
-			else
+			} else {
 				return 0;
+			}
 		}
 
 		int GenerateTopBlobs()

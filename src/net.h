@@ -33,7 +33,8 @@ class Net
 
     int  Forward(float* input);
     void TraverseNet();
-    void ExtractBlob(float** output_ptr, std::string blob_name);//Don't forget to free this memory.
+    int GetBlobDataSize(size_t* data_size, std::string blob_name);
+    int ExtractBlob(float* output_ptr, std::string blob_name);//Don't forget to free this memory.
   private:
     std::vector<Layer *> layers;
     RuntimeParameter<float> *rt_param;
