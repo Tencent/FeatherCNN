@@ -50,7 +50,6 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
 	const size_t data_size = p_blob->data_size();
 	const float *data = p_blob->data();
 
-	output_ptr = (float*) malloc(sizeof(float) * data_size);
 	memcpy(output_ptr, data, sizeof(float) * data_size);
 	return 0;
 }
@@ -64,6 +63,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 	}
 	const Blob<float> *p_blob = blob_map[name];
 	*data_size = p_blob->data_size();
+	return 0;
 }
 
 int Net::Forward(float *input)
