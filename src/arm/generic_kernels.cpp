@@ -25,7 +25,6 @@
 #include <omp.h>
 #endif
 
-
 void pad_input(float* padded, const float* input, const size_t input_channels, const size_t input_width, const size_t input_height, const size_t padding_left, const size_t padding_top, const size_t padding_right, const size_t padding_bottom){
     int paddedWidth  = (int)(input_width + padding_left + padding_right);
     int paddedHeight = (int)(input_height + padding_top + padding_bottom);
@@ -87,12 +86,22 @@ void add_relu(float* dst, const float* A, const float* B, const size_t len, cons
 		float32x4_t vA = vld1q_f32(A + i);
 		float32x4_t vB = vld1q_f32(B + i);
 		float32x4_t vS = vaddq_f32(vA, vB);
-		vst1q_f32(dst + i, vmaxq_f32(vS, vZero));
+		if(fuse_relu)
+		{
+			vst1q_f32(dst + i, vmaxq_f32(vS, vZero));
+		} else {
+			vst1q_f32(dst + i, vS);
+		}
 	}
 	for(int i = len - len % 4; i < len; ++i)
 	{
 		float S = A[i] + B[i];
-		dst[i] = S > 0.0f ? S : 0.0f;
+		if(fuse_relu)
+		{
+			dst[i] = S > 0.0f ? S : 0.0f;
+		} else {
+			dst[i] = S;
+		}
 	}
 }
 template void add_relu<true>(float* dst, const float* A, const float* B, const size_t len, const size_t num_threads);

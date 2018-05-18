@@ -49,6 +49,17 @@ class ConvDepthwiseLayer : public ConvLayer
 		int inputh = input_height + padding_top + padding_bottom;
 		pad_input(padded_input, input, input_channels, input_width, input_height, padding_left, padding_top, padding_right, padding_bottom);
 		dwConv(output, padded_input, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads);
+		if(bias_term){
+			size_t out_stride = output_width * output_height;
+			for(int i = 0; i < output_channels; ++i)
+			{
+				float bias = bias_data[i];
+				for(int j = 0; j < out_stride; ++j)
+				{
+					output[out_stride * i + j] = output[out_stride * i + j] + bias;
+				}
+			}	
+		}
 		return 0;
 	}
 
