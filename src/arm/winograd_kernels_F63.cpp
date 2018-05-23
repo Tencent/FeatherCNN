@@ -18,7 +18,10 @@
 #include <arm_neon.h>
 #include <assert.h>
 #include <string.h>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 //#define DEBUG_PRINT_KERNEL
 //#define DEBUG_PRINT_OUT
