@@ -558,19 +558,11 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 			for(int d = 0; d < depth; ++d)
 			{
 				const float *svp = VT + i * 4 * depth + d * 4 * 4;
-				for (int ic = 0; ic < inChannels; ++ic)
+				for (int ic = 0; ic < inChannels; ++ic, svp += vstride, pack_workp += 16)
 				{
-					//print_floats(svp, 16);
-					v0 = vld1q_f32(svp);
-					v1 = vld1q_f32(svp + 4);
-					v2 = vld1q_f32(svp + 8);
-					v3 = vld1q_f32(svp + 12);
-					svp += vstride;
-					vst1q_f32(pack_workp     , v0);
-					vst1q_f32(pack_workp +  4, v1);
-					vst1q_f32(pack_workp +  8, v2);
-					vst1q_f32(pack_workp + 12, v3);
-					pack_workp += 16;
+					float32x4x4_t v32x4x4;
+					v32x4x4 = vld1q_f32_x4(svp);
+					vst1q_f32_x4(pack_workp, v32x4x4);
 				}
 			}
 		}
@@ -685,273 +677,177 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01, vc02, vc03;
-	float32x4_t vc10, vc11, vc12, vc13;
-	float32x4_t vc20, vc21, vc22, vc23;
-	float32x4_t vc30, vc31, vc32, vc33;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1, v2, v3;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc02 = vdupq_n_f32(0.f);
-	vc03 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc12 = vdupq_n_f32(0.f);
-	vc13 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc22 = vdupq_n_f32(0.f);
-	vc23 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
-	vc32 = vdupq_n_f32(0.f);
-	vc33 = vdupq_n_f32(0.f);
+	float32x4x4_t vc32x4x4_0;
+	float32x4x4_t vc32x4x4_1;
+	float32x4x4_t vc32x4x4_2;
+	float32x4x4_t vc32x4x4_3;
+
+	vc32x4x4_0.val[0] = vdupq_n_f32(0.f);
+	vc32x4x4_0.val[1] = vc32x4x4_0.val[0];
+	vc32x4x4_0.val[2] = vc32x4x4_0.val[0];
+	vc32x4x4_0.val[3] = vc32x4x4_0.val[0];
+	vc32x4x4_1 = vc32x4x4_0;
+	vc32x4x4_2 = vc32x4x4_0;
+	vc32x4x4_3 = vc32x4x4_0;
+
 	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
+	for (int ic = 0; ic < inChannels; ++ic, vp += 16, up += 16)
 	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		v2 = vld1q_f32(vp + 8);
-		v3 = vld1q_f32(vp + 12);
-		vp += 16;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+		float32x4x4_t v32x4x4;
+		float32x4x4_t u32x4x4;
+		v32x4x4 = vld1q_f32_x4(vp);
+		u32x4x4 = vld1q_f32_x4(up);
+
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc02 = vfmaq_f32(vc02, u0, v2);
-		vc03 = vfmaq_f32(vc03, u0, v3);
+		vc32x4x4_0.val[0] = vfmaq_f32(vc32x4x4_0.val[0], u32x4x4.val[0], v32x4x4.val[0]);
+		vc32x4x4_0.val[1] = vfmaq_f32(vc32x4x4_0.val[1], u32x4x4.val[0], v32x4x4.val[1]);
+		vc32x4x4_0.val[2] = vfmaq_f32(vc32x4x4_0.val[2], u32x4x4.val[0], v32x4x4.val[2]);
+		vc32x4x4_0.val[3] = vfmaq_f32(vc32x4x4_0.val[3], u32x4x4.val[0], v32x4x4.val[3]);
 
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc12 = vfmaq_f32(vc12, u1, v2);
-		vc13 = vfmaq_f32(vc13, u1, v3);
+		vc32x4x4_1.val[0] = vfmaq_f32(vc32x4x4_1.val[0], u32x4x4.val[1], v32x4x4.val[0]);
+		vc32x4x4_1.val[1] = vfmaq_f32(vc32x4x4_1.val[1], u32x4x4.val[1], v32x4x4.val[1]);
+		vc32x4x4_1.val[2] = vfmaq_f32(vc32x4x4_1.val[2], u32x4x4.val[1], v32x4x4.val[2]);
+		vc32x4x4_1.val[3] = vfmaq_f32(vc32x4x4_1.val[3], u32x4x4.val[1], v32x4x4.val[3]);
 
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc22 = vfmaq_f32(vc22, u2, v2);
-		vc23 = vfmaq_f32(vc23, u2, v3);
+		vc32x4x4_2.val[0] = vfmaq_f32(vc32x4x4_2.val[0], u32x4x4.val[2], v32x4x4.val[0]);
+		vc32x4x4_2.val[1] = vfmaq_f32(vc32x4x4_2.val[1], u32x4x4.val[2], v32x4x4.val[1]);
+		vc32x4x4_2.val[2] = vfmaq_f32(vc32x4x4_2.val[2], u32x4x4.val[2], v32x4x4.val[2]);
+		vc32x4x4_2.val[3] = vfmaq_f32(vc32x4x4_2.val[3], u32x4x4.val[2], v32x4x4.val[3]);
 
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
-		vc32 = vfmaq_f32(vc32, u3, v2);
-		vc33 = vfmaq_f32(vc33, u3, v3);
+		vc32x4x4_3.val[0] = vfmaq_f32(vc32x4x4_3.val[0], u32x4x4.val[3], v32x4x4.val[0]);
+		vc32x4x4_3.val[1] = vfmaq_f32(vc32x4x4_3.val[1], u32x4x4.val[3], v32x4x4.val[1]);
+		vc32x4x4_3.val[2] = vfmaq_f32(vc32x4x4_3.val[2], u32x4x4.val[3], v32x4x4.val[2]);
+		vc32x4x4_3.val[3] = vfmaq_f32(vc32x4x4_3.val[3], u32x4x4.val[3], v32x4x4.val[3]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc02 = vmlaq_f32(vc02, u0, v2);
-		vc03 = vmlaq_f32(vc03, u0, v3);
+		vc32x4x4_0.val[0] = vmlaq_f32(vc32x4x4_0.val[0], u32x4x4.val[0], v32x4x4.val[0]);
+		vc32x4x4_0.val[1] = vmlaq_f32(vc32x4x4_0.val[1], u32x4x4.val[0], v32x4x4.val[1]);
+		vc32x4x4_0.val[2] = vmlaq_f32(vc32x4x4_0.val[2], u32x4x4.val[0], v32x4x4.val[2]);
+		vc32x4x4_0.val[4] = vmlaq_f32(vc32x4x4_0.val[3], u32x4x4.val[0], v32x4x4.val[3]);
 
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc12 = vmlaq_f32(vc12, u1, v2);
-		vc13 = vmlaq_f32(vc13, u1, v3);
+		vc32x4x4_1.val[0] = vmlaq_f32(vc32x4x4_1.val[0], u32x4x4.val[1], v32x4x4.val[0]);
+		vc32x4x4_1.val[1] = vmlaq_f32(vc32x4x4_1.val[1], u32x4x4.val[1], v32x4x4.val[1]);
+		vc32x4x4_1.val[2] = vmlaq_f32(vc32x4x4_1.val[2], u32x4x4.val[1], v32x4x4.val[2]);
+		vc32x4x4_1.val[3] = vmlaq_f32(vc32x4x4_1.val[3], u32x4x4.val[1], v32x4x4.val[3]);
 
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc22 = vmlaq_f32(vc22, u2, v2);
-		vc23 = vmlaq_f32(vc23, u2, v3);
+		vc32x4x4_2.val[0] = vmlaq_f32(vc32x4x4_2.val[0], u32x4x4.val[2], v32x4x4.val[0]);
+		vc32x4x4_2.val[1] = vmlaq_f32(vc32x4x4_2.val[1], u32x4x4.val[2], v32x4x4.val[1]);
+		vc32x4x4_2.val[2] = vmlaq_f32(vc32x4x4_2.val[2], u32x4x4.val[2], v32x4x4.val[2]);
+		vc32x4x4_2.val[3] = vmlaq_f32(vc32x4x4_2.val[3], u32x4x4.val[2], v32x4x4.val[3]);
 
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
-		vc32 = vmlaq_f32(vc32, u3, v2);
-		vc33 = vmlaq_f32(vc33, u3, v3);
+		vc32x4x4_3.val[0] = vmlaq_f32(vc32x4x4_3.val[0], u32x4x4.val[3], v32x4x4.val[0]);
+		vc32x4x4_3.val[1] = vmlaq_f32(vc32x4x4_3.val[1], u32x4x4.val[3], v32x4x4.val[1]);
+		vc32x4x4_3.val[2] = vmlaq_f32(vc32x4x4_3.val[2], u32x4x4.val[3], v32x4x4.val[2]);
+		vc32x4x4_3.val[3] = vmlaq_f32(vc32x4x4_3.val[3], u32x4x4.val[3], v32x4x4.val[3]);
 #endif
 	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	vst1q_f32(wp + 8, vc02);
-	vst1q_f32(wp + 12, vc03);
-	//print_floats(wp, 16);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	vst1q_f32(wp + 8, vc12);
-	vst1q_f32(wp + 12, vc13);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	vst1q_f32(wp + 8, vc22);
-	vst1q_f32(wp + 12, vc23);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
-	vst1q_f32(wp + 8, vc32);
-	vst1q_f32(wp + 12, vc33);
+	vst1q_f32_x4(WTp, vc32x4x4_0);
+	vst1q_f32_x4(WTp + 1*wstride, vc32x4x4_1);
+	vst1q_f32_x4(WTp + 2*wstride, vc32x4x4_2);
+	vst1q_f32_x4(WTp + 3*wstride, vc32x4x4_3);
 }
 
 static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01, vc02;
-	float32x4_t vc10, vc11, vc12;
-	float32x4_t vc20, vc21, vc22;
-	float32x4_t vc30, vc31, vc32;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1, v2;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc02 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc12 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc22 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
-	vc32 = vdupq_n_f32(0.f);
+	float32x4x3_t vc32x4x3_0;
+	float32x4x3_t vc32x4x3_1;
+	float32x4x3_t vc32x4x3_2;
+	float32x4x3_t vc32x4x3_3;
+	float32x4x4_t u32x4x4;
+	float32x4x3_t v32x4x3;
+
+	vc32x4x3_0.val[0] = vdupq_n_f32(0.f);
+	vc32x4x3_0.val[1] = vc32x4x3_0.val[0];
+	vc32x4x3_0.val[2] = vc32x4x3_0.val[0];
+ 	vc32x4x3_1 = vc32x4x3_0;
+	vc32x4x3_2 = vc32x4x3_0;
+
 	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
+	for (int ic = 0; ic < inChannels; ++ic, vp += 12, up += 16)
 	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		v2 = vld1q_f32(vp + 8);
-		vp += 12;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+		v32x4x3 = vld1q_f32_x3(vp);
+		u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc02 = vfmaq_f32(vc02, u0, v2);
+		vc32x4x3_0.val[0] = vfmaq_f32(vc32x4x3_0.val[0], u32x4x4.val[0], v32x4x3.val[0]);
+		vc32x4x3_0.val[1] = vfmaq_f32(vc32x4x3_0.val[1], u32x4x4.val[0], v32x4x3.val[1]);
+		vc32x4x3_0.val[2] = vfmaq_f32(vc32x4x3_0.val[2], u32x4x4.val[0], v32x4x3.val[2]);
 
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc12 = vfmaq_f32(vc12, u1, v2);
+		vc32x4x3_1.val[0] = vfmaq_f32(vc32x4x3_1.val[0], u32x4x4.val[1], v32x4x3.val[0]);
+		vc32x4x3_1.val[1] = vfmaq_f32(vc32x4x3_1.val[1], u32x4x4.val[1], v32x4x3.val[1]);
+		vc32x4x3_1.val[2] = vfmaq_f32(vc32x4x3_1.val[2], u32x4x4.val[1], v32x4x3.val[2]);
 
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc22 = vfmaq_f32(vc22, u2, v2);
+		vc32x4x3_2.val[0] = vfmaq_f32(vc32x4x3_2.val[0], u32x4x4.val[2], v32x4x3.val[0]);
+		vc32x4x3_2.val[1] = vfmaq_f32(vc32x4x3_2.val[1], u32x4x4.val[2], v32x4x3.val[1]);
+		vc32x4x3_2.val[2] = vfmaq_f32(vc32x4x3_2.val[2], u32x4x4.val[2], v32x4x3.val[2]);
 
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
-		vc32 = vfmaq_f32(vc32, u3, v2);
+		vc32x4x3_3.val[0] = vfmaq_f32(vc32x4x3_3.val[0], u32x4x4.val[3], v32x4x3.val[0]);
+		vc32x4x3_3.val[1] = vfmaq_f32(vc32x4x3_3.val[1], u32x4x4.val[3], v32x4x3.val[1]);
+		vc32x4x3_3.val[2] = vfmaq_f32(vc32x4x3_3.val[2], u32x4x4.val[3], v32x4x3.val[2]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc02 = vmlaq_f32(vc02, u0, v2);
+		vc32x4x3_0.val[0] = vmlaq_f32(vc32x4x3_0.val[0], u32x4x4.val[0], v32x4x3.val[0]);
+		vc32x4x3_0.val[1] = vmlaq_f32(vc32x4x3_0.val[1], u32x4x4.val[0], v32x4x3.val[1]);
+		vc32x4x3_0.val[2] = vmlaq_f32(vc32x4x3_0.val[2], u32x4x4.val[0], v32x4x3.val[2]);
 
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc12 = vmlaq_f32(vc12, u1, v2);
+		vc32x4x3_1.val[0] = vmlaq_f32(vc32x4x3_1.val[0], u32x4x4.val[1], v32x4x3.val[0]);
+		vc32x4x3_1.val[1] = vmlaq_f32(vc32x4x3_1.val[1], u32x4x4.val[1], v32x4x3.val[1]);
+		vc32x4x3_1.val[2] = vmlaq_f32(vc32x4x3_1.val[2], u32x4x4.val[1], v32x4x3.val[2]);
 
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc22 = vmlaq_f32(vc22, u2, v2);
+		vc32x4x3_2.val[0] = vmlaq_f32(vc32x4x3_2.val[0], u32x4x4.val[2], v32x4x3.val[0]);
+		vc32x4x3_2.val[1] = vmlaq_f32(vc32x4x3_2.val[1], u32x4x4.val[2], v32x4x3.val[1]);
+		vc32x4x3_2.val[2] = vmlaq_f32(vc32x4x3_2.val[2], u32x4x4.val[2], v32x4x3.val[2]);
 
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
-		vc32 = vmlaq_f32(vc32, u3, v2);
+		vc32x4x3_3.val[0] = vmlaq_f32(vc32x4x3_3.val[0], u32x4x4.val[3], v32x4x3.val[0]);
+		vc32x4x3_3.val[1] = vmlaq_f32(vc32x4x3_3.val[1], u32x4x4.val[3], v32x4x3.val[1]);
+		vc32x4x3_3.val[2] = vmlaq_f32(vc32x4x3_3.val[2], u32x4x4.val[3], v32x4x3.val[2]);
 #endif
 	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	vst1q_f32(wp + 8, vc02);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	vst1q_f32(wp + 8, vc12);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	vst1q_f32(wp + 8, vc22);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
-	vst1q_f32(wp + 8, vc32);
+
+	vst1q_f32_x3(WTp, vc32x4x3_0);
+	vst1q_f32_x3(WTp + wstride, vc32x4x3_1);
+	vst1q_f32_x3(WTp + 2*wstride, vc32x4x3_2);
+	vst1q_f32_x3(WTp + 3*wstride, vc32x4x3_3);
 }
 
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01;
-	float32x4_t vc10, vc11;
-	float32x4_t vc20, vc21;
-	float32x4_t vc30, vc31;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
+	float32x4x2_t vc32x4x2_0, vc32x4x2_1, vc32x4x2_2, vc32x4x2_3;
+	float32x4x4_t u32x4x4;
+	float32x4x2_t v32x4x2;
+
+	vc32x4x2_0.val[0] = vdupq_n_f32(0.f);
+	vc32x4x2_0.val[1] = vc32x4x2_0.val[0];
+ 	vc32x4x2_1 = vc32x4x2_0;
+	vc32x4x2_2 = vc32x4x2_0;
+	vc32x4x2_3 = vc32x4x2_0;
+
 	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
+	for (int ic = 0; ic < inChannels; ++ic, vp += 8, up += 16)
 	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		vp += 8;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+		v32x4x2 = vld1q_f32_x2(vp);
+		u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
+		vc32x4x2_0.val[0] = vfmaq_f32(vc32x4x2_0.val[0], u32x4x4.val[0], v32x4x2.val[0]);
+		vc32x4x2_0.val[1] = vfmaq_f32(vc32x4x2_0.val[1], u32x4x4.val[0], v32x4x2.val[1]);
+		vc32x4x2_1.val[0] = vfmaq_f32(vc32x4x2_1.val[0], u32x4x4.val[1], v32x4x2.val[0]);
+		vc32x4x2_1.val[1] = vfmaq_f32(vc32x4x2_1.val[1], u32x4x4.val[1], v32x4x2.val[1]);
+		vc32x4x2_2.val[0] = vfmaq_f32(vc32x4x2_2.val[0], u32x4x4.val[2], v32x4x2.val[0]);
+		vc32x4x2_2.val[1] = vfmaq_f32(vc32x4x2_2.val[1], u32x4x4.val[2], v32x4x2.val[1]);
+		vc32x4x2_3.val[0] = vfmaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[0]);
+		vc32x4x2_3.val[1] = vfmaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[1]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
+		vc32x4x2_0.val[0] = vmlaq_f32(vc32x4x2_0.val[0], u32x4x4.val[0], v32x4x2.val[0]);
+		vc32x4x2_0.val[1] = vmlaq_f32(vc32x4x2_0.val[1], u32x4x4.val[0], v32x4x2.val[1]);
+		vc32x4x2_1.val[0] = vmlaq_f32(vc32x4x2_1.val[0], u32x4x4.val[1], v32x4x2.val[0]);
+		vc32x4x2_1.val[1] = vmlaq_f32(vc32x4x2_1.val[1], u32x4x4.val[1], v32x4x2.val[1]);
+		vc32x4x2_2.val[0] = vmlaq_f32(vc32x4x2_2.val[0], u32x4x4.val[2], v32x4x2.val[0]);
+		vc32x4x2_2.val[1] = vmlaq_f32(vc32x4x2_2.val[1], u32x4x4.val[2], v32x4x2.val[1]);
+		vc32x4x2_3.val[0] = vmlaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[0]);
+		vc32x4x2_3.val[1] = vmlaq_f32(vc32x4x2_3.val[1], u32x4x4.val[3], v32x4x2.val[1]);
 #endif
 	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
+	vst1q_f32_x2(WTp, vc32x4x2_0);
+	vst1q_f32_x2(WTp + wstride, vc32x4x2_1);
+	vst1q_f32_x2(WTp + 2*wstride, vc32x4x2_2);
+	vst1q_f32_x2(WTp + 3*wstride, vc32x4x2_3);
 }
 
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
@@ -960,51 +856,36 @@ static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, c
 	float32x4_t vc10;
 	float32x4_t vc20;
 	float32x4_t vc30;
-	float32x4_t u0, u1, u2, u3;
+	float32x4x4_t u32x4x4;
 	float32x4_t v0;
+
 	vc00 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
+	vc10 = vc00;
+	vc20 = vc00;
+	vc30 = vc00;
+
 	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
+	for (int ic = 0; ic < inChannels; ++ic, vp += 4, up += 16)
 	{
-		//if(oc == 0){
-		//print_floats(vp, 4);
-		//print_floats(up, 16);
-		//}
-		//printf("vp %d\n", vp);
 		v0 = vld1q_f32(vp);
-		vp += 4;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+		u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc30 = vfmaq_f32(vc30, u3, v0);
+		vc00 = vfmaq_f32(vc00, u32x4x4.val[0], v0);
+		vc10 = vfmaq_f32(vc10, u32x4x4.val[1], v0);
+		vc20 = vfmaq_f32(vc20, u32x4x4.val[2], v0);
+		vc30 = vfmaq_f32(vc30, u32x4x4.val[3], v0);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc30 = vmlaq_f32(vc30, u3, v0);
+		vc00 = vmlaq_f32(vc00, u32x4x4.val[0], v0);
+		vc10 = vmlaq_f32(vc10, u32x4x4.val[1], v0);
+		vc20 = vmlaq_f32(vc20, u32x4x4.val[2], v0);
+		vc30 = vmlaq_f32(vc30, u32x4x4.val[3], v0);
 #endif
 	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
+
+	vst1q_f32(WTp, vc00);
+	vst1q_f32(WTp + wstride, vc10);
+	vst1q_f32(WTp + 2*wstride, vc20);
+	vst1q_f32(WTp + 3*wstride, vc30);
 }
 
 
