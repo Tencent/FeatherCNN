@@ -230,14 +230,6 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 
 			auto caffe_model_layer = net_param.layer(caffe_model_layer_map[layer_name]);
 
-#if 0
-			if(std::find(prototxt_name_map.begin(), prototxt_name_map.end(), layer_name)==prototxt_name_map.end())
-			{
-				printf("LAYER %s type %s NOT FOUND\n", layer_name.c_str(), layer_type.c_str());
-				continue;
-			}
-#endif
-
 			/*Bottom and top*/
 			for(int j = 0; j < caffe_layer.bottom_size(); ++j)
 			   	bottom_vec.push_back(caffe_layer.bottom(j));
@@ -298,9 +290,9 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				top_fbstr_vec.push_back(fbb.CreateString(top_vec[i]));
 			auto top_fbvec = fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(top_fbstr_vec);
 			/*Blobs*/
-			int blob_size = caffe_model_layer.blobs_size();
-			printf("Blob num %d\n", blob_size);
+			printf("Blob num %d\n", caffe_model_layer.blobs_size());
 			std::vector<flatbuffers::Offset<feather::BlobProto> > blob_vec;
+				
 			for (int j = 0; j != caffe_model_layer.blobs_size(); ++j)
 			{
 				auto caffe_blob = caffe_model_layer.blobs(j);
@@ -397,6 +389,9 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 			//flatbuffers::Offset<feather::SoftmaxParameter> softmax_param;
 			flatbuffers::Offset<feather::EltwiseParameter> eltwise_param;
 			flatbuffers::Offset<feather::InnerProductParameter> inner_product_param;
+			flatbuffers::Offset<feather::PReLUParameter> prelu_param;
+			flatbuffers::Offset<feather::DropoutParameter> dropout_param;
+
 			if(layer_type.compare("Convolution")==0){
 				printf("Convlution layer\n");
 				auto caffe_conv_param = caffe_layer.convolution_param();
@@ -607,6 +602,22 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 			{
 				//Do nothing
 			}
+			else if(layer_type.compare("PReLU")==0)
+			{
+			
+			}
+			else if(layer_type.compare("Dropout")==0)
+			{
+				float scale = 1.0f;
+				auto caffe_dropout_param = caffe_layer.dropout_param();
+
+				scale = caffe_dropout_param.dropout_ratio();
+				printf("dropout scale: %f\n", scale);
+
+				feather::DropoutParameterBuilder dropout_param_builder(fbb);
+				dropout_param_builder.add_dropout_ratio(scale);
+				dropout_param = dropout_param_builder.Finish();	
+			}
 
 			auto layer_name_fbb = fbb.CreateString(layer_name);
 			auto layer_type_fbb = fbb.CreateString(layer_type);
@@ -628,6 +639,11 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				layer_builder.add_scale_param(scale_param);
 			else if(layer_type.compare("Eltwise")==0)
 				layer_builder.add_eltwise_param(eltwise_param);
+			else if(layer_type.compare("PReLU")==0)
+				layer_builder.add_prelu_param(prelu_param);
+			else if(layer_type.compare("Dropout")==0)
+				layer_builder.add_dropout_param(dropout_param);
+
 			layer_vec.push_back(layer_builder.Finish());
 		}
 		auto layer_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::LayerParameter>>(layer_vec);

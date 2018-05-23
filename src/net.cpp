@@ -68,7 +68,6 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 
 int Net::Forward(float *input)
 {
-	printf("Forward\n");
 	InputLayer *input_layer = (InputLayer *)layers[0];
 	for (int i = 0; i < input_layer->input_size(); ++i)
 	{
@@ -139,7 +138,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
 	const NetParameter *net_param = feather::GetNetParameter(net_buffer);
 	size_t layer_num = VectorLength(net_param->layer());
 	//Find input layer.
-	printf("-- Loading %d layers\n", layer_num);
+	printf("Loading %d layers\n", layer_num);
 	for (int i = 0; i < layer_num; ++i)
 	{
 		if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)
@@ -152,7 +151,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
 	{
 		const LayerParameter *layer_param = net_param->layer()->Get(i);
 		Layer *new_layer = LayerRegistry::CreateLayer(layer_param, rt_param);
-		printf("setup layer %s\n", layer_param->name()->c_str());
+		//printf("setup layer %s\n", layer_param->name()->c_str());
 		layers.push_back(new_layer);
 	}
 	//Generate top blobs, will check the dependency.

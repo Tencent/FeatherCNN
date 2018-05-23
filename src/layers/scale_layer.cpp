@@ -32,7 +32,7 @@ int ScaleLayer::Init()
 	input_channels = p_blob->channels();
 	input_height   = p_blob->height();
 	input_width    = p_blob->width();
-	printf("input %d %d %d", input_channels, input_width, input_height);
+	//printf("input %d %d %d", input_channels, input_width, input_height);
 	scale_data = _weight_blobs[0]->data();
 	//printf("bias_term %d\n", _bias_term ? 1: 0);
     if(_bias_term)

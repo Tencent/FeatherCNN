@@ -237,7 +237,7 @@ table PowerParameter {
 }
 
 table PReLUParameter {
-  slope_size:uint;
+  channel_shared:bool;
 }
 
 table RecurrentParameter {

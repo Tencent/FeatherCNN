@@ -84,9 +84,10 @@ class PoolingLayer : public Layer
 			default:
 				fprintf(stderr, "Unsupported pool method\n");
 		}
-		printf("kernel (%ld %ld) pad (%ld %ld) stride (%ld %ld) global_pooling %d\n",
+#if 0
+		printf("[POOL] kernel (%ld %ld) pad (%ld %ld) stride (%ld %ld) global %d\n",
 			   kernel_height, kernel_width, pad_height, pad_width, stride_height, stride_width, global_pooling);
-
+#endif
 	}
 
 

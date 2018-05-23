@@ -27,6 +27,7 @@
 #include "layers/batchnorm_layer.h"
 #include "layers/lrn_layer.h"
 #include "layers/relu_layer.h"
+#include "layers/prelu_layer.h"
 #include "layers/scale_layer.h"
 #include "layers/slice_layer.h"
 #include "layers/pooling_layer.h"
@@ -54,7 +55,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
 //	size_t input_channels = conv_param->input_c();
 
 	ConvLayer *conv_layer = NULL;
-	printf("stride %lu, %lu\n", stride_height, stride_width);
+	//printf("[conv] group:%lu kernel_height: %lu kernel_width: %lu stride %lu, %lu\n", group, kernel_height, kernel_width, stride_height, stride_width);
 	if(group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1)
 	{
 #if 0
@@ -93,6 +94,10 @@ Layer *GetReluLayer(const LayerParameter *layer_param, const RuntimeParameter<fl
 {
 	return (Layer *)new ReluLayer(layer_param, rt_param);
 }
+Layer *GetPReluLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+	return (Layer *)new PReluLayer(layer_param, rt_param);
+}
 Layer *GetScaleLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
 	return (Layer *)new ScaleLayer(layer_param, rt_param);
@@ -127,6 +132,7 @@ REGISTER_LAYER_CREATOR(LRN, GetLRNLayer);
 REGISTER_LAYER_CREATOR(Concat, GetConcatLayer);
 REGISTER_LAYER_CREATOR(Dropout, GetDropoutLayer);
 REGISTER_LAYER_CREATOR(ReLU, GetReluLayer);
+REGISTER_LAYER_CREATOR(PReLU, GetPReluLayer);
 REGISTER_LAYER_CREATOR(Scale, GetScaleLayer);
 REGISTER_LAYER_CREATOR(Slice, GetSliceLayer);
 REGISTER_LAYER_CREATOR(Pooling, GetPoolingLayer);

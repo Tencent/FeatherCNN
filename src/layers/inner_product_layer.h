@@ -33,7 +33,7 @@ class InnerProductLayer : public Layer
 		const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
 		bias_term = inner_product_param->bias_term();
 
-		_weight_blobs[0]->PrintBlobInfo();
+		//_weight_blobs[0]->PrintBlobInfo();
 		assert(_weight_blobs.size() > 0);
 		kernel_data = this->_weight_blobs[0]->data();
 		output_channels = this->_weight_blobs[0]->num();
@@ -49,16 +49,51 @@ class InnerProductLayer : public Layer
 	{
 		const float *input = _bottom_blobs[_bottom[0]]->data();
 		float *output = _top_blobs[_top[0]]->data();
-
-        if(output_size%8==0 && input_size%8==0)
+#if 0
+		if ( 0 == _top[0].compare("conv5"))
+		{
+			for (int i = 0; i < input_size; i++)
+			{
+				printf(" %2.6f", kernel_data[i]);
+				if((0 != i)&& (0 == i%16))
+					printf("\n");
+			}
+			printf("\n\n");
+			for (int i = 0; i < input_size; i++)
+			{
+				printf(" %2.6f", input[i]);
+				if((0 != i)&& (0 == i%16))
+					printf("\n");
+			}
+		}
+		printf("\n");
+#endif
+#if 0
+		printf("[Innerproduct] 0 %s %s [%d %d %d %d %d], kernel %f %f %f %f %f %f %f %f\n",
+				_bottom[0].c_str(), _top[0].c_str(),
+				output_size, input_size, num_threads, bias_term, this->_weight_blobs[0]->data_size(),
+				kernel_data[0], kernel_data[1], kernel_data[2], kernel_data[3],
+				kernel_data[4], kernel_data[5], kernel_data[6], kernel_data[7]);
+#endif
+        if (output_size%8==0 && input_size%8==0)
             fully_connected_transpose_inference_neon8((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
         else
             fully_connected_inference_direct((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
-
+#if 0
+		printf("[Innerproduct] 1 %s %s [%d %d %d %d], in %f %f %f %f out %f %f %f %f\n", _bottom[0].c_str(), _top[0].c_str(),
+				output_size, input_size, num_threads, bias_term,
+				input[0], input[1], input[2], input[3],
+				output[0], output[1], output[2], output[3]);
+#endif
 		if(bias_term)
 			for(int i=0; i<output_size; i++)  
 				output[i] += bias_data[i];
-		
+#if 0
+		printf("[Innerproduct] 2 %s %s [%d %d %d %d], in %f %f %f %f out %f %f %f %f\n", _bottom[0].c_str(), _top[0].c_str(),
+				output_size, input_size, num_threads, bias_term,
+				input[0], input[1], input[2], input[3],
+				output[0], output[1], output[2], output[3]);
+#endif
 		return 0;
 	}
 
@@ -84,10 +119,10 @@ class InnerProductLayer : public Layer
 		input_height = bottom_blob->height();
 		input_channels = bottom_blob->channels();
 		input_size = bottom_blob->data_size();
-		printf("input %lu %lu %lu\n", input_channels, input_height, input_width);
+		//printf("input %lu %lu %lu\n", input_channels, input_height, input_width);
 		_top_blobs[_top[0]] = new Blob<float>(1, output_channels, 1, 1);
 		_top_blobs[_top[0]]->Alloc();
-		_top_blobs[_top[0]]->PrintBlobInfo();
+		//_top_blobs[_top[0]]->PrintBlobInfo();
 		output_size = _top_blobs[_top[0]]->data_size();
 		return 0;
 	}

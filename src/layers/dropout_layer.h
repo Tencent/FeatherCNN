@@ -25,26 +25,47 @@ class DropoutLayer : public Layer
 	DropoutLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
 		: Layer(layer_param, rt_param)
 	{
+		const DropoutParameter *dropout_param = layer_param->dropout_param();
+		scale = 1.0 - dropout_param->dropout_ratio();
 	}
-
-	int GenerateTopBlobs()
-	{
-		//Inplace layer, do nothing
-		_top_blobs[_top[0]] = const_cast<Blob<float>*>(_bottom_blobs[_bottom[0]]);
-		return 0;
-	}
-
-	int Init()
-	{
-		//Inplace layer, the top points to its own bottom.
-		return 0;
-	}
-
 
 	int Forward()
 	{
-		//Nothing to do at test phase
+		const Blob<float> *p_bottom = _bottom_blobs[_bottom[0]];
+		const float* input = p_bottom->data();
+		float* output = _top_blobs[_top[0]]->data();
+
+		int n = p_bottom->num();
+		int c = p_bottom->channels();
+	    int w = p_bottom->width();
+	    int h = p_bottom->height();
+		int size = w * h;
+	    //printf("[DROPOUT] bottom:%s top:%s c:%d h:%d w:%d [%f %f %f %f]\n", _bottom[0].c_str(), _top[0].c_str(), c,h,w, input[0], input[1], input[2], input[3]);
+
+		if (scale == 1.f)
+		    return 0;
+
+		#pragma omp parallel for
+		for (int q=0; q<c; q++)
+		{
+			const float* inPtr = input + q*size;
+			float* outPtr = output + q*size;
+
+		    for (int i=0; i<size; i++)
+		    {
+		        outPtr[i] = inPtr[i] * scale;
+		    }
+		}
+#if 0
+		printf("[DROPOUT] %f %f %f %f\n", 
+			   _top_blobs[_top[0]]->data()[0], 
+			   _top_blobs[_top[0]]->data()[1], 
+			   _top_blobs[_top[0]]->data()[2], 
+			   _top_blobs[_top[0]]->data()[3]);
+#endif
 		return 0;
 	}
+	protected:
+		float scale;
 };
 };

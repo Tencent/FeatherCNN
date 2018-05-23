@@ -53,6 +53,15 @@ class ConvWinogradF63Layer : public ConvLayer
 		float *pack_array = padded_input + inputw * inputh * input_channels; //Offset by sizeof WT
 		pad_input(padded_input, input, input_channels, input_width, input_height, padding_left, padding_top, padding_right, padding_bottom);
 		winogradNonFusedTransform_F6x6_3x3(output, output_channels, WT, VT, UT, padded_input, input_channels, inputh, inputw, winograd_out_type, bias_data, pack_array, num_threads);
+
+#if 0
+		const Blob<float> *p_bottom = _bottom_blobs[_bottom[0]];
+		const float* input = p_bottom->data();
+		float* output = _top_blobs[_top[0]]->data();
+		printf("[Conv] %s %s, in %f %f %f %f out %f %f %f %f\n", _bottom[0].c_str(), _top[0].c_str(),
+				input[0], input[1], input[2], input[3],
+				output[0], output[1], output[2], output[3]);
+#endif
 		return 0;
 	}
 
