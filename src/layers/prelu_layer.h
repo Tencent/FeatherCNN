@@ -26,10 +26,6 @@ namespace feather{
 		{
 			shared = this->_weight_blobs[0]->data_size() > 1 ? false : true;
 			slope_data = this->_weight_blobs[0]->data();
-			#if 0
-			printf("[PReLU] Slope shared: %d, slope size: %d [%f %f %f %f]\n", 
-				   shared, this->_weight_blobs[0]->data_size(), slope_data[0], slope_data[1], slope_data[2], slope_data[3]);
-			#endif
 		}
 		int Forward();
 		protected:

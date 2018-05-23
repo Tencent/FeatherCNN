@@ -92,7 +92,7 @@ int BatchNormLayer::SetKernel()
     pat_code += (scale_bias_term) ? 0x1 : 0;
     pat_code += (fuse_scale) ? 0x10 : 0;
     pat_code += (fuse_relu) ? 0x100 : 0;
-	printf("pat_code %x\n", pat_code);
+	//printf("pat_code %x\n", pat_code);
     switch(pat_code){
 	case 0x000:
 		bn_kernel = batchnorm<false, false, false>;

@@ -20,7 +20,7 @@ namespace feather{
     void Blob<Dtype>::Alloc()
     {
         size_t dim_byte = _num * _channels * _height * _width * sizeof(Dtype);
-        _data = (Dtype*) malloc(dim_byte);
+        _data = (Dtype*) _mm_malloc(dim_byte, 128);
     }
     
     template<class Dtype>
