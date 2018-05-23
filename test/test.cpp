@@ -70,12 +70,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	gettimeofday(&end, NULL);
-	printf("\ntime: %ld ms, avg time : %.3f ms, loop: %d\n\n", (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/1000, (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/(1000.0*loopCnt), loopCnt);
+	printf("\ntime: %ld ms, avg time : %.3f ms, loop: %d threads: %d\n\n", (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/1000, (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/(1000.0*loopCnt), loopCnt, num_threads);
 
 	printf("out blob size: %lu\n", data_size);
 	for(int i = 0 ; i < data_size; i++)
 	{
-		printf("%.3f ", pOut[i]);
+		if ((0 != i)&& (0 == i % 16))
+			printf("\n");
+		printf("%f ", pOut[i]);
 	}
 
 	free(pOut);

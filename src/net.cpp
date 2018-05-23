@@ -138,7 +138,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
 	const NetParameter *net_param = feather::GetNetParameter(net_buffer);
 	size_t layer_num = VectorLength(net_param->layer());
 	//Find input layer.
-	printf("Loading %d layers\n", layer_num);
+	//printf("Loading %d layers\n", layer_num);
 	for (int i = 0; i < layer_num; ++i)
 	{
 		if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)

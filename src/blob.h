@@ -17,6 +17,7 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
+#include <arm/common.h>
 
 namespace feather
 {
