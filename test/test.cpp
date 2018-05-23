@@ -32,6 +32,26 @@ void SplitString(const std::string &input, const std::string &delim, std::vector
 	}
 }
 
+void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
+{
+	size_t data_size;
+	forward_net->GetBlobDataSize(&data_size, blob_name);
+	float *arr = (float*) malloc(sizeof(float) * data_size);
+	forward_net->ExtractBlob(arr, blob_name);
+	size_t len = 0;
+	if(n <= 0)
+		len = data_size;
+	else
+		len = n;
+
+	for(int i = 0; i < len; ++i)
+	{
+		printf("%f\t", arr[i]);
+	}
+	printf("\n");
+	free(arr);
+}
+
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
 	printf("++++++Start Loader++++++\n");
@@ -67,8 +87,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 					time += timedif;
 			}
 			printf("--------Average runtime %lfmsi------\n", time / (loop - 1)/1000.0);
-			//forward_net.PrintBlobData("fc_concat");
-			//forward_net.PrintBlobData();
+			//PrintBlobData(&forward_net, "fc6", 0);
 		}
 		break;
 	}
