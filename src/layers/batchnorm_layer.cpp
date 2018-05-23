@@ -52,12 +52,12 @@ int BatchNormLayer::Fuse(Layer *next_layer)
 
 int BatchNormLayer::Init()
 {
-	printf("Init BN layer ");
+	//printf("Init BN layer ");
 	const Blob<float>* p_blob = _bottom_blobs[_bottom[0]];
 	input_channels = p_blob->channels();
 	input_height   = p_blob->height();
 	input_width    = p_blob->width();
-	printf("input %d %d %d\n", input_channels, input_width, input_height);
+	//printf("input %d %d %d\n", input_channels, input_width, input_height);
     MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&alpha, input_channels* sizeof(float)));
     MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&beta, input_channels* sizeof(float)));
 

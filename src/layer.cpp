@@ -29,7 +29,7 @@ namespace feather{
 		for(int i = 0; i < VectorLength(layer_param->bottom()); ++i)
 		{
 			_bottom.push_back(layer_param->bottom()->Get(i)->str());
-			printf("_bottom %s\n", _bottom[_bottom.size() - 1].c_str());
+			//printf("_bottom %s\n", _bottom[_bottom.size() - 1].c_str());
 		}
 		for(int i = 0; i < VectorLength(layer_param->top()); ++i)
 		{

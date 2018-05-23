@@ -20,77 +20,65 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include <opencv2/opencv.hpp>
 
-void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
-{
-	for(char *s=strtok((char *)input.data(), (char *)delim.data()); s; s=strtok(NULL, (char *)delim.data()))
-	{
-		if (s != NULL)
-		{
-			parts.push_back(s);
-		}
-	}
-}
+using namespace std;
+using namespace cv;
+using namespace feather;
 
-void test(std::string model_path, std::string data_path, int loop, int num_threads)
-{
-	printf("++++++Start Loader++++++\n");
-	feather::Net forward_net(num_threads);
-	forward_net.InitFromPath(model_path.c_str());
-	size_t input_size = 224 * 224 * 3 ;
-	float *input = new float[input_size * 20];
-	std::ifstream in(data_path.c_str());
-	std::string line;
-	std::string delim = "\t\r\n <>()";
-	size_t count = 0;
-	double time = 0;
+int main(int argc, char *argv[]) {
+	int i = 1, loopCnt = 1;
+	char *pFname = (char *)"face.jpg";
+	char *pModel = (char*)"regNet.feathermodel";
+	char *pBlob = (char *)"mobilenet_v2_layer9_conv1x1";
+	int num_threads = 1;
+	struct timeval beg, end;
 
-	while (getline(in,line))
-	{
-		for(int i = 0; i < 1; ++i){
-			std::vector<std::string> parts;
-			SplitString(line, delim, parts);
-			printf("input size %ld parts size %ld\n", input_size, parts.size());
-			for (size_t i = 0; i != parts.size(); ++i)
-			{
-				input[i] = atof(parts[i].c_str());
-			}
-			for(int i = 0; i < loop; ++i)
-			{
-				timespec tpstart, tpend;
-				clock_gettime(CLOCK_MONOTONIC, &tpstart);
-				forward_net.Forward(input);
-				clock_gettime(CLOCK_MONOTONIC, &tpend);
-				double timedif = 1000000.0 *(tpend.tv_sec-tpstart.tv_sec)+(tpend.tv_nsec-tpstart.tv_nsec)/1000.0;
-				printf("----------Prediction costs %lfms\n", timedif / 1000.0);
-				if(i > 0)
-					time += timedif;
-			}
-			printf("--------Average runtime %lfmsi------\n", time / (loop - 1)/1000.0);
-			//forward_net.PrintBlobData("fc_concat");
-			//forward_net.PrintBlobData();
-		}
-		break;
-	}
-	if (input)
-	{
-		delete [] input;
-		input = NULL;
-	}
-}
+	printf("e.g.:  ./demo 1.jpg 48net.feathermodel prob1 10 1 \n");
 
-int main(int argc, char* argv[])
-{
-	if(argc == 5)
+	if (argc > 1) pFname = argv[i++];
+	if (argc > 2) pModel = argv[i++];
+	if (argc > 3) pBlob = argv[i++];
+	if (argc > 4) loopCnt = atoi(argv[i++]);
+	if (argc > 5) num_threads = atoi(argv[i++]);
+	
+	printf("img: %s model: %s blob: %s loopCnt: %d num_threads: %d\n", pFname, pModel, pBlob, loopCnt, num_threads);
+
+	cv::Mat img = imread(pFname);
+	if (img.empty())
 	{
-		size_t num_threads = atoi(argv[4]);
-		size_t loop = atoi(argv[3]);
-		test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+		printf("read img failed, %s\n", pFname);
+		return -1;
 	}
-	else
+
+	img.convertTo(img, CV_32F, 1.0 / 128, -127.5/128);
+	printf("c: %d w: %d h : %d step: %ld\n", img.channels(), img.cols, img.rows, img.step[0]);
+
+	Net forward_net(num_threads);
+	forward_net.InitFromPath(pModel);
+
+	size_t data_size;
+	forward_net.GetBlobDataSize(&data_size, pBlob);
+	float *pOut = (float *)malloc(data_size*sizeof(float));
+
+	gettimeofday(&beg, NULL);
+
+	for(int loop = 0; loop < loopCnt; loop++)
 	{
-		fprintf(stderr, "Usage: ./testRun [feathermodel] [input_data] [loop_count] [num_threads]\n");
-		return 0;
+		int ret = forward_net.Forward((float*)img.data);
+		forward_net.ExtractBlob(pOut, pBlob);
 	}
+
+	gettimeofday(&end, NULL);
+	printf("\ntime: %ld ms, avg time : %.3f ms, loop: %d\n\n", (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/1000, (end.tv_sec*1000000 + end.tv_usec - beg.tv_sec*1000000 - beg.tv_usec)/(1000.0*loopCnt), loopCnt);
+
+	printf("out blob size: %lu\n", data_size);
+	for(int i = 0 ; i < data_size; i++)
+	{
+		printf("%.3f ", pOut[i]);
+	}
+
+	free(pOut);
+	printf("\n");
 	return 0;
 }

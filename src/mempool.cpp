@@ -21,8 +21,8 @@ template<typename PTR_TYPE>
 CommonMemPool<PTR_TYPE>::~CommonMemPool(){
 	if(common_memory || common_size_map.size() || common_ptr_map.size())
 	{
-		fprintf(stderr, "Warning: common memroy not freed before pool desctruction. Proceed with free.\n");
-		PrintStats();
+		//fprintf(stderr, "Warning: common memroy not freed before pool desctruction. Proceed with free.\n");
+		//PrintStats();
 		FreeAll();		
 	}
 }

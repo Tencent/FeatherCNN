@@ -65,7 +65,7 @@ class Blob
     void Copy(const Blob<Dtype>* p_blob)
     {
 	    CopyShape(p_blob);
-	    this->PrintBlobInfo();
+	    //this->PrintBlobInfo();
 	    this->Alloc();
 	    assert(p_blob->data_size() == this->data_size());
 	    CopyData(p_blob->data());

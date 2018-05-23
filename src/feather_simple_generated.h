@@ -101,8 +101,8 @@ enum EltwiseOp {
   EltwiseOp_MAX = EltwiseOp_MAX_
 };
 
-inline EltwiseOp (&EnumValuesEltwiseOp())[3] {
-  static EltwiseOp values[] = {
+inline const EltwiseOp (&EnumValuesEltwiseOp())[3] {
+  static const EltwiseOp values[] = {
     EltwiseOp_PROD,
     EltwiseOp_SUM,
     EltwiseOp_MAX_
@@ -110,8 +110,8 @@ inline EltwiseOp (&EnumValuesEltwiseOp())[3] {
   return values;
 }
 
-inline const char **EnumNamesEltwiseOp() {
-  static const char *names[] = {
+inline const char * const *EnumNamesEltwiseOp() {
+  static const char * const names[] = {
     "PROD",
     "SUM",
     "MAX_",
@@ -136,16 +136,16 @@ enum DimCheckMode {
   DimCheckMode_MAX = DimCheckMode_PERMISSIVE
 };
 
-inline DimCheckMode (&EnumValuesDimCheckMode())[2] {
-  static DimCheckMode values[] = {
+inline const DimCheckMode (&EnumValuesDimCheckMode())[2] {
+  static const DimCheckMode values[] = {
     DimCheckMode_STRICT,
     DimCheckMode_PERMISSIVE
   };
   return values;
 }
 
-inline const char **EnumNamesDimCheckMode() {
-  static const char *names[] = {
+inline const char * const *EnumNamesDimCheckMode() {
+  static const char * const names[] = {
     "STRICT",
     "PERMISSIVE",
     nullptr
@@ -169,16 +169,16 @@ enum NormRegion {
   NormRegion_MAX = NormRegion_WITHIN_CHANNEL
 };
 
-inline NormRegion (&EnumValuesNormRegion())[2] {
-  static NormRegion values[] = {
+inline const NormRegion (&EnumValuesNormRegion())[2] {
+  static const NormRegion values[] = {
     NormRegion_ACROSS_CHANNELS,
     NormRegion_WITHIN_CHANNEL
   };
   return values;
 }
 
-inline const char **EnumNamesNormRegion() {
-  static const char *names[] = {
+inline const char * const *EnumNamesNormRegion() {
+  static const char * const names[] = {
     "ACROSS_CHANNELS",
     "WITHIN_CHANNEL",
     nullptr
@@ -203,8 +203,8 @@ enum PoolMethod {
   PoolMethod_MAX = PoolMethod_STOCHASTIC
 };
 
-inline PoolMethod (&EnumValuesPoolMethod())[3] {
-  static PoolMethod values[] = {
+inline const PoolMethod (&EnumValuesPoolMethod())[3] {
+  static const PoolMethod values[] = {
     PoolMethod_MAX_,
     PoolMethod_AVE,
     PoolMethod_STOCHASTIC
@@ -212,8 +212,8 @@ inline PoolMethod (&EnumValuesPoolMethod())[3] {
   return values;
 }
 
-inline const char **EnumNamesPoolMethod() {
-  static const char *names[] = {
+inline const char * const *EnumNamesPoolMethod() {
+  static const char * const names[] = {
     "MAX_",
     "AVE",
     "STOCHASTIC",
@@ -232,16 +232,16 @@ inline const char *EnumNamePoolMethod(PoolMethod e) {
 namespace ReductionParameter_ {
 
 enum ReductionOp {
-  ReductionOp_SUM = 1,
-  ReductionOp_ASUM = 2,
-  ReductionOp_SUMSQ = 3,
-  ReductionOp_MEAN = 4,
+  ReductionOp_SUM = 0,
+  ReductionOp_ASUM = 1,
+  ReductionOp_SUMSQ = 2,
+  ReductionOp_MEAN = 3,
   ReductionOp_MIN = ReductionOp_SUM,
   ReductionOp_MAX = ReductionOp_MEAN
 };
 
-inline ReductionOp (&EnumValuesReductionOp())[4] {
-  static ReductionOp values[] = {
+inline const ReductionOp (&EnumValuesReductionOp())[4] {
+  static const ReductionOp values[] = {
     ReductionOp_SUM,
     ReductionOp_ASUM,
     ReductionOp_SUMSQ,
@@ -250,8 +250,8 @@ inline ReductionOp (&EnumValuesReductionOp())[4] {
   return values;
 }
 
-inline const char **EnumNamesReductionOp() {
-  static const char *names[] = {
+inline const char * const *EnumNamesReductionOp() {
+  static const char * const names[] = {
     "SUM",
     "ASUM",
     "SUMSQ",
@@ -262,7 +262,7 @@ inline const char **EnumNamesReductionOp() {
 }
 
 inline const char *EnumNameReductionOp(ReductionOp e) {
-  const size_t index = static_cast<int>(e) - static_cast<int>(ReductionOp_SUM);
+  const size_t index = static_cast<int>(e);
   return EnumNamesReductionOp()[index];
 }
 
@@ -2449,14 +2449,14 @@ inline flatbuffers::Offset<PowerParameter> CreatePowerParameter(
 
 struct PReLUParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
-    VT_CHANNEL_SHARED = 4
+    VT_SLOPE_SIZE = 4
   };
-  bool channel_shared() const {
-    return GetField<uint8_t>(VT_CHANNEL_SHARED, 0) != 0;
+  uint32_t slope_size() const {
+    return GetField<uint32_t>(VT_SLOPE_SIZE, 0);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<uint8_t>(verifier, VT_CHANNEL_SHARED) &&
+           VerifyField<uint32_t>(verifier, VT_SLOPE_SIZE) &&
            verifier.EndTable();
   }
 };
@@ -2464,8 +2464,8 @@ struct PReLUParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 struct PReLUParameterBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_channel_shared(bool channel_shared) {
-    fbb_.AddElement<uint8_t>(PReLUParameter::VT_CHANNEL_SHARED, static_cast<uint8_t>(channel_shared), 0);
+  void add_slope_size(uint32_t slope_size) {
+    fbb_.AddElement<uint32_t>(PReLUParameter::VT_SLOPE_SIZE, slope_size, 0);
   }
   explicit PReLUParameterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -2481,9 +2481,9 @@ struct PReLUParameterBuilder {
 
 inline flatbuffers::Offset<PReLUParameter> CreatePReLUParameter(
     flatbuffers::FlatBufferBuilder &_fbb,
-    bool channel_shared = false) {
+    uint32_t slope_size = 0) {
   PReLUParameterBuilder builder_(_fbb);
-  builder_.add_channel_shared(channel_shared);
+  builder_.add_slope_size(slope_size);
   return builder_.Finish();
 }
 
@@ -2597,7 +2597,7 @@ struct ReductionParameterBuilder {
 
 inline flatbuffers::Offset<ReductionParameter> CreateReductionParameter(
     flatbuffers::FlatBufferBuilder &_fbb,
-    feather::ReductionParameter_::ReductionOp operation = static_cast<feather::ReductionParameter_::ReductionOp>(0),
+    feather::ReductionParameter_::ReductionOp operation = feather::ReductionParameter_::ReductionOp_SUM,
     int32_t axis = 0,
     float coeff = 1.0f) {
   ReductionParameterBuilder builder_(_fbb);
@@ -3087,15 +3087,30 @@ inline const feather::NetParameter *GetNetParameter(const void *buf) {
   return flatbuffers::GetRoot<feather::NetParameter>(buf);
 }
 
+inline const feather::NetParameter *GetSizePrefixedNetParameter(const void *buf) {
+  return flatbuffers::GetSizePrefixedRoot<feather::NetParameter>(buf);
+}
+
 inline bool VerifyNetParameterBuffer(
     flatbuffers::Verifier &verifier) {
   return verifier.VerifyBuffer<feather::NetParameter>(nullptr);
+}
+
+inline bool VerifySizePrefixedNetParameterBuffer(
+    flatbuffers::Verifier &verifier) {
+  return verifier.VerifySizePrefixedBuffer<feather::NetParameter>(nullptr);
 }
 
 inline void FinishNetParameterBuffer(
     flatbuffers::FlatBufferBuilder &fbb,
     flatbuffers::Offset<feather::NetParameter> root) {
   fbb.Finish(root);
+}
+
+inline void FinishSizePrefixedNetParameterBuffer(
+    flatbuffers::FlatBufferBuilder &fbb,
+    flatbuffers::Offset<feather::NetParameter> root) {
+  fbb.FinishSizePrefixed(root);
 }
 
 }  // namespace feather
