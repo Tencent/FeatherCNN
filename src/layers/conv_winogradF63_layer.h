@@ -77,7 +77,7 @@ class ConvWinogradF63Layer : public ConvLayer
 		int nColBlocks = (inputh + 3) / 6;
 		int nBlocks = nRowBlocks * nColBlocks;
 
-		size_t packArraySize = getPackArraySize_F6x6_3x3(input_channels);
+		size_t packArraySize = getPackArraySize_F6x6_3x3(input_channels, num_threads);
 		size_t winograd_mem_size = 0;
 		winograd_mem_size += 64 * nBlocks * input_channels;  //VT
 		winograd_mem_size += 64 * nBlocks * output_channels; //WT

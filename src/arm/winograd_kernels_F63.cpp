@@ -504,22 +504,19 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
 			vst1q_f32(outp + rem * 60, r7);
 
 		}
-            }
-        }
+	    }
+	}
     }
 }
 
-const int cache_block = 8;
-
-void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, int num_threads, float* pack_arr)
+void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, const int num_threads, float* pack_arr, const int cache_block)
 {
-
 	//Real depth in floating point is $depth * 4.
 	const int nBlocks = nRowBlocks * nColBlocks;
 	const int nBlocksAligned = nBlocks - nBlocks % 4;
 	const int wstride = nBlocks * 4 * depth;
 	const int vstride = nBlocks * 4 * depth;
-	
+
 
 	//assert(nBlocks % 4 == 0);
 	assert(nBlocks >= 1);
@@ -536,71 +533,60 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 	for (int p = 0; p < pass; p++)
 	{
 		//int tid = omp_get_thread_num();
-		int tid = 0;
-		float32x4_t v0, v1, v2, v3;
+		//int tid = 0;
 
 		int start_block_id = p * cache_block;
 		int end_block_id = start_block_id + cache_block;
 
 		end_block_id = (end_block_id > nBlocks) ? nBlocks: end_block_id;
-		//printf("end_block_id %d\n", end_block_id);
 		int end_block_id_aligned = end_block_id & 0xFFFFFFFC;
+		const int rem = end_block_id % 4;
 
-		//Using different part of the array.
 
 		/*I have no idea which packing method is faster, seeems that they are not the major bottleneck after loop swapping*/
 #if 1
-		float* pack_workp = pack_arr + tid * cache_block * inChannels * depth * 4;
-//#pragma omp for collapse(2)
-		for (int i = start_block_id; i < end_block_id_aligned; i += 4)
+//#pragma omp parallel for num_threads(num_threads) collapse(2)
+#pragma omp parallel num_threads(num_threads)
 		{
-			//printf("i %d\n", i);
+#pragma omp for collapse(2)
+		for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
+		{
 			for(int d = 0; d < depth; ++d)
 			{
-				const float *svp = VT + i * 4 * depth + d * 4 * 4;
+				float *pack_workp = pack_arr + (i - start_block_id) * depth * inChannels * 4+ d * inChannels * 4 * ((i < end_block_id_aligned)?4:rem);
+				float32x4_t v0, v1, v2, v3;
 				for (int ic = 0; ic < inChannels; ++ic)
 				{
-					//print_floats(svp, 16);
-					v0 = vld1q_f32(svp);
-					v1 = vld1q_f32(svp + 4);
-					v2 = vld1q_f32(svp + 8);
-					v3 = vld1q_f32(svp + 12);
-					svp += vstride;
-					vst1q_f32(pack_workp     , v0);
-					vst1q_f32(pack_workp +  4, v1);
-					vst1q_f32(pack_workp +  8, v2);
-					vst1q_f32(pack_workp + 12, v3);
-					pack_workp += 16;
-				}
-			}
-		}
-		if(end_block_id % 4 > 0)
-		{
-			int i = end_block_id_aligned;
-			int len = end_block_id - i;
-			//printf("i %d len %d\n", i, len);
-			//len should be in 1~3
-			for(int d = 0; d < depth; ++d)
-			{
-				//These branches are inefficient on GPUs, but won't cost much on CPUs
-				const float *svp = VT + i * 4 * depth + d * 4 * len;
-				for (int ic = 0; ic < inChannels; ++ic)
-				{
-					//print_floats(svp, 4 * len);
-					v0 = vld1q_f32(svp);
-					if(len > 1)
+					if(i < end_block_id_aligned){
+						const float *svp = VT + i * 4 * depth + d * 4 * 4 + ic * vstride;
+						//print_floats(svp, 16);
+						v0 = vld1q_f32(svp);
 						v1 = vld1q_f32(svp + 4);
-					if(len > 2)
 						v2 = vld1q_f32(svp + 8);
-					svp += vstride;
-
-					vst1q_f32(pack_workp     , v0);
-					if(len > 1)
+						v3 = vld1q_f32(svp + 12);
+						svp += vstride;
+						vst1q_f32(pack_workp     , v0);
 						vst1q_f32(pack_workp +  4, v1);
-					if(len > 2)
 						vst1q_f32(pack_workp +  8, v2);
-					pack_workp += len * 4;
-					//printf("pack_workp offset %d\n", pack_workp - (pack_arr + tid * cache_block * inChannels * depth));
+						vst1q_f32(pack_workp + 12, v3);
+						pack_workp += 16;
+					} else {
+						//print_floats(svp, 4 * len);
+						const float *svp = VT + i * 4 * depth + d * 4 * rem + ic * vstride;
+						v0 = vld1q_f32(svp);
+						if(rem > 1)
+							v1 = vld1q_f32(svp + 4);
+						if(rem > 2)
+							v2 = vld1q_f32(svp + 8);
+						svp += vstride;
+
+						vst1q_f32(pack_workp     , v0);
+						if(rem > 1)
+							vst1q_f32(pack_workp +  4, v1);
+						if(rem > 2)
+							vst1q_f32(pack_workp +  8, v2);
+						pack_workp += rem * 4;
+					}
 				}
 			}
 		}
@@ -634,47 +620,47 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 		printf("======patch arr======\n");
 		print_floats((float*) pack_arr, nBlocks * inChannels * 4, 16);
 #endif
-#pragma omp parallel num_threads(num_threads)
-	{
+		//#pragma omp parallel num_threads(num_threads)
+		//{
+//#pragma omp parallel for num_threads(num_threads) collapse(3)
 #pragma omp for collapse(3)
-		for (int oc = 0; oc < outChannels; oc += 4)
-		{
-			for (int i = start_block_id; i < end_block_id_aligned; i += 4)
+			for (int oc = 0; oc < outChannels; oc += 4)
 			{
-				for (int d = 0; d < depth; ++d)
+				for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
 				{
-					const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
-					const float *vp = pack_arr + tid * cache_block * inChannels * depth * 4//which thread
-						+ (i - start_block_id) * inChannels * depth * 4//which block
-						+ d * depth * inChannels;
-					float *WTp = WT + oc * wstride + i * depth * 4 + d * 16 + (i % 4) * 4;
-					TensorGEMMInnerKernel4x4x4(WTp, wstride, UTp, vp, inChannels);
-				}
-			}
-		}
-		if(end_block_id % 4 > 0)
-		{
-			int i = end_block_id & 0xFFFFFFC;
-				int len = end_block_id & 0x3;
-				//printf("end_block_id %d i %d len %d wstride %d\n", end_block_id, i, len, wstride);
-				//We are going to compute the remains here.
-				for (int d = 0; d < depth; ++d)
-				{
-					for (int oc = 0; oc < outChannels; oc += 4)
+					for (int d = 0; d < depth; ++d)
 					{
-						const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
-						const float *vp = pack_arr + tid * cache_block * inChannels * depth * 4//which thread
-							+ (i - start_block_id) * inChannels * depth * 4//which block
-							+ d * depth * inChannels * (4 * len) / 16;
-						float *WTp = WT + oc * wstride + i * depth * 4 + d * 4 * len + (i % 4) * 4;
-						if(len == 1){
-							TensorGEMMInnerKernel4x1x4(WTp, wstride, UTp, vp, inChannels);
+						if(i < end_block_id_aligned){
+							const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
+							const float *vp = pack_arr 
+								+ (i - start_block_id) * inChannels * depth * 4//which block
+								+ d * depth * inChannels;
+							float *WTp = WT + oc * wstride + i * depth * 4 + d * 16 + (i % 4) * 4;
+							TensorGEMMInnerKernel4x4x4(WTp, wstride, UTp, vp, inChannels);
 						}
-						if(len == 2){
-							TensorGEMMInnerKernel4x2x4(WTp, wstride, UTp, vp, inChannels);
-						}
-						if(len == 3){
-							TensorGEMMInnerKernel4x3x4(WTp, wstride, UTp, vp, inChannels);
+						else
+						{
+							int i = end_block_id & 0xFFFFFFC;
+							int len = end_block_id & 0x3;
+							//printf("end_block_id %d i %d len %d wstride %d\n", end_block_id, i, len, wstride);
+							//We are going to compute the remains here.
+							//for (int oc = 0; oc < outChannels; oc += 4)
+							//{
+							const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
+							const float *vp = pack_arr 
+								//+ tid * cache_block * inChannels * depth * 4//which thread
+								+ (i - start_block_id) * inChannels * depth * 4//which block
+								+ d * depth * inChannels * (4 * len) / 16;
+							float *WTp = WT + oc * wstride + i * depth * 4 + d * 4 * len + (i % 4) * 4;
+							if(len == 1){
+								TensorGEMMInnerKernel4x1x4(WTp, wstride, UTp, vp, inChannels);
+							}
+							if(len == 2){
+								TensorGEMMInnerKernel4x2x4(WTp, wstride, UTp, vp, inChannels);
+							}
+							if(len == 3){
+								TensorGEMMInnerKernel4x3x4(WTp, wstride, UTp, vp, inChannels);
+							}
 						}
 					}
 				}
@@ -1256,9 +1242,9 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
       }
 }
 
-size_t getPackArraySize_F6x6_3x3(int inChannels)
+size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 {
-	return cache_block * inChannels *  64;/**depth in floats*/
+	return 32 * num_threads * inChannels *  64;/**depth in floats*/
 }
 
 void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
@@ -1281,7 +1267,7 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     //printf("=====UT=====\n");
     //print_floats(UT, inChannels * outChannels, 64);
     TensorGEMM(WT,VT,UT,
-		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array);
+		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array, num_threads * 32);
     //printf("=============TensorGEMMOut==============\n");
     //print_floats(WT, outChannels , nBlocks * 4* 16);
 #ifdef WINOGRAD_BENCH
