@@ -392,8 +392,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 			flatbuffers::Offset<feather::PReLUParameter> prelu_param;
 			flatbuffers::Offset<feather::DropoutParameter> dropout_param;
 
-			if(layer_type.compare("Convolution")==0){
-				printf("Convlution layer\n");
+			if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)){
+				printf("%s layer\n", layer_type.c_str());
 				auto caffe_conv_param = caffe_layer.convolution_param();
 				feather::ConvolutionParameterBuilder conv_param_builder(fbb);
 				printf("bias term %d\n", caffe_conv_param.bias_term());
@@ -451,12 +451,17 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 					conv_param_builder.add_pad_w(0);
 				}
 
-
-				conv_param_builder.add_group(caffe_conv_param.group());
+				if (layer_type.compare("ConvolutionDepthwise")==0)
+					conv_param_builder.add_group(caffe_conv_param.num_output());
+				else
+					conv_param_builder.add_group(caffe_conv_param.group());
 				printf("+ num_output %u\n", caffe_conv_param.num_output());
 				printf("+ kernel_h %d\n", caffe_conv_param.kernel_size(0));
 				printf("+ stride_size %d\n", caffe_conv_param.stride_size());
-				printf("+ group %d\n", caffe_conv_param.group());
+				if (layer_type.compare("ConvolutionDepthwise")==0)
+					printf("+ group %d\n", caffe_conv_param.num_output());
+				else
+					printf("+ group %d\n", caffe_conv_param.group());
 				conv_param = conv_param_builder.Finish();
 			}
 			else if(layer_type.compare("LRN") == 0)
@@ -620,14 +625,18 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 			}
 
 			auto layer_name_fbb = fbb.CreateString(layer_name);
-			auto layer_type_fbb = fbb.CreateString(layer_type);
+			flatbuffers::Offset<flatbuffers::String> layer_type_fbb;
+			if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0))
+				layer_type_fbb = fbb.CreateString("Convolution");
+			else
+				layer_type_fbb = fbb.CreateString(layer_type);
 			feather::LayerParameterBuilder layer_builder(fbb);
 			layer_builder.add_bottom(bottom_fbvec);
 			layer_builder.add_top(top_fbvec);
 			layer_builder.add_blobs(blobs_fbvec);
 			layer_builder.add_name(layer_name_fbb);
 			layer_builder.add_type(layer_type_fbb);
-			if(layer_type.compare("Convolution")==0)
+			if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0))
 				layer_builder.add_convolution_param(conv_param);
 			else if(layer_type.compare("LRN")==0)
 				layer_builder.add_lrn_param(lrn_param);
