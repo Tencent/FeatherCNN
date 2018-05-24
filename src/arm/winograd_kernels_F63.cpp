@@ -19,12 +19,17 @@
 #include <assert.h>
 #include <string.h>
 
+
+//#define FEATHER_USE_GCD
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-//#define DEBUG_PRINT_KERNEL
-//#define DEBUG_PRINT_OUT
+#ifdef FEATHER_USE_GCD
+#include <dispatch/dispatch.h>
+#endif
+
 //#define WINOGRAD_BENCH
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
@@ -180,7 +185,7 @@ inline void winogradOutputTransformInplace(float32x2_t *o0, float32x2_t *o1, flo
  * k(2, 0) k(2, 1) k(2, 2) k(2, 3) k(2, 4)....
  */
 
-void winogradKernelTransform(float *transKernel, float *kernel)
+void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
 {
     float ktm[24] = {
         1.0f, 0.0f, 0.0f,
@@ -359,8 +364,14 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     //printf("diff %d, %d\n", hdiff, wdiff);
     //print_floats(input, inChannels* inputh , inputw);
 
+#ifdef FEATHER_USE_GCD 
+    dispatch_apply(inChannels, dispatch_get_global_queue(0,0), ^(size_t ic)
+#else
+#ifdef _OPENMP
 #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+#endif
     for (int ic = 0; ic < inChannels; ++ic)
+#endif
     {
         for (int j = 0; j < nColBlocks; ++j)
         {
@@ -509,7 +520,11 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
 		}
 	    }
 	}
+#ifdef FEATHER_USE_GCD
+    });
+#else
     }
+#endif
 }
 
 void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, const int num_threads, float* pack_arr, const int cache_block)
@@ -547,11 +562,13 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 
 
 		/*I have no idea which packing method is faster, seeems that they are not the major bottleneck after loop swapping*/
-#if 1
-//#pragma omp parallel for num_threads(num_threads) collapse(2)
+#ifdef _OPENMP
 #pragma omp parallel num_threads(num_threads)
+#endif
 		{
+#ifdef _OPENMP
 #pragma omp for collapse(2)
+#endif
 		for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
 		{
 			for(int d = 0; d < depth; ++d)
@@ -593,42 +610,18 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 				}
 			}
 		}
-#else
-		float *pack_workp = pack_arr + tid * cache_block * inChannels * depth * 4;
-		for (int ic = 0; ic < inChannels; ++ic)
-		{
-			for (int i = start_block_id; i < end_block_id; i += 4)
+#ifdef FEATHER_USE_GCD
+			dispatch_apply(outChannels / 4, dispatch_get_global_queue(0,0), ^(size_t dispatch_i)
 			{
-				const float *svp = VT + i * 4 * depth + ic * vstride;
-				float *packp = pack_workp + ic * 16 + (i - start_block_id) * 4 * inChannels * depth;
-				for(int d = 0; d < depth; ++d)
-				{
-					v0 = vld1q_f32(svp);
-					v1 = vld1q_f32(svp + 4);
-					v2 = vld1q_f32(svp + 8);
-					v3 = vld1q_f32(svp + 12);
-					svp += 16;
-					vst1q_f32(packp, v0);
-					vst1q_f32(packp + 4, v1);
-					vst1q_f32(packp + 8, v2);
-					vst1q_f32(packp + 12, v3);
-					packp += inChannels * 16;
-				}
-			}
-		}
-#endif
-#if 0
-		printf("======input arr======\n");
-		print_floats(VT, inChannels, nBlocks * 4 * depth);
-		printf("======patch arr======\n");
-		print_floats((float*) pack_arr, nBlocks * inChannels * 4, 16);
-#endif
-		//#pragma omp parallel num_threads(num_threads)
-		//{
-//#pragma omp parallel for num_threads(num_threads) collapse(3)
+			int oc = dispatch_i * 4;
+	
+#else
+#ifdef _OPENMP
 #pragma omp for collapse(3)
+#endif
 			for (int oc = 0; oc < outChannels; oc += 4)
 			{
+#endif
 				for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
 				{
 					for (int d = 0; d < depth; ++d)
@@ -667,7 +660,12 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 						}
 					}
 				}
+#ifdef FEATHER_USE_GCD
+			});
+#else
 			}
+#endif
+
 		}
 	}
 }
@@ -1089,8 +1087,12 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
     int nBlocks = nRowBlocks * nColBlocks;
     int nBlocksAligned = nBlocks & 0xFFFFFFFC;
     int rem = nBlocks & 0x3;
+#ifdef FEATHER_USE_GCD
+    dispatch_apply(outChannels, dispatch_get_global_queue(0,0), ^(size_t oc)
+#else
 #pragma omp parallel for num_threads(num_threads) schedule(static) collapse(3)
       for (int oc = 0; oc < outChannels; ++oc)
+#endif
       {
 	      for (int j = 0; j < nColBlocks; ++j)
 	      {
@@ -1242,7 +1244,11 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
 			      }
 		      }
 	      }
+#ifdef FEATHER_USE_GCD
+      });
+#else
       }
+#endif
 }
 
 size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
