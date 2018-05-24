@@ -175,19 +175,22 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
 #pragma omp parallel for num_threads(num_threads) schedule(static)
 	for (int i = 0; i < channels; i++)
 	{
+		int j = 0;
+#if 0
 		float32x4_t v_alpha = vdupq_n_f32(alpha[i]);
 		float32x4_t v_beta  = vdupq_n_f32(beta[i]);
 		float32x4_t v_scale = vdupq_n_f32(0.f);
-		float32x4_t v_bias = vdupq_n_f32(0.f);
-		float32x4_t v_zero = vdupq_n_f32(0.f);
-		if(has_scale)
-			v_scale = vdupq_n_f32(scale_data[i]);
-		if(has_bias)
-			v_bias = vdupq_n_f32(bias_data[i]);
-		int j = 0;
+		float32x4_t v_bias = v_scale;
+		float32x4_t v_zero = v_scale;
+
+		if(has_scale) v_scale = vdupq_n_f32(scale_data[i]);
+		if(has_bias) v_bias = vdupq_n_f32(bias_data[i]);
+
+		const float *inputCur = input + i * stride;
+		float *outputCur = output + i * stride;
 		for(; j < stride; j += 4)
-		{	
-			float32x4_t v_input = vld1q_f32(input + i * stride + j);
+		{
+			float32x4_t v_input = vld1q_f32(inputCur + j);
 #ifdef __aarch64__
 			float32x4_t v_norm = vfmaq_f32(v_alpha, v_beta, v_input);
 #else
@@ -199,9 +202,10 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
 				v_norm = v_norm + v_bias;
 			if(has_relu)
 				v_norm = vmaxq_f32(v_norm, v_zero);
-			vst1q_f32(output + i * stride + j, v_norm);
-		}	
-		j -= 4;
+			vst1q_f32(outputCur + j, v_norm);
+		}
+		if (j > stride) j -= 4;
+#endif
 		for(; j < stride; j++)
 		{
 			float norm = beta[i] * input[i * stride +j] + alpha[i];

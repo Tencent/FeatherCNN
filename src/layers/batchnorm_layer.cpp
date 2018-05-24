@@ -29,8 +29,7 @@ int BatchNormLayer::Fuse(Layer *next_layer)
 {
 	if(next_layer->type().compare("Scale") == 0)
 	{
-		printf("BN %s fuse Scale layer %s\n", this->name().c_str(), next_layer->name().c_str());
-		fuse_scale = true;
+		printf("[FUSE] BatchNorm with Scale, %s, %s\n", this->name().c_str(), next_layer->name().c_str());
 		for(int i = 0; i < next_layer->weight_blob_num(); ++i)
 		{
 			Blob<float>* p_blob = new Blob<float>();
@@ -38,11 +37,12 @@ int BatchNormLayer::Fuse(Layer *next_layer)
 			_weight_blobs.push_back(p_blob);
 		}
 		scale_bias_term = ((ScaleLayer*) next_layer)->bias_term();
+		fuse_scale = true;
 		return 1;
 	}
 	else if(next_layer->type().compare("ReLU") == 0)
 	{
-		printf("BN %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
+		printf("[FUSE] BatchNorm with ReLU, %s, %s\n", this->name().c_str(), next_layer->name().c_str());
 		fuse_relu = true;
 		return 1;
 	}

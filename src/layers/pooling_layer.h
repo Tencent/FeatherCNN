@@ -78,22 +78,16 @@ class PoolingLayer : public Layer
 			case PoolingParameter_::PoolMethod_MAX_:
 				_pool_inner_kernel = max_pool_inner_kernel;
 				break;
-			case PoolingParameter_::PoolMethod_AVE:
-				_pool_inner_kernel = ave_pool_inner_kernel;
-				break;
-			default:
-				fprintf(stderr, "Unsupported pool method\n");
-		}
-#if 0
-		printf("[POOL] kernel (%ld %ld) pad (%ld %ld) stride (%ld %ld) global %d\n",
-			   kernel_height, kernel_width, pad_height, pad_width, stride_height, stride_width, global_pooling);
-#endif
-	}
+                    case PoolingParameter_::PoolMethod_AVE:
+                        _pool_inner_kernel = ave_pool_inner_kernel;
+                        break;
+                    default:
+                        fprintf(stderr, "Unsupported pool method\n");
+                }
+	        }
 
-
-	int Forward()
-	{
-		//fprintf(stderr, "pooling output (%d %d)\n", output_height, output_width);
+            int Forward()
+        	{
 		//printf("input shape %ld %ld %ld kernel shape %ld %ld stride %ld %ld\n", input_channels, input_height, input_width, kernel_height, kernel_width, stride_height, stride_width);
 		const float *input = _bottom_blobs[_bottom[0]]->data();
 		float *output = _top_blobs[_top[0]]->data();
@@ -104,19 +98,19 @@ class PoolingLayer : public Layer
 	#pragma omp parallel for schedule(static) num_threads(num_threads)
 //	for (int u=0;u<slot;u++)
 //	{
-        for (int i=0; i<input_channels; ++i)
-        {
-            for (int j=0; j<output_height; j ++)
-            {   
-//		int i=slot/output_height,  j=slot%output_height;
-                float *p = output + i*output_height*output_width + j*output_width;
-                for(int l=0; l<output_width; l++)  p[l] = (this->method != PoolingParameter_::PoolMethod_MAX_?0:-1*std::numeric_limits<float>::max()) ;
-	
-		int tmp_pos = j*(int)stride_height - (int)pad_height;	
-		int x_min = MAX(tmp_pos, 0);
-		int x_max = MIN((int)(tmp_pos+kernel_height), (int) input_height);
+                for (int i=0; i<input_channels; ++i)
+                {
+                    for (int j=0; j<output_height; j ++)
+                    {
+                        float *p = output + i*output_height*output_width + j*output_width;
+                        for(int l=0; l<output_width; l++)  
+							p[l] = (this->method != PoolingParameter_::PoolMethod_MAX_?0:-1*std::numeric_limits<float>::max()) ;
 
-		for(int x=x_min; x<x_max; ++x)
+                        int tmp_pos = j*(int)stride_height - (int)pad_height;   
+                        int x_min = MAX(tmp_pos, 0);
+                        int x_max = MIN((int)(tmp_pos+kernel_height), (int) input_height);
+
+                        for(int x=x_min; x<x_max; ++x)
 		{
 			int xpos = i * input_height * input_width + x*input_width;
 			
@@ -126,24 +120,25 @@ class PoolingLayer : public Layer
                     		int counter=0;
 			
 				int local_pos = k*(int)stride_width - (int)pad_width;
-				int y_min     = MAX(local_pos, 0);
-				int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width); 
+                                int y_min     = MAX(local_pos, 0);
+                                int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width); 
 
-                    		for (int y=y_min; y < y_max; ++y)
-                    		{
-                        		float value = input[xpos + y];
-                        		if(this->method != PoolingParameter_::PoolMethod_MAX_)      	total += value, counter++;
-                        		else                                    			total = total>value?total:value;
-                    		}
-                   		if(this->method != PoolingParameter_::PoolMethod_MAX_) 
-                                	p[k] += total / (counter) / kernel_height;
-                    		else    p[k]  = (p[k]>total) ? p[k]:total;
-                	}
-            	}
-            }
-        }
-
-
+                                for (int y=y_min; y < y_max; ++y)
+                                {
+                                    float value = input[xpos + y];
+                                    if(this->method != PoolingParameter_::PoolMethod_MAX_)
+										total += value, counter++;
+                                    else
+										total = total>value?total:value;
+                                }
+                                if(this->method != PoolingParameter_::PoolMethod_MAX_) 
+                                    p[k] += total / (counter) / kernel_height;
+                                else
+									p[k]  = (p[k]>total) ? p[k]:total;
+                            }
+                        }
+                    }
+                }
 /*
 #if 0
  f(0)

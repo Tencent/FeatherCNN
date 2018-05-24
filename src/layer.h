@@ -17,7 +17,7 @@
 #include "blob.h"
 #include "mempool.h"
 #include "rt_param.h"
-#include <arm/common.h>
+#include <common.h>
 #ifdef __ARM_NEON
 #include <arm_neon.h>
 #endif

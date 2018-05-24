@@ -17,7 +17,7 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
-#include <arm/common.h>
+#include <common.h>
 
 namespace feather
 {
@@ -109,6 +109,7 @@ class Blob
     {
         printf("----BlobInfo----\n");
         printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
+		printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
         printf("----------------\n");
     }
 
