@@ -2,14 +2,14 @@
 
 //Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
 
-//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
 //
 //https://opensource.org/licenses/BSD-3-Clause
 //
-//Unless required by applicable law or agreed to in writing, software distributed 
-//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
-//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+//Unless required by applicable law or agreed to in writing, software distributed
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
 #pragma once
@@ -24,10 +24,10 @@ namespace feather
 template <class Dtype>
 class Blob
 {
-  public:
+public:
     Blob()
         : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
-    
+
     explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
         : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
 
@@ -65,11 +65,11 @@ class Blob
     }
     void Copy(const Blob<Dtype>* p_blob)
     {
-	    CopyShape(p_blob);
-	    //this->PrintBlobInfo();
-	    this->Alloc();
-	    assert(p_blob->data_size() == this->data_size());
-	    CopyData(p_blob->data());
+        CopyShape(p_blob);
+        //this->PrintBlobInfo();
+        this->Alloc();
+        assert(p_blob->data_size() == this->data_size());
+        CopyData(p_blob->data());
     }
 
     void FromProto(const void *proto_in);//proto MUST be of type BlobProto*
@@ -79,10 +79,10 @@ class Blob
         return _data;
     }
 
-	size_t data_size() const
-	{
-		return _num * _channels * _height *_width;
-	}
+    size_t data_size() const
+    {
+        return _num * _channels * _height *_width;
+    }
 
     std::string name()
     {
@@ -109,11 +109,11 @@ class Blob
     {
         printf("----BlobInfo----\n");
         printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
-		printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
+        printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
         printf("----------------\n");
     }
 
-  private:
+private:
     Dtype* _data;
     size_t _num;
     size_t _channels;
