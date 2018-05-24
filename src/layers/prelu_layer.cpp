@@ -15,13 +15,13 @@ int PReluLayer::Forward()
 
     if ((0 == c) && (0 == h) && (0 != w))
     {
+        int i = 0;
         if (shared)
         {
             float slope = slope_data[0];
 #ifdef __ARM_NEON
 			float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
 			float32x4_t vslopef32x4 = vdupq_n_f32(slope);
-			int i = 0;
 	        for (; i < w; i += 4)
 	        {
 	            float32x4_t vsrcf32x4 = vld1q_f32(&input[i]);
@@ -30,6 +30,8 @@ int PReluLayer::Forward()
 	            vmulf32x4 = vbslq_f32(vmasku32x4, vmulf32x4, vsrcf32x4);
 	            vst1q_f32(&output[i], vmulf32x4);
 	        }
+			if (i > w) i -= 4;
+#endif
 			for (; i < w; i++)
             {
                 if (input[i] < 0)
@@ -37,21 +39,11 @@ int PReluLayer::Forward()
                 else
                     output[i] = input[i];
             }
-#else
-            for (int i=0; i<w; i++)
-            {
-                if (input[i] < 0)
-                    output[i] = input[i]*slope;
-                else
-                    output[i] = input[i];
-            }
-#endif
         }
         else
         {
 #ifdef __ARM_NEON
 			float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
-			int i = 0;
 	        for (; i < w; i += 4)
 	        {
 	        	float32x4_t vslopef32x4 = vld1q_f32(&slope_data[i]);
@@ -61,22 +53,15 @@ int PReluLayer::Forward()
 	            vmulf32x4 = vbslq_f32(vmasku32x4, vmulf32x4, vsrcf32x4);
 	            vst1q_f32(&output[i], vmulf32x4);
 	        }
-			for (; i < w; i++)
-            {
-                if (input[i] < 0)
-                    output[i] = input[i]*slope_data[i];
-                else
-                    output[i] = input[i];
-            }
-#else
-            for (int i=0; i<w; i++)
+			if (i > w) i -= 4;
+#endif
+            for (; i < w; i++)
             {
                 if (input[i] < 0)
                     output[i] = input[i]*slope_data[i];
                  else
                     output[i] = input[i];
             }
-#endif
         }
     }
     else if ((0 == c) && (0 != h) && (0 != w))
@@ -86,10 +71,10 @@ int PReluLayer::Forward()
             const float* inPtr = input + i*w;
             float* outPtr = output + i*w;
             float slope = shared ? slope_data[0]:slope_data[i];
+			int j = 0;
 #ifdef __ARM_NEON
 			float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
 	        float32x4_t vslopef32x4 = vdupq_n_f32(slope);
-			int j = 0;
 	        for (; j < w; j += 4)
 	        {
 	            float32x4_t vsrcf32x4 = vld1q_f32(&inPtr[j]);
@@ -98,22 +83,15 @@ int PReluLayer::Forward()
 	            vmulf32x4 = vbslq_f32(vmasku32x4, vmulf32x4, vsrcf32x4);
 	            vst1q_f32(&outPtr[j], vmulf32x4);
 	        }
-			for (; j < w; j++)
-            {
-                if (inPtr[j] < 0)
-                    outPtr[j] = inPtr[j]*slope;
-                else
-                    outPtr[j] = inPtr[j];
-            }
-#else
-            for (int j=0; j<w; j++)
-            {
-                if (inPtr[j] < 0)
-                    outPtr[j] = inPtr[j]*slope;
-                else
-                    outPtr[j] = inPtr[j];
-            }
+			if (j > w) j -= 4;
 #endif
+            for (; j < w; j++)
+            {
+                if (inPtr[j] < 0)
+                    outPtr[j] = inPtr[j]*slope;
+                else
+                    outPtr[j] = inPtr[j];
+            }
         }
     }
     else if ((0 != c) && (0 != h) && (0 != w))
@@ -125,11 +103,10 @@ int PReluLayer::Forward()
             const float* inPtr = input + q*size;
             float* outPtr = output + q*size;
             float slope = shared ? slope_data[0]:slope_data[q];
-
+			int i = 0;
 #ifdef __ARM_NEON
 			float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
 	        float32x4_t vslopef32x4 = vdupq_n_f32(slope);
-			int i = 0;
 	        for (; i < size; i += 4)
 	        {
 	            float32x4_t vsrcf32x4 = vld1q_f32(&inPtr[i]);
@@ -138,22 +115,15 @@ int PReluLayer::Forward()
 	            vmulf32x4 = vbslq_f32(vmasku32x4, vmulf32x4, vsrcf32x4);
 	            vst1q_f32(&outPtr[i], vmulf32x4);
 	        }
-			for (; i < size; i++)
-            {
-                if (inPtr[i] < 0)
-                    outPtr[i] = inPtr[i]*slope;
-                else
-                    outPtr[i] = inPtr[i];
-            }
-#else
-            for (int i=0; i<size; i++)
-            {
-                if (inPtr[i] < 0)
-                    outPtr[i] = inPtr[i]*slope;
-                else
-                    outPtr[i] = inPtr[i];
-            }
+			if (i > size) i -= 4;
 #endif
+            for (; i<size; i++)
+            {
+                if (inPtr[i] < 0)
+                    outPtr[i] = inPtr[i]*slope;
+                else
+                    outPtr[i] = inPtr[i];
+            }
         }
     }
     return 0;

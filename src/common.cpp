@@ -12,24 +12,33 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_COMMON_H_
-#define TCNN_COMMON_H_
-
-#include <string>
+#include "common.h"
 #include <cstring>
 #include <vector>
 #include <cstdlib>
-#include <pthread.h>
 
-
-class StringTool
+int min(int a, int b)
 {
-public:
-    static void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts);
-};
+    return (a < b) ? a : b;
+}
 
+void* _mm_malloc(size_t sz, size_t align)
+{
+    void *ptr;
+    int alloc_result = posix_memalign(&ptr, align, sz);
+    if (alloc_result != 0)
+    {
+        return NULL;
+    }
+    
+    return ptr;
+}
 
-int min(int a, int b);
-void* _mm_malloc(size_t sz, size_t align);
-void _mm_free(void* ptr);
-#endif
+void _mm_free(void* ptr)
+{
+    if (NULL != ptr)
+    {
+        free(ptr);
+        ptr = NULL;
+    }
+}

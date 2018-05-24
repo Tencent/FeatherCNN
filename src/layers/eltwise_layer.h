@@ -31,19 +31,10 @@ namespace feather{
 
 		int Forward()
 		{
-#if 0
-			for(int i = 0; i < data_size; ++i)
-			{
-				output[i] = input_alpha[i] + input_beta[i];
-				if(fuse_relu)
-					output[i] = output[i] > 0 ? output[i] : 0;
-			}
-#else
 			if(fuse_relu)
 				add_relu<true>(output, input_alpha, input_beta, data_len, num_threads);
 			else
 				add_relu<false>(output, input_alpha, input_beta, data_len, num_threads);
-#endif
 			return 0;
 		}
 
@@ -51,19 +42,16 @@ namespace feather{
 		{
 			if(next_layer->type().compare("ReLU") == 0)
 			{
-				printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
+				printf("[FUSE] Eltwise with ReLU, %s, %s\n", this->name().c_str(), next_layer->name().c_str());
 				fuse_relu = true;
 				return 1;
-			} else {
-				return 0;
 			}
+			else
+				return 0;
 		}
 
 		int GenerateTopBlobs()
-		{	
-			printf("bottom num %ld\n", _bottom.size());	
-			printf("bottom name %s %s\n", _bottom[0].c_str(), _bottom[1].c_str());
-			printf("bottom data size %ld %ld\n", _bottom_blobs[_bottom[0]]->data_size(), _bottom_blobs[_bottom[1]]->data_size());
+		{
 			assert(_bottom.size() == 2);
 			assert(_bottom_blobs.size() == 2);
 			assert(_bottom_blobs[_bottom[0]]->data_size() == _bottom_blobs[_bottom[1]]->data_size());

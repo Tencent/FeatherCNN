@@ -56,13 +56,7 @@ class DropoutLayer : public Layer
 		        outPtr[i] = inPtr[i] * scale;
 		    }
 		}
-#if 0
-		printf("[DROPOUT] %f %f %f %f\n", 
-			   _top_blobs[_top[0]]->data()[0], 
-			   _top_blobs[_top[0]]->data()[1], 
-			   _top_blobs[_top[0]]->data()[2], 
-			   _top_blobs[_top[0]]->data()[3]);
-#endif
+
 		return 0;
 	}
 	protected:

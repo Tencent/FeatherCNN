@@ -79,7 +79,12 @@ int Net::Forward(float *input)
 		timespec tpstart, tpend;
 		clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
+		//printf("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
 		layers[i]->Forward();
+		#if 0
+		for (size_t j = 0; j < layers[i]->top_blob_size(); j++)
+			layers[i]->top_blob(j)->PrintBlobInfo();
+		#endif
 #ifdef LAYER_TIMING
 		clock_gettime(CLOCK_MONOTONIC, &tpend);
 		double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
