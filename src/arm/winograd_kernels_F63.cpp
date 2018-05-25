@@ -25,11 +25,8 @@
 //#define WINOGRAD_BENCH
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
 
 void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
@@ -160,7 +157,6 @@ void winogradKernelTransform(float *transKernel, float *kernel)
     float bigBlock[64];
     float32x4_t w0, w1, w2, w3;
 
-    //print_floats(kernel, 3, 3);
     naive_gemm_temp(8, 3, 3, ktm, kernel, midBlock);
     transpose_temp(8, 3, midBlock, outBlock);
     naive_gemm_temp(8, 8, 3, ktm, outBlock, bigBlock);
@@ -171,8 +167,6 @@ void winogradKernelTransform(float *transKernel, float *kernel)
         reg = vld1q_f32(bigBlock + i * 4);
         vst1q_f32(transKernel + i * 16, reg);
     }
-    //print_floats(bigBlock, 8, 8);
-
 }
 
 void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride, float* base, int oi, int oj)
@@ -194,19 +188,15 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
     float bigBlock[64];
     float32x4_t w0, w1, w2, w3;
 
-    //print_floats(kernel, 3, 3);
     naive_gemm_temp(8, 3, 3, ktm, kernel, midBlock);
     transpose_temp(8, 3, midBlock, outBlock);
     naive_gemm_temp(8, 8, 3, ktm, outBlock, bigBlock);
-    //print_floats(bigBlock, 8, 8);
 
     for(int i = 0; i < 16; ++i)
     {
         float32x4_t reg;
         reg = vld1q_f32(bigBlock + i * 4);
         vst1q_f32(transKernel + i * stride, reg);
-        //printf("offset %d\n", i * stride);
-        //printf("UTp offset %d i %d j %d\n", transKernel+i*stride - base, oi, oj);
     }
 }
 
@@ -217,7 +207,6 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outC
         for (int j = 0; j < outChannels; ++j)
         {
             int cid = j * inChannels + i;
-            //float* UTp = UT + 64 * (i & 0xFFFFFFFC) + (i & 0x3) * 4 + j / 4 * 64 * inChannels;
             float* UTp = UT + (j / 4) * (256 * inChannels) //Big block id for every 4 output channels.
                          + 16 * i	//Choose the line, which is the input channel offset.
                          + (j & 0x3) * 4;//Starting point in each block.
@@ -320,9 +309,6 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     memset(VT, 0, sizeof(float) * 64 * nBlocks * inChannels);
     int hdiff = nColBlocks * 6 + 2- inputh;
     int wdiff = nRowBlocks * 6 + 2- inputw;
-    //diff ranges from 0 to 5
-    //printf("diff %d, %d\n", hdiff, wdiff);
-    //print_floats(input, inChannels* inputh , inputw);
 
     #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
     for (int ic = 0; ic < inChannels; ++ic)
@@ -350,23 +336,16 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                 if(((j * 6 + 8) > inputh) || ((i * 6 + 8) > inputw))
                 {
                     for(int t = 0; t < 16; ++t)
-                    {
                         vst1q_f32(ext + t * 4, vZero);
-                    }
+
                     int step_h = inputh - j * 6;
                     int step_w = inputw - i * 6;
-                    if(step_h > 8)
-                        step_h = 8;
-                    if(step_w > 8)
-                        step_w = 8;
+                    if(step_h > 8) step_h = 8;
+                    if(step_w > 8) step_w = 8;
                     float* edge_blk = input + ic * frameStride + (j * 6) * ldin + (i * 6);
-                    //printf("small blk offset %d\n", edge_blk - input);
                     for(int n = 0; n < step_h; ++n)
                         for(int m = 0; m < step_w; ++m)
                             ext[n * 8 + m] = *(edge_blk + n * ldin + m);
-
-                    //printf("step hxw %dx%d\n", step_h, step_w);
-                    //print_floats(ext, 8, 8);
                     l0 = vld1q_f32(ext);
                     r0 = vld1q_f32(ext + 4);
                     l1 = vld1q_f32(ext + 8);
@@ -429,7 +408,6 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                                 t1,t2,s1,s2,m1,m2,//Auxiliary
                                 f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
 
-                //printf("outp offset %d\n", outp - VT);
                 if(bid < nBlocksAligned)
                 {
                     vst1q_f32(outp, l0);
@@ -484,24 +462,18 @@ const int cache_block = 8;
 
 void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, int num_threads, float* pack_arr)
 {
-
-    //Real depth in floating point is $depth * 4.
     const int nBlocks = nRowBlocks * nColBlocks;
     const int nBlocksAligned = nBlocks - nBlocks % 4;
     const int wstride = nBlocks * 4 * depth;
     const int vstride = nBlocks * 4 * depth;
 
-
-    //assert(nBlocks % 4 == 0);
     assert(nBlocks >= 1);
     assert(outChannels % 4 == 0);
-    //int pass = nBlocksAligned / cache_block;
-    //int r = nBlocksAligned % cache_block;
+
     int pass = nBlocks / cache_block;
     int r = nBlocks % cache_block;
-    if(r > 0)
-        ++pass;
-    //printf("nBlocks %d, pass block %d pass %d r %d\n", nBlocks, cache_block, pass, r);
+    if(r > 0) ++pass;
+
     //TODO: Increase r value when it's too small.
     //We will be caching for 4 * $cache_block * $depth floats.
     for (int p = 0; p < pass; p++)
@@ -535,7 +507,6 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
         {
             int i = end_block_id_aligned;
             int len = end_block_id - i;
-            //printf("i %d len %d\n", i, len);
             //len should be in 1~3
             for(int d = 0; d < depth; ++d)
             {
@@ -543,7 +514,6 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
                 const float *svp = VT + i * 4 * depth + d * 4 * len;
                 for (int ic = 0; ic < inChannels; ++ic)
                 {
-                    //print_floats(svp, 4 * len);
                     v0 = vld1q_f32(svp);
                     if(len > 1)
                         v1 = vld1q_f32(svp + 4);
@@ -583,7 +553,6 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
             {
                 int i = end_block_id & 0xFFFFFFC;
                 int len = end_block_id & 0x3;
-                //printf("end_block_id %d i %d len %d wstride %d\n", end_block_id, i, len, wstride);
                 //We are going to compute the remains here.
                 for (int d = 0; d < depth; ++d)
                 {
@@ -985,7 +954,6 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
                 winograd_f6k3_output_transform_inplace(l0, l1, l2, l3, r0, r1, r2, r3);
                 winograd_f6k3_output_transform_inplace(l4, l5, l6, l7, r4, r5, r6, r7);
                 float *outFrame = output + oc * outputw * outputh + j * outputw * 6 + i * 6;
-                //printf("block %d outFrame offset %d\n", bid, outFrame - output);
 
                 if(HAS_BIAS)
                 {
@@ -1077,7 +1045,6 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
 {
     int nBlocks = nRowBlocks * nColBlocks;
     int depth = 16;
-    //float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t));
 #ifdef WINOGRAD_BENCH
     Timer tmr;
     tmr.startBench();
@@ -1087,11 +1054,7 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     tmr.endBench("Input Transform:");
     tmr.startBench();
 #endif
-    //printf("=====VT=====\n");
-    //print_floats(VT, inChannels * 4 * nBlocks, 16);
-    //print_floats(VT, inChannels , 4 * nBlocks* 16);
-    //printf("=====UT=====\n");
-    //print_floats(UT, inChannels * outChannels, 64);
+
     TensorGEMM(WT,VT,UT,
                16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array);
 
@@ -1123,14 +1086,9 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
 
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float *WT, float *VT, float *UT, float *input, int inChannels, int inputh, int inputw, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
-    //assert((inputw - 2) % 6 == 0);
-    //assert((inputh - 2) % 6 == 0);
     const int inputFrameStride = inputw * inputh;
     const int nRowBlocks = (inputw + 3) / 6;//inputw - kernelw + 5
     const int nColBlocks = (inputh + 3) / 6;
     const int ldout = inputw - 2;
-    //printf("-----------------\n");
-    //printf("Block dim = %dx%d\n", nRowBlocks, nColBlocks);
-    //printf("ldout = %d\n", ldout);
     winogradNonFusedTransform_inner(output, ldout, WT, VT, UT, inChannels, outChannels, input, inputh, inputw, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, pack_array, num_threads);
 }
