@@ -63,14 +63,12 @@ void dwConv(float* output, float* input, int inw, int inh, int stridew, int stri
     }
 }
 
-
 //optimized by xningwang on 22/12/2017
 void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
 {
     int outw = (inw - kw + 1) / stridew;//for strided case in odd dimensions, should take the floor value as output dim.
     int outh = (inh - kh + 1) / strideh;
 
-//printf("inw is %d, kw is %d, stridew is %d, outw is %d, outh is %d\n", inw, kw, stridew, outw, outh);
     #pragma omp parallel for num_threads(nThreads) schedule(static)
     for(int g = 0; g < group; ++g)
     {
@@ -92,14 +90,11 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
         float* ing = input + g * inw * inh;
 
         float32x4_t sum1, sum2, sum3, sum4;
-        //k0123 = vld1q_f32(kp);
-        //k3456 = vld1q_f32(kp + 3);
-        //k6789 = vld1q_f32(kp + 6);
         int i = 0;
-        for(; i+1 <  outh; i += 2)   // 2 rows per loop
+        for(; i+1 <  outh; i += 2)
         {
-#ifdef __aarch64__  //ARMv8, 2 * 8
-            int nout = outw >> 3;  //outw / 4, compute 4 cols per time
+#ifdef __aarch64__
+            int nout = outw >> 3;
             int remain = outw & 7;
             float* r0 = ing + inw * i;
             float* r1 = ing + inw * (i + 1);

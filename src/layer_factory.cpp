@@ -52,7 +52,6 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     size_t kernel_width = conv_param->kernel_w();
     size_t stride_height = conv_param->stride_h();
     size_t stride_width = conv_param->stride_w();
-//	size_t input_channels = conv_param->input_c();
 
     ConvLayer *conv_layer = NULL;
     //printf("[conv] group:%lu kernel_height: %lu kernel_width: %lu stride %lu, %lu\n", group, kernel_height, kernel_width, stride_height, stride_width);
@@ -68,7 +67,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     {
         conv_layer = (ConvLayer*) new ConvIm2colLayer(layer_param, rt_param);
     }
-    else//Should be depthwise convolution layer.
+    else
     {
         conv_layer = new ConvDepthwiseLayer(layer_param, rt_param);
     }

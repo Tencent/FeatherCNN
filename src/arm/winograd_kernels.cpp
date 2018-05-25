@@ -57,42 +57,7 @@ static inline void neon_transpose4x4_inplace_f32(
     *row2 = vcombine_f32(vget_high_f32(row01.val[0]), vget_high_f32(row23.val[0]));
     *row3 = vcombine_f32(vget_high_f32(row01.val[1]), vget_high_f32(row23.val[1]));
 }
-static inline void neon_transpose4x4_inplace_f32_fp(float* fp)
-{
-    /*
-     * row0 = ( x00 x01 x02 x03 )
-     * row1 = ( x10 x11 x12 x13 )
-     * row2 = ( x20 x21 x22 x23 )
-     * row3 = ( x30 x31 x32 x33 )
-     */
-    /*
-     * row01 = ( x00 x10 x02 x12 ), ( x01 x11 x03, x13 )
-     * row23 = ( x20 x30 x22 x32 ), ( x21 x31 x23, x33 )
-     */
-    float32x4_t row0 = vld1q_f32(fp);
-    float32x4_t row1 = vld1q_f32(fp + 4);
-    float32x4_t row2 = vld1q_f32(fp + 8);
-    float32x4_t row3 = vld1q_f32(fp + 12);
 
-    float32x4x2_t row01 = vtrnq_f32(row0, row1);
-    float32x4x2_t row23 = vtrnq_f32(row2, row3);
-
-    /*
-     * row0 = ( x00 x10 x20 x30 )
-     * row1 = ( x01 x11 x21 x31 )
-     * row2 = ( x02 x12 x22 x32 )
-     * row3 = ( x03 x13 x23 x33 )
-     */
-    row0 = vcombine_f32(vget_low_f32(row01.val[0]), vget_low_f32(row23.val[0]));
-    row1 = vcombine_f32(vget_low_f32(row01.val[1]), vget_low_f32(row23.val[1]));
-    row2 = vcombine_f32(vget_high_f32(row01.val[0]), vget_high_f32(row23.val[0]));
-    row3 = vcombine_f32(vget_high_f32(row01.val[1]), vget_high_f32(row23.val[1]));
-
-    vst1q_f32(fp,      row0);
-    vst1q_f32(fp + 4,  row1);
-    vst1q_f32(fp + 8,  row2);
-    vst1q_f32(fp + 12, row3);
-}
 /*
  AT =
  ⎡1  1  1   0⎤
@@ -381,125 +346,7 @@ void winogradInputFrameTransform(float* VT, int ldvt, int inChannels, float* inp
         }
     }
 }
-#if 0
-/*
- * Strided version, to form CubicGEMM.
- * Data Layout: (w' * h' * 4) x inChannels
- * InChannel |Data|
- * 0         |v00 v01 v02 v03|v10 v11 v12 v13|
- * 1         |v00 v01 v02 v03|v10 v11 v12 v13|
- */
-void winogradInputFrameTransformStride(float* VT, int ldvt, int inChannels, float* input, int frameStride, int ldin, int nRowBlocks, int nColBlocks, int num_threads)
-{
-    const int nBlocks = nRowBlocks * nColBlocks;
-    const int nBlocksAligned = nBlocks - nBlocks % 4;
-    const int outStride = 4 * nBlocks * inChannels;
-    float* outp[4];
-    outp[0] = VT;
-    outp[1] = outp[0] + outStride;
-    outp[2] = outp[1] + outStride;
-    outp[3] = outp[2] + outStride;
-    #pragma omp parallel for num_threads(num_threads)
-    for(int ic = 0; ic < inChannels; ++ic)
-    {
-        float32x4_t d0, d1, d2, d3;
-        float32x4_t w0, w1, w2, w3;
-        float *inputFrame = input + ic * frameStride;
-        int idx = 0;
-        for(int j = 0; j < nColBlocks; ++j)
-        {
-            float* r0 = inputFrame + ldin * j * 2;
-            float* r1 = r0 + ldin;
-            float* r2 = r1 + ldin;
-            float* r3 = r2 + ldin;
 
-            for(int i = 0; i < nRowBlocks; ++i)
-            {
-                d0 = vld1q_f32(r0);
-                r0 += 2;
-                d1 = vld1q_f32(r1);
-                r1 += 2;
-                d2 = vld1q_f32(r2);
-                r2 += 2;
-                d3 = vld1q_f32(r3);
-                r3 += 2;
-
-                w0 = vsubq_f32(d0, d2);
-                w1 = vaddq_f32(d1, d2);
-                w2 = vsubq_f32(d2, d1);
-                w3 = vsubq_f32(d3, d1);
-                neon_transpose4x4_inplace_f32(&w0, &w1, &w2, &w3);
-                d0 = vsubq_f32(w0, w2);
-                d1 = vaddq_f32(w1, w2);
-                d2 = vsubq_f32(w2, w1);
-                d3 = vsubq_f32(w3, w1);
-
-                /*
-                 * The indexing logic：
-                 *
-                 * Symbols:
-                 * Aij is a 128-bit vector holding 4 single floats.
-                 * Original outputs:
-                 * A00 A01 A02 A03|A04 ... A0N //N blocks
-                 * A10 A11 A12 A13|A14 ... A1N
-                 * ...
-                 * AM0 AM1 AM2 AM3|AM4 ... AMN //M channels
-                 * Original width: N
-                 * Original height: M
-                 * Packed outputs:
-                 * A00 A01 A02 A03|A10 A11 A12 A13|...|AM0 AM1 AM2 AM3
-                 * A04 A05 A06 A07|A14 A15 A16 A17|...|AM4 AM5 AM6 AM7
-                 * .....
-                 * A0(N-3) A0(N-2) A0(N-1) A0N|A1(N-3) A1(N-2) A1(N-1) A1N|...|AM(N-3) AM(N-2) AM(N-1) AMN
-                 * New width: M (channels) * 4
-                 * New height: N (blocks)
-                 * This is exactly transposing tiles with width of 4 vectors.
-                 * The packed matrix has a load stride of 4 (vectors) * 4 (floats per vector) * M (which is inChannels here)
-                 *
-                 * y-index is the row index, which should be N / 4.
-                 * x-index is the tile index on the row.
-                 * The tile id is input channel id (ic), and needs to be added by the vector id inside each tile.
-                 *
-                 * However, this will cause problems when w'*h' and input channels are not multiples of 4.
-                 * Fitting by calling different inner kernels.
-                 */
-
-                if(idx < nBlocksAligned)
-                {
-                    int yidx, xidx, offset;
-                    yidx = idx / 4;
-                    xidx = (idx % 4 + ic * 4) * 4;
-                    offset = xidx + yidx * inChannels * 16;
-                    ++idx;
-                    vst1q_f32(outp[0] + offset, d0);
-                    vst1q_f32(outp[1] + offset, d1);
-                    vst1q_f32(outp[2] + offset, d2);
-                    vst1q_f32(outp[3] + offset, d3);
-                }
-                else
-                {
-                    //The remainders are appended at the last part of the matrix.
-                    int baseOffset = nBlocksAligned * inChannels * 4;
-                    int offset = baseOffset + ic * 4 * (nBlocks % 4) + (idx - nBlocksAligned) * 4;
-                    ++idx;
-
-                    vst1q_f32(outp[0] + offset, d0);
-                    vst1q_f32(outp[1] + offset, d1);
-                    vst1q_f32(outp[2] + offset, d2);
-                    vst1q_f32(outp[3] + offset, d3);
-                }
-            }
-        }
-    }
-}
-/*
- * Strided version, to form CubicGEMM.
- * Data Layout: (w' * h' * 4) x inChannels
- * InChannel |Data|
- * 0         |v00 v01 v02 v03|v10 v11 v12 v13|
- * 1         |v00 v01 v02 v03|v10 v11 v12 v13|
- */
-#else
 inline void inputTransform(float32x4_t &d0, float32x4_t &d1, float32x4_t &d2, float32x4_t &d3)
 {
     float32x4_t w0, w1, w2, w3;
@@ -579,95 +426,9 @@ void winogradInputFrameTransformStride(float* VT, int ldvt, int inChannels, floa
             vst1q_f32(outp[2] + offset, d2);
             vst1q_f32(outp[3] + offset, d3);
         }
-#if 0
-        for(int j = 0; j < nColBlocks; ++j)
-        {
-            float* r0 = inputFrame + ldin * j * 2;
-            float* r1 = r0 + ldin;
-            float* r2 = r1 + ldin;
-            float* r3 = r2 + ldin;
-
-            for(int i = 0; i < nRowBlocks; i++)
-            {
-                d0 = vld1q_f32(r0);
-                r0 += 2;
-                d1 = vld1q_f32(r1);
-                r1 += 2;
-                d2 = vld1q_f32(r2);
-                r2 += 2;
-                d3 = vld1q_f32(r3);
-                r3 += 2;
-
-                w0 = vsubq_f32(d0, d2);
-                w1 = vaddq_f32(d1, d2);
-                w2 = vsubq_f32(d2, d1);
-                w3 = vsubq_f32(d3, d1);
-                neon_transpose4x4_inplace_f32(&w0, &w1, &w2, &w3);
-                d0 = vsubq_f32(w0, w2);
-                d1 = vaddq_f32(w1, w2);
-                d2 = vsubq_f32(w2, w1);
-                d3 = vsubq_f32(w3, w1);
-
-                /*
-                 * The indexing logic：
-                 *
-                 * Symbols:
-                 * Aij is a 128-bit vector holding 4 single floats.
-                 * Original outputs:
-                 * A00 A01 A02 A03|A04 ... A0N //N blocks
-                 * A10 A11 A12 A13|A14 ... A1N
-                 * ...
-                 * AM0 AM1 AM2 AM3|AM4 ... AMN //M channels
-                 * Original width: N
-                 * Original height: M
-                 * Packed outputs:
-                 * A00 A01 A02 A03|A10 A11 A12 A13|...|AM0 AM1 AM2 AM3
-                 * A04 A05 A06 A07|A14 A15 A16 A17|...|AM4 AM5 AM6 AM7
-                 * .....
-                 * A0(N-3) A0(N-2) A0(N-1) A0N|A1(N-3) A1(N-2) A1(N-1) A1N|...|AM(N-3) AM(N-2) AM(N-1) AMN
-                 * New width: M (channels) * 4
-                 * New height: N (blocks)
-                 * This is exactly transposing tiles with width of 4 vectors.
-                 * The packed matrix has a load stride of 4 (vectors) * 4 (floats per vector) * M (which is inChannels here)
-                 *
-                 * y-index is the row index, which should be N / 4.
-                 * x-index is the tile index on the row.
-                 * The tile id is input channel id (ic), and needs to be added by the vector id inside each tile.
-                 *
-                 * However, this will cause problems when w'*h' and input channels are not multiples of 4.
-                 * Fitting by calling different inner kernels.
-                 */
-
-                if(idx < nBlocksAligned)
-                {
-                    int yidx, xidx, offset;
-                    yidx = idx / 4;
-                    xidx = (idx % 4 + ic * 4) * 4;
-                    offset = xidx + yidx * inChannels * 16;
-                    ++idx;
-                    vst1q_f32(outp[0] + offset, d0);
-                    vst1q_f32(outp[1] + offset, d1);
-                    vst1q_f32(outp[2] + offset, d2);
-                    vst1q_f32(outp[3] + offset, d3);
-                }
-                else
-                {
-                    //The remainders are appended at the last part of the matrix.
-                    int baseOffset = nBlocksAligned * inChannels * 4;
-                    int offset = baseOffset + ic * 4 * (nBlocks % 4) + (idx - nBlocksAligned) * 4;
-                    ++idx;
-
-                    vst1q_f32(outp[0] + offset, d0);
-                    vst1q_f32(outp[1] + offset, d1);
-                    vst1q_f32(outp[2] + offset, d2);
-                    vst1q_f32(outp[3] + offset, d3);
-                }
-            }
-        }
-#endif
     }
 }
-#endif
+
 inline void GEBPInnerKernel4x4x4(float* &vp, float* UTp, float* WTp, const int beginIdx, const int endIdx, int inChannels, const int wstride)
 {
     float32x4_t vc00, vc01, vc02, vc03;
@@ -941,7 +702,6 @@ inline void GEBPInnerKernel4x2x4(float* &vp, float* UTp, float* WTp, const int b
         wp += wstride;
     }
 }
-
 
 inline void GEBPInnerKernel4x1x4(float* &vp, float* UTp, float* WTp, const int beginIdx, const int endIdx, int inChannels, const int wstride)
 {
@@ -1306,14 +1066,11 @@ void winogradNonFusedTransformMT_inner(float *output, int ldout, float* WT, floa
     tmr.endBench("Input Transform:");
     tmr.startBench();
 #endif
-    //int mi = 0;
-    //int oc = 0;
     #pragma omp parallel for num_threads(num_threads) schedule(static)
     for(int i = 0; i < outChannels; i++)
     {
         const int oc = (i * 4) % outChannels;
         const int mi = i / (outChannels / 4);
-        //printf("mi %d oc %d\n", mi, oc);
         GEMMCubicFourOutputChannels(output, ldout,
                                     WT + mi * outChannels * nRowBlocks * nColBlocks * 4,
                                     VT + mi * nRowBlocks * nColBlocks * inChannels * 4,
@@ -1348,7 +1105,6 @@ void winogradNonFusedTransformMT_inner(float *output, int ldout, float* WT, floa
 #endif
 }
 
-
 void winogradNonFusedTransform(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, int num_threads)
 {
     const int inputFrameStride = inputw * inputh;
@@ -1358,11 +1114,7 @@ void winogradNonFusedTransform(float *output, int outChannels, float* WT, float*
     const int ldvt =  nRowBlocks * 4;
     const int ldut = 16 * inChannels;
     if(num_threads == 1)
-    {
         winogradNonFusedTransform_inner(output, ldout, WT, VT, ldvt, UT, ldut, inChannels, outChannels, input, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr);
-    }
     else
-    {
         winogradNonFusedTransformMT_inner(output, ldout, WT, VT, ldvt, UT, ldut, inChannels, outChannels, input, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, num_threads);
-    }
 }
