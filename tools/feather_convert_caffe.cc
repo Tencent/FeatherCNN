@@ -14,10 +14,18 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <float.h>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
+
+#ifndef MAX
+#define MAX(a,b) ((a)>(b))?(a):(b)
+#endif
+#ifndef MIN
+#define MIN(a,b) ((a)<(b))?(a):(b)
+#endif
 
 using namespace caffe;
 using google::protobuf::io::FileInputStream;
@@ -95,6 +103,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 {
 	//Writer
 	{
+		float gminf, gmaxf, gabsminf;
+		int gFlag = 0;
 		size_t input_layer_idx = -1;
 		flatbuffers::FlatBufferBuilder fbb(204800);
 		std::vector<flatbuffers::Offset<feather::LayerParameter>> layer_vec;
@@ -249,6 +259,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				
 			for (int j = 0; j != caffe_model_layer.blobs_size(); ++j)
 			{
+				float minf, maxf, absminf;
+
 				auto caffe_blob = caffe_model_layer.blobs(j);
 				int dim_len = caffe_blob.shape().dim_size();
 
@@ -259,6 +271,31 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				{
 					float data = caffe_blob.data(k);
 					blob_data_vec.push_back(data);
+					if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0))
+					{
+						if (0 == k) minf = maxf = data;
+						minf = MIN(minf, data);
+						maxf = MAX(maxf, data);
+
+						absminf = MIN(fabs(minf), fabs(maxf));
+					}
+				}
+				if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0))
+				{
+					if (gFlag)
+					{
+						gminf = minf;
+						gmaxf = maxf;
+						gabsminf = absminf;
+					}
+					else
+					{
+						gminf = MIN(minf, gminf);
+						gmaxf = MAX(maxf, gmaxf);
+						gabsminf = MIN(absminf, gabsminf);
+					}
+
+					printf("	[%f, %f] [%f, %f] [%f]\n", minf, maxf, gminf, gmaxf, gabsminf);
 				}
 				auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
 				feather::BlobProtoBuilder blob_builder(fbb);
