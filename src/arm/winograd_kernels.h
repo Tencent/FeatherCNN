@@ -36,6 +36,6 @@ size_t getPackArraySize_F6x6_3x3(int inChannels);
 void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels, float *ST);
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, float* pack_array, int num_threads);
 
-void transformKernel_F6x6_3x3Fix(float *UT, short int *kernel, int inChannels, int outChannels, float *ST);
+void transformKernel_F6x6_3x3Fix(float *UT, short*kernel, int inChannels, int outChannels, float *ST);
 
 #endif /* TCNN_WINOGRAD_KERNELS_H_ */

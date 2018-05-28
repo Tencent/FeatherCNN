@@ -27,7 +27,7 @@
 #define MIN(a,b) ((a)<(b))?(a):(b)
 #endif
 
-typedef short int fix_t;
+typedef short fix_t;
 #define FLOAT2FIX(fixt, fracbits, x) fixt(((x)*(float)((fixt(1)<<(fracbits)))))
 #define FIX2FLOAT(fracbits,x) ((float)(x)/((1)<<fracbits))
 
@@ -310,7 +310,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 
 					printf("	[%f, %f] [%f, %f] [%f]\n", minf, maxf, gminf, gmaxf, gabsminf);
 				}
-				flatbuffers::Offset<flatbuffers::Vector<short int> > blob_data_fbvec_fix;
+				flatbuffers::Offset<flatbuffers::Vector<short> > blob_data_fbvec_fix;
 				flatbuffers::Offset<flatbuffers::Vector<float> > blob_data_fbvec;
 				if ((0 == j) && (0 != fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
 				{

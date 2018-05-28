@@ -200,7 +200,7 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
     }
 }
 
-void transformKernel_F6x6_3x3Fix(float *UT, short int *kernel, int inChannels, int outChannels, float *ST)
+void transformKernel_F6x6_3x3Fix(float *UT, short* kernel, int inChannels, int outChannels, float *ST)
 {
     printf("transformKernel_F6x6_3x3 fix\n");
 }
