@@ -20,6 +20,8 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 
+#define PRINTF
+
 #ifndef MAX
 #define MAX(a,b) ((a)>(b))?(a):(b)
 #endif
@@ -40,7 +42,7 @@ class CaffeModelWeightsConvert
 public:
     CaffeModelWeightsConvert(std::string caffe_prototxt_name, std::string caffe_model_name, std::string output_name);
     bool Convert();
-    void SaveModelWeights(unsigned int fractions);
+    void SaveModelWeights(uint32_t fractions, float threshold);
 
 private :
     bool ReadNetParam();
@@ -58,7 +60,7 @@ CaffeModelWeightsConvert::CaffeModelWeightsConvert(std::string caffe_prototxt_na
     this->caffe_prototxt_name = caffe_prototxt_name;
     this->caffe_model_name = caffe_model_name;
     this->output_name = output_name + ".feathermodel";
-    printf("Model Name: %s\n", this->output_name.c_str());
+    PRINTF("Model Name: %s\n", this->output_name.c_str());
 }
 
 bool CaffeModelWeightsConvert::Convert()
@@ -103,12 +105,13 @@ bool CaffeModelWeightsConvert::ReadNetParam()
     return true;
 }
 
-void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
+void CaffeModelWeightsConvert::SaveModelWeights(uint32_t fractions, float threshold)
 {
 	//Writer
 	{
 		float gminf, gmaxf, gabsminf;
-		int gFlag = 0;
+		short gminS, gmaxS, gabsmaxS;
+		int gFlag = 1;
 		size_t input_layer_idx = -1;
 		flatbuffers::FlatBufferBuilder fbb(204800);
 		std::vector<flatbuffers::Offset<feather::LayerParameter>> layer_vec;
@@ -116,13 +119,13 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 		std::vector<int64_t>      								input_dim_vec;
 
 		size_t input_num = caffe_prototxt.input_size();
-		printf("Input Num: %ld\n", input_num);
+		PRINTF("Input Num: %ld\n", input_num);
 		if(input_num > 0)
 		{
 			for (int i = 0; i < input_num; ++i)
 			{
 				std::string input_name = caffe_prototxt.input(i);
-				printf("Input name: %s\n", input_name.c_str());
+				PRINTF("Input name: %s\n", input_name.c_str());
 				input_name_vec.push_back(fbb.CreateString(input_name));
 			}
 
@@ -131,7 +134,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				for(int j = 0; j < caffe_prototxt.input_shape(i).dim_size(); ++j)
 				{
 					size_t dim = caffe_prototxt.input_shape(i).dim(j);
-					printf("dim[%d]: %ld\n", j, dim);
+					PRINTF("dim[%d]: %ld\n", j, dim);
 					input_dim_vec.push_back((int64_t) dim);
 				}
 			}
@@ -139,7 +142,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 			for(int i = 0; i < caffe_prototxt.input_dim_size(); ++i)
 			{
 				size_t dim = caffe_prototxt.input_dim(i);
-				printf("dim[%d]: %ld\n", i, dim);
+				PRINTF("dim[%d]: %ld\n", i, dim);
 				input_dim_vec.push_back(caffe_prototxt.input_dim(i));
 			}
 		}
@@ -158,7 +161,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 					for(int j = 0; j < caffe_layer.input_param().shape(0).dim_size(); ++j)
 					{
 						int64_t dim = caffe_layer.input_param().shape(0).dim(j);
-						printf("dim[%d]: %ld\n", j, dim);
+						PRINTF("dim[%d]: %ld\n", j, dim);
 						input_dim_vec.push_back(dim);
 					}
 				}
@@ -177,7 +180,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 		layer_builder.add_input_param(input_param);
 		layer_vec.push_back(layer_builder.Finish());
 
-		printf("Layer Num: %d, Weight Num: %d\n", caffe_prototxt.layer_size(), caffe_weight.layer_size());
+		PRINTF("Layer Num: %d, Weight Num: %d\n", caffe_prototxt.layer_size(), caffe_weight.layer_size());
 
 		std::vector<fix_t> blob_data_vec_fix;
 		std::vector<float> blob_data_vec;
@@ -207,16 +210,16 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 			for(int j = 0; j < caffe_layer.top_size(); ++j)
 			   	top_vec.push_back(caffe_layer.top(j));
 
-			printf("---------------------------------------\n");
-			printf("Layer %d name %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
+			PRINTF("---------------------------------------\n");
+			PRINTF("Layer %d name %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
 			/*Print bottom and tops*/
-			printf("Bottom: ");
+			PRINTF("Bottom: ");
 			for(int t = 0; t < bottom_vec.size(); ++t)
-				printf("%s ", bottom_vec[t].c_str());
-			printf("\nTop: ");
+				PRINTF("%s ", bottom_vec[t].c_str());
+			PRINTF("\nTop: ");
 			for(int t = 0; t < top_vec.size(); ++t)
-				printf("%s ", top_vec[t].c_str());
-			printf("\n");
+				PRINTF("%s ", top_vec[t].c_str());
+			PRINTF("\n");
 			/* change top blob name to layer name if bottom blob name eq top blob name */
 			if(bottom_vec.size() > 0 && top_vec.size() > 0)
 			{
@@ -228,7 +231,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 					if(inplace_blob_map.find(bottom_name) == inplace_blob_map.end())
 						inplace_blob_map[bottom_name] = bottom_name;
 					bottom_vec[0] = inplace_blob_map[bottom_name];
-					printf("*change top %s to %s\n", top_vec[0].c_str(), layer_name.c_str());
+					PRINTF("*change top %s to %s\n", top_vec[0].c_str(), layer_name.c_str());
 					top_vec[0] = layer_name;
 					inplace_blob_map[bottom_name] = layer_name;
 				}
@@ -241,7 +244,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 						{
 							std::string bottom_name = bottom_vec[t];
 							bottom_vec[t] = inplace_blob_map[bottom_name];
-							printf("* change bottom %s to %s\n", bottom_name.c_str(), bottom_vec[t].c_str());
+							PRINTF("* change bottom %s to %s\n", bottom_name.c_str(), bottom_vec[t].c_str());
 						}
 					}
 				}
@@ -260,62 +263,80 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 
 			/* Blobs */
 			auto caffe_model_layer = caffe_weight.layer(caffe_model_layer_map[layer_name]);
-			printf("Blob num: %d\n", caffe_model_layer.blobs_size());
+			PRINTF("Blob num (%s): %d\n", layer_type.c_str(), caffe_model_layer.blobs_size());
 			std::vector<flatbuffers::Offset<feather::BlobProto> > blob_vec;
 				
 			for (int j = 0; j != caffe_model_layer.blobs_size(); ++j)
 			{
+				uint32_t zeroCnt = 0;
 				float minf, maxf, absminf;
+				short minS, maxS, absmaxS, absminS;
 
 				auto caffe_blob = caffe_model_layer.blobs(j);
 				int dim_len = caffe_blob.shape().dim_size();
 
-				printf("	Blob[%02d], dim_len: %02d, data size: %d\n", j, dim_len, caffe_blob.data_size());
+				PRINTF("	Blob[%02d], dim_len: %02d, data size: %d\n", j, dim_len, caffe_blob.data_size());
 
 				/* push blob data to fbb */
 				for(int k = 0; k != caffe_blob.data_size(); ++k)
 				{
 					float data = caffe_blob.data(k);
+					fix_t fix_data;
 					/* Only blob 0 of Conv layer do fix */
-					if ((0 == j) && (0 != fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
+					if ((0 == j) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
 					{
-						fix_t fix_data = FLOAT2FIX((fix_t), fractions, data);
+						fix_data = FLOAT2FIX((fix_t), fractions, data);
 						blob_data_vec_fix.push_back(fix_data);
-					}
-					else
 						blob_data_vec.push_back(data);
-					if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0))
-					{
-						if (0 == k) minf = maxf = data;
-						minf = MIN(minf, data);
-						maxf = MAX(maxf, data);
 
+						if (0 == k) { minf = maxf = data; minS = maxS = fix_data; }
+						minf = MIN(minf, data);maxf = MAX(maxf, data);
 						absminf = MIN(fabs(minf), fabs(maxf));
+
+						minS = MIN(minS, fix_data);maxS = MAX(maxS, fix_data);
+						absmaxS = MAX(abs(minS), abs(maxS));
+						absminS = MIN(abs(minS), abs(maxS));
 					}
 				}
-				if ((0 == fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
+
+				if ((0 == j) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
 				{
 					if (gFlag)
 					{
+						gminS = minS;
+						gmaxS = maxS;
+						gabsmaxS = absmaxS;
+
 						gminf = minf;
 						gmaxf = maxf;
 						gabsminf = absminf;
+
+						gFlag = 0;
 					}
 					else
 					{
+						gminS = MIN(minS, gminS);
+						gmaxS = MAX(maxS, gmaxS);
+						gabsmaxS = MAX(absmaxS, gabsmaxS);
+
 						gminf = MIN(minf, gminf);
 						gmaxf = MAX(maxf, gmaxf);
 						gabsminf = MIN(absminf, gabsminf);
 					}
 
-					printf("	[%f, %f] [%f, %f] [%f]\n", minf, maxf, gminf, gmaxf, gabsminf);
+					PRINTF("	[%f, %f] [%f, %f] [%f]\n", minf, maxf, gminf, gmaxf, gabsminf);
+					PRINTF("	[%d %d] [%d %d] [%d %d] [%d] %d\n", minS, maxS, absminS, absmaxS, gminS, gmaxS, gabsmaxS, 1<<fractions);
+					for(int k = 0; k != caffe_blob.data_size(); ++k)
+						if (abs(blob_data_vec_fix[k]) < (absminS*threshold)) zeroCnt++;
+					printf("[%-20s] [%-40s] Sparse Info: %06.3f%% [%05d %05d] %f\n", layer_type.c_str(), layer_name.c_str(), (zeroCnt*100.0f)/caffe_blob.data_size(), absminS, absmaxS, threshold);
 				}
+
 				flatbuffers::Offset<flatbuffers::Vector<short> > blob_data_fbvec_fix;
 				flatbuffers::Offset<flatbuffers::Vector<float> > blob_data_fbvec;
 				if ((0 == j) && (0 != fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
 				{
 					blob_data_fbvec_fix = fbb.CreateVector<fix_t>(blob_data_vec_fix);
-					printf("	Blob Fix %d\n", fractions);
+					PRINTF("	Blob Fix %d\n", fractions);
 				}
 				else
 					blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
@@ -333,7 +354,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 					channels = caffe_blob.channels();
 					height = caffe_blob.height();
 					width = caffe_blob.width();
-					printf("	blob shape change from (%lu %lu %lu %lu)", num, channels, height, width);
+					PRINTF("	blob shape change from (%lu %lu %lu %lu)", num, channels, height, width);
 					if(num == 1 && channels == 1 && height == 1 && width > 1)
 					{
 						num = width;
@@ -346,7 +367,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 						height = 1;
 						width = 1;
 					}
-					printf("to (%lu %lu %lu %lu)\n", num, channels, height, width);
+					PRINTF("to (%lu %lu %lu %lu)\n", num, channels, height, width);
 				}
 				else
 				{
@@ -379,30 +400,28 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 						width = caffe_blob.shape().dim(2);
 					}
 					else
-						fprintf(stderr, "Unsupported dimension with dim size %d\n", caffe_blob.shape().dim_size());
+						PRINTF("Unsupported dimension with dim size %d\n", caffe_blob.shape().dim_size());
 				}
 
-				printf("	[%ld, %ld, %ld, %ld, Fractions:", num, channels, height, width);
+				PRINTF("	[%ld, %ld, %ld, %ld, Fractions:", num, channels, height, width);
 
 				if ((0 == j) && (0 != fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
 				{
 					blob_builder.add_fractions(fractions);
-					printf(" %d]\n", fractions);
+					PRINTF(" %d]\n", fractions);
 				}
 				else
 				{
 					blob_builder.add_fractions(0);
-					printf(" 0]\n");
+					PRINTF(" 0]\n");
 				}
 				blob_builder.add_num(num);
 				blob_builder.add_channels(channels);
 				blob_builder.add_height(height);
 				blob_builder.add_width(width);
 				blob_vec.push_back(blob_builder.Finish());
-				if ((0 == j) && (0 != fractions) && ((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)))
-					blob_data_vec_fix.clear();
-				else
-					blob_data_vec.clear();
+				blob_data_vec_fix.clear();
+				blob_data_vec.clear();
 			}
 			auto blobs_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::BlobProto> >(blob_vec);
 			blob_vec.clear();
@@ -418,12 +437,12 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 			flatbuffers::Offset<feather::InnerProductParameter> inner_product_param;
 			flatbuffers::Offset<feather::PReLUParameter> prelu_param;
 			flatbuffers::Offset<feather::DropoutParameter> dropout_param;
-			printf("Layer param:\n");
+			PRINTF("Layer param:\n");
 			if((layer_type.compare("Convolution")==0) || (layer_type.compare("ConvolutionDepthwise")==0)){
-				printf("+ %s\n", layer_type.c_str());
+				PRINTF("+ %s\n", layer_type.c_str());
 				auto caffe_conv_param = caffe_layer.convolution_param();
 				feather::ConvolutionParameterBuilder conv_param_builder(fbb);
-				printf("+ bias term %d\n", caffe_conv_param.bias_term());
+				PRINTF("+ bias term %d\n", caffe_conv_param.bias_term());
 				conv_param_builder.add_bias_term(caffe_conv_param.bias_term());
 				conv_param_builder.add_kernel_h(caffe_conv_param.kernel_size(0));
 				if(caffe_conv_param.kernel_size_size() == 1)
@@ -434,7 +453,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 					;
 
 				if(caffe_conv_param.stride_size() == 1){
-					printf("+ stride %d\n", caffe_conv_param.stride(0));
+					PRINTF("+ stride %d\n", caffe_conv_param.stride(0));
 					conv_param_builder.add_stride_h(caffe_conv_param.stride(0));
 					conv_param_builder.add_stride_w(caffe_conv_param.stride(0));
 				}
@@ -450,10 +469,10 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				}
 				else
 				{
-					fprintf(stderr, "More stride dim than expected!\n");
+					PRINTF("More stride dim than expected!\n");
 					exit(-1);
 				}
-				printf("+ pad %d has_pad_h %d has_pad_w %d\n", caffe_conv_param.pad_size(), caffe_conv_param.has_pad_h(),caffe_conv_param.has_pad_w());
+				PRINTF("+ pad %d has_pad_h %d has_pad_w %d\n", caffe_conv_param.pad_size(), caffe_conv_param.has_pad_h(),caffe_conv_param.has_pad_w());
 				if(caffe_conv_param.pad_size() == 1)
 				{
 					conv_param_builder.add_pad_h(caffe_conv_param.pad(0));
@@ -471,24 +490,24 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				}
 				else
 				{
-					printf("+ default padding config pad_size %d\n", caffe_conv_param.pad_size());
+					PRINTF("+ default padding config pad_size %d\n", caffe_conv_param.pad_size());
 					//Go for default padding
 					conv_param_builder.add_pad_h(0);
 					conv_param_builder.add_pad_w(0);
 				}
 				conv_param_builder.add_fractions(fractions);
-				printf("+ fractions %u\n", fractions);
+				PRINTF("+ fractions %u\n", fractions);
 				if (layer_type.compare("ConvolutionDepthwise")==0)
 					conv_param_builder.add_group(caffe_conv_param.num_output());
 				else
 					conv_param_builder.add_group(caffe_conv_param.group());
-				printf("+ num_output %u\n", caffe_conv_param.num_output());
-				printf("+ kernel_h %d\n", caffe_conv_param.kernel_size(0));
-				printf("+ stride_size %d\n", caffe_conv_param.stride_size());
+				PRINTF("+ num_output %u\n", caffe_conv_param.num_output());
+				PRINTF("+ kernel_h %d\n", caffe_conv_param.kernel_size(0));
+				PRINTF("+ stride_size %d\n", caffe_conv_param.stride_size());
 				if (layer_type.compare("ConvolutionDepthwise")==0)
-					printf("+ group %d\n", caffe_conv_param.num_output());
+					PRINTF("+ group %d\n", caffe_conv_param.num_output());
 				else
-					printf("+ group %d\n", caffe_conv_param.group());
+					PRINTF("+ group %d\n", caffe_conv_param.group());
 				conv_param = conv_param_builder.Finish();
 			}
 			else if(layer_type.compare("LRN") == 0)
@@ -498,7 +517,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				float alpha = caffe_lrn_param.alpha();
 				float beta = caffe_lrn_param.beta();
 				float k = caffe_lrn_param.k();
-				printf("+ local_size %ld alpha %f beta %f k %f\n", local_size, alpha, beta, k);
+				PRINTF("+ local_size %ld alpha %f beta %f k %f\n", local_size, alpha, beta, k);
 				feather::LRNParameterBuilder lrn_param_builder(fbb);
 				lrn_param_builder.add_local_size(local_size);
 				lrn_param_builder.add_alpha(alpha);
@@ -507,15 +526,15 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				switch(caffe_lrn_param.norm_region())
 				{
 					case caffe::LRNParameter_NormRegion_ACROSS_CHANNELS:
-						printf("+ Across channels\n");
+						PRINTF("+ Across channels\n");
 						lrn_param_builder.add_norm_region(feather::LRNParameter_::NormRegion_ACROSS_CHANNELS);	
 						break;
 					case caffe::LRNParameter_NormRegion_WITHIN_CHANNEL:
-						printf("+ Within channels\n");
+						PRINTF("+ Within channels\n");
 						lrn_param_builder.add_norm_region(feather::LRNParameter_::NormRegion_WITHIN_CHANNEL);	
 						break;
 					default:
-						fprintf(stderr, "Unknown LRN method\n");
+						PRINTF("Unknown LRN method\n");
 						exit(-1);
 				}
 				lrn_param = lrn_param_builder.Finish();	
@@ -590,7 +609,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 			else if(layer_type.compare("Scale")==0)
 			{
 				auto caffe_scale_param = caffe_layer.scale_param();
-				printf("+ Scale param %d\n", caffe_scale_param.bias_term());
+				PRINTF("+ Scale param %d\n", caffe_scale_param.bias_term());
 				feather::ScaleParameterBuilder scale_param_builder(fbb);
 				scale_param_builder.add_bias_term(caffe_scale_param.bias_term());
 				scale_param = scale_param_builder.Finish();
@@ -603,26 +622,26 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				switch(op)
 				{
 					case EltwiseParameter_EltwiseOp_PROD:
-						printf("+ PROD op\n");
+						PRINTF("+ PROD op\n");
 						feather_op = feather::EltwiseParameter_::EltwiseOp_PROD;
 						break;
 					case EltwiseParameter_EltwiseOp_SUM:
-						printf("+ SUM op\n");
+						PRINTF("+ SUM op\n");
 						feather_op = feather::EltwiseParameter_::EltwiseOp_SUM;
 						break;
 					case EltwiseParameter_EltwiseOp_MAX:
-						printf("+ MAX op\n");
+						PRINTF("+ MAX op\n");
 						feather_op = feather::EltwiseParameter_::EltwiseOp_MAX;
 						break;
 					defalut:
-						fprintf(stderr, "Unknown eltwise parameter.\n");
+						PRINTF("Unknown eltwise parameter.\n");
 				}
 				std::vector<float> coeff_vec;
 				for(int i = 0; i < caffe_eltwise_param.coeff_size(); ++i)
 				{
 					coeff_vec.push_back(caffe_eltwise_param.coeff(i));	
 				}
-				printf("+ Loaded coeff size %ld\n", coeff_vec.size());
+				PRINTF("+ Loaded coeff size %ld\n", coeff_vec.size());
 				eltwise_param = feather::CreateEltwiseParameterDirect(fbb, feather_op, &coeff_vec);
 			}
 			else if(layer_type.compare("ReLU")==0)
@@ -639,7 +658,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 				auto caffe_dropout_param = caffe_layer.dropout_param();
 
 				scale = caffe_dropout_param.dropout_ratio();
-				printf("+ dropout scale: %f\n", scale);
+				PRINTF("+ dropout scale: %f\n", scale);
 
 				feather::DropoutParameterBuilder dropout_param_builder(fbb);
 				dropout_param_builder.add_dropout_ratio(scale);
@@ -677,7 +696,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 
 			layer_vec.push_back(layer_builder.Finish());
 		}
-		printf("---------------------------------------\n\n");
+		PRINTF("---------------------------------------\n\n");
 
 		auto layer_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::LayerParameter>>(layer_vec);
 		auto name_fbb = fbb.CreateString(caffe_prototxt.name());
@@ -688,7 +707,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 		fbb.Finish(net);
 		uint8_t* net_buffer_pointer = fbb.GetBufferPointer();
 		size_t size = fbb.GetSize();
-		printf("Model size: %ld\n", size);
+		PRINTF("Model size: %ld\n", size);
 
 		//Writer
 		FILE *netfp = NULL;
@@ -700,7 +719,7 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 #if 0
 	//Loader
 	{
-		printf("++++++Start Loader++++++\n");
+		PRINTF("++++++Start Loader++++++\n");
 		FILE *netfp = NULL;
 		netfp = fopen(output_name.c_str(), "rb");
 		fseek(netfp, 0, SEEK_END);
@@ -713,22 +732,22 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 
 		auto net_loader = feather::GetNetParameter(net_buffer_pointer);
 		auto layer_num = net_loader->layer()->Length();
-		printf("++++++%d layers loaded++++++\n", layer_num);
+		PRINTF("++++++%d layers loaded++++++\n", layer_num);
 		for(int i = 0; i < layer_num; ++i){
 			auto layer = net_loader->layer()->Get(i);
 			std::string layer_name(layer->name()->str()); 
 			std::string layer_type(layer->type()->str());
-			printf("Layer %s id %d type %s\n", layer_name.c_str(), i, layer_type.c_str());
+			PRINTF("Layer %s id %d type %s\n", layer_name.c_str(), i, layer_type.c_str());
 			for(int b = 0; b < flatbuffers::VectorLength(layer->bottom()); ++b)
 			{
-				printf("Bottom %s\n", layer->bottom()->Get(b)->c_str());
+				PRINTF("Bottom %s\n", layer->bottom()->Get(b)->c_str());
 			}
 			for(int b = 0; b < flatbuffers::VectorLength(layer->top()); ++b)
 			{
-				printf("Top %s\n", layer->top()->Get(b)->c_str());
+				PRINTF("Top %s\n", layer->top()->Get(b)->c_str());
 			}
 		}
-		printf("+++++++++++++++++++++++++++\n");
+		PRINTF("+++++++++++++++++++++++++++\n");
 		free(net_buffer_pointer);
 	}
 #endif
@@ -736,10 +755,11 @@ void CaffeModelWeightsConvert::SaveModelWeights(unsigned int fractions)
 
 int main(int argc, char *argv[])
 {
-	unsigned int fractions = 0;
-	if (argc < 3 || argc > 5)
+	uint32_t fractions = 0;
+	float threshold = 0.02f;
+	if (argc < 3 || argc > 6)
 	{
-		printf("Usage: ./caffe_model_convert $1(caffe_prototxt) $2(caffe_model_name) [$3(output_model_name_prefix)] [fractions]\n");
+		PRINTF("Usage: ./caffe_model_convert $1(caffe_prototxt) $2(caffe_model_name) [$3(output_model_name_prefix)] [fractions] [threshold]\n");
 		return -1;
 	}
 	std::string caffe_prototxt_name = argv[1];
@@ -747,9 +767,11 @@ int main(int argc, char *argv[])
 	std::string output_model_name = "out";
 	if (argc > 3) output_model_name = (argv[3]);
 	if (argc > 4) fractions = atoi(argv[4]);
-	printf("%s caffe proto: %s caffe model: %s featherCNN: %s fractions:%d\n", argv[0], argv[1], argv[2], output_model_name.c_str(), fractions);
+	if (argc > 5) threshold = atof(argv[5]);
+
+	PRINTF("%s caffe proto: %s caffe model: %s featherCNN: %s fractions:%d threshold:%.3f\n", argv[0], argv[1], argv[2], output_model_name.c_str(), fractions, threshold);
 	CaffeModelWeightsConvert convert(caffe_prototxt_name, caffe_model_name, output_model_name);
 	convert.Convert();
-	convert.SaveModelWeights(fractions);
+	convert.SaveModelWeights(fractions, threshold);
 	return 0;
 }
