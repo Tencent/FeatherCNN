@@ -25,6 +25,9 @@ enum WinogradOutType
 //UT larger than 16 * inChannels * outChannels
 void transformKernel(float* UT, float* kernel, int inChannels, int outChannels, float *ST);
 
+void transformKernelFix(float* UT, short* kernel, int inChannels, int outChannels, float* ST);
+
+
 //VT larger than 16 * (inputw / 2 - 1) * (inputh / 2 - 1) * inChannels
 //WT larger than 16 * (inputw / 2 - 1) * (inputh / 2 - 1) * outChannels
 void winogradNonFusedTransform(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, int num_threads);
@@ -32,5 +35,7 @@ void winogradNonFusedTransform(float *output, int outChannels, float* WT, float*
 size_t getPackArraySize_F6x6_3x3(int inChannels);
 void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels, float *ST);
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, float* pack_array, int num_threads);
+
+void transformKernel_F6x6_3x3Fix(float *UT, short int *kernel, int inChannels, int outChannels, float *ST);
 
 #endif /* TCNN_WINOGRAD_KERNELS_H_ */

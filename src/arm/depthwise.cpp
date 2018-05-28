@@ -25,44 +25,6 @@
 #include <omp.h>
 #endif
 
-void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
-{
-    if(stridew==1&&strideh==1)
-        dwConvs1(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
-    else if(stridew==2&&strideh==2)
-        dwConvs2(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
-    else
-    {
-        int outw = (inw - kw) / stridew + 1;//for strided case in odd dimensions, should take the floor value as output dim.
-        int outh = (inh - kh) / strideh + 1;
-
-        #pragma omp parallel for num_threads(nThreads) schedule(static)
-        for(int g = 0; g < group; ++g)
-        {
-            float* kp = kernel + kw * kh* g;
-            float* outg = output + g * outw * outh;
-            float* ing = input + g * inw * inh;
-            for(int i = 0; i < outh; ++i)
-            {
-                for(int j = 0; j < outw; ++j)
-                {
-                    float* inp = ing + inw * (i*stridew) + (j*strideh);
-                    float convSum = 0.f;
-                    for(int m = 0; m < kh; m++)
-                    {
-                        for(int n = 0; n < kw; n++)
-                        {
-                            convSum += inp[m * inw + n]* kp[m * kw + n];
-                        }
-                    }
-                    outg[j] = convSum;
-                }
-                outg += outw;
-            }
-        }
-    }
-}
-
 //optimized by xningwang on 22/12/2017
 void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
 {
@@ -1037,6 +999,49 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
                 og++;
             }
 #endif    //__aarch64__
+        }
+    }
+}
+
+void dwConvFix(float* output, float* input, int inw, int inh, int stridew, int strideh, short int* kernel, int kw, int kh, int group, int nThreads)
+{
+    printf("dwConv fix\n");
+}
+
+void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
+{
+    if(stridew==1&&strideh==1)
+        dwConvs1(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
+    else if(stridew==2&&strideh==2)
+        dwConvs2(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
+    else
+    {
+        int outw = (inw - kw) / stridew + 1;//for strided case in odd dimensions, should take the floor value as output dim.
+        int outh = (inh - kh) / strideh + 1;
+
+        #pragma omp parallel for num_threads(nThreads) schedule(static)
+        for(int g = 0; g < group; ++g)
+        {
+            float* kp = kernel + kw * kh* g;
+            float* outg = output + g * outw * outh;
+            float* ing = input + g * inw * inh;
+            for(int i = 0; i < outh; ++i)
+            {
+                for(int j = 0; j < outw; ++j)
+                {
+                    float* inp = ing + inw * (i*stridew) + (j*strideh);
+                    float convSum = 0.f;
+                    for(int m = 0; m < kh; m++)
+                    {
+                        for(int n = 0; n < kw; n++)
+                        {
+                            convSum += inp[m * inw + n]* kp[m * kw + n];
+                        }
+                    }
+                    outg[j] = convSum;
+                }
+                outg += outw;
+            }
         }
     }
 }

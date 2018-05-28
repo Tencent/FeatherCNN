@@ -53,20 +53,20 @@ public:
     int Forward()
     {
         MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));
-#if 1
+
         if(kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
         {
             if (output_channels % 8 == 0)
             {
                 block_sgemm_external_pack_threading_8x8((int)output_channels, (int)output_width * (int)output_height,
                                                         (int)input_channels * (int)kernel_width * (int)kernel_height,
-                                                        packed_kernel, input, output, (int)num_threads);
+                                                        (float *)packed_kernel, input, output, (int)num_threads);
             }
             else
             {
                 block_sgemm_external_pack_threading((int)output_channels, (int)output_width * (int)output_height,
                                                     (int)input_channels * (int)kernel_width * (int)kernel_height,
-                                                    packed_kernel, input, output, (int)num_threads);
+                                                    (float *)packed_kernel, input, output, (int)num_threads);
             }
         }
         else
@@ -80,7 +80,7 @@ public:
                 for(int k=0; k<group; k++)
                     block_sgemm_external_pack_threading_8x8((int)output_channels, (int)output_width * (int)output_height,
                                                             (int)input_channels/group * (int)kernel_width * (int)kernel_height,
-                                                            packed_kernel, img_buffer + k*block, output, (int)num_threads);
+                                                            (float *)packed_kernel, img_buffer + k*block, output, (int)num_threads);
             }
             else
             {
@@ -88,14 +88,9 @@ public:
                 for(int k=0; k<group; k++)
                     block_sgemm_external_pack_threading((int)output_channels, (int)output_width * (int)output_height,
                                                         (int)input_channels/group * (int)kernel_width * (int)kernel_height,
-                                                        packed_kernel, img_buffer + k*block, output, (int)num_threads);
+                                                        (float *)packed_kernel, img_buffer + k*block, output, (int)num_threads);
             }
         }
-#else
-        Im2col();
-        naive_sgemm(output_channels, output_height*output_width, input_channels * kernel_width * kernel_height, kernel_data, img_buffer, output);
-#endif
-
 
         if(bias_term)
         {
@@ -187,32 +182,37 @@ public:
         int M = (int)output_channels;
         int L = (int)input_channels * (int)kernel_height * (int)kernel_width;
         int eM = M + (8 - M % 8) % 8;
-
-        MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * eM * L));
-        MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)));
-
-        if (M % 8 == 0)
+        if (0 == fractions)
         {
-            externalPackA8(M, L, packed_kernel, kernel_data, L);
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(float) * eM * L));
         }
         else
         {
-            externalPackA(M, L, packed_kernel, kernel_data, L);
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(short int) * eM * L));
         }
+        MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)));
 
+        if (0 != this->fractions)
+        {
+            if (M % 8 == 0)
+                externalPackA8Fix(M, L, packed_kernel, kernel_data_fix, L);
+            else
+                externalPackAFix(M, L, packed_kernel, kernel_data_fix, L);
+        }
+        else
+        {
+            if (M % 8 == 0)
+                externalPackA8(M, L, (float *)packed_kernel, kernel_data, L);
+            else
+                externalPackA(M, L, (float *)packed_kernel, kernel_data, L);
+        }
         //Setup input and output pointers.
         input = _bottom_blobs[_bottom[0]]->data();
-        //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
         output = _top_blobs[_top[0]]->data();
-        //_top_blobs[_top[0]]->PrintBlobInfo();
-        //printf("++stride %d %d\n", stride_height, stride_width);
-        //printf("++padding %d %d %d %d\n", padding_left, padding_top, padding_right, padding_bottom);
-        //printf("++kernel %d %d\n", kernel_width, kernel_height);
-        //printf("++bias term %d\n", bias_term);
         return 0;
     }
 private:
-    float* packed_kernel;
+    void* packed_kernel;
     float* img_buffer;
 
     float* input;
