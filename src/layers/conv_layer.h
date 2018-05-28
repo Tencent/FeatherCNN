@@ -28,6 +28,7 @@ public:
     ConvLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
         : Layer(layer_param, rt_param)
     {
+        int i = 0;
         //From proto
         const ConvolutionParameter *conv_param = layer_param->convolution_param();
         bias_term = conv_param->bias_term();
@@ -43,18 +44,22 @@ public:
         padding_top = conv_param->pad_h();
         padding_right = conv_param->pad_w();
         padding_bottom = conv_param->pad_h();
+        fractions = conv_param->fractions();
 
-        assert(_weight_blobs.size() > 0);
-        //this->_weight_blobs[0]->PrintBlobInfo();
-        kernel_data = this->_weight_blobs[0]->data();
-        output_channels = this->_weight_blobs[0]->num();
-        // input_channels = this->_weight_blobs[0]->channels();
-        // kernel_data
-        if (bias_term)
+        if (0 == fractions)
         {
-            assert(this->_weight_blobs.size() == 2);
-            bias_data = this->_weight_blobs[1]->data();
+            kernel_data = this->_weight_blobs[0]->data();
+            output_channels = this->_weight_blobs[0]->num();
+            i++;
         }
+        else
+        {
+            kernel_data_fix = this->_weight_blobs_fix[0]->data();
+            output_channels = this->_weight_blobs_fix[0]->num();
+        }
+
+        if (bias_term)
+            bias_data = this->_weight_blobs[i]->data();
     }
 
     int GenerateTopBlobs()
@@ -86,35 +91,10 @@ public:
         return 0;
     }
 
-    void simple_conv(
-        const float *input,
-        size_t input_channels,
-        size_t input_width,
-        size_t input_height,
-        float *output,
-        size_t output_channels,
-        size_t output_width,
-        size_t output_height,
-        float *kernel_data,
-        size_t kernel_width,
-        size_t kernel_height,
-        float *bias_data,
-        bool bias_term,
-        size_t stride_width,
-        size_t stride_height,
-        size_t padding_left,
-        size_t padding_right,
-        size_t padding_top,
-        size_t padding_bottom)
-    {
-    }
-
     virtual int Forward()
     {
         const float *input = _bottom_blobs[_bottom[0]]->data();
         float *output = _top_blobs[_top[0]]->data();
-        // conv(input, output);
-
         return -1;
     }
 
@@ -139,10 +119,11 @@ protected:
     size_t padding_bottom;
 
     size_t group;
-
+    size_t fractions;
     bool bias_term;
 
     float *kernel_data;
+    short int *kernel_data_fix;
     float *bias_data;
 };
 };

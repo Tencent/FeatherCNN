@@ -23,32 +23,36 @@ Layer::Layer(const void* layer_param_in, const RuntimeParameter<float>* rt_param
       num_threads(rt_param->num_threads()),
       common_mempool(rt_param->common_mempool())
 {
-    //Basics
     const LayerParameter* layer_param = (const LayerParameter*)layer_param_in;
     _name = layer_param->name()->str();
     _type = layer_param->type()->str();
+
     for(int i = 0; i < VectorLength(layer_param->bottom()); ++i)
-    {
         _bottom.push_back(layer_param->bottom()->Get(i)->str());
-        //printf("_bottom %s\n", _bottom[_bottom.size() - 1].c_str());
-    }
+
     for(int i = 0; i < VectorLength(layer_param->top()); ++i)
-    {
-        // std::string top_name = layer_param->top()->Get(i)->str();
         _top.push_back(layer_param->top()->Get(i)->str());
-    }
+
     size_t blob_num = VectorLength(layer_param->blobs());
-    //Construct weight blobs
+
+    /* Construct weight blobs */
     for(int i = 0; i < blob_num; ++i)
     {
-
-        Blob<float>* p_blob = new Blob<float>();
-        p_blob->FromProto(layer_param->blobs()->Get(i));
-        //Proto2Blob(layer_param->blobs()->Get(i), p_blob);
-        _weight_blobs.push_back(p_blob);
+        const BlobProto* proto = (const BlobProto*) layer_param->blobs()->Get(i);
+        if (0 != proto->fractions())
+        {
+            Blob<short int>* p_blob = new Blob<short int>();
+            p_blob->FromProto(layer_param->blobs()->Get(i));
+            _weight_blobs_fix.push_back(p_blob);
+        }
+        else
+        {
+            Blob<float>* p_blob = new Blob<float>();
+            p_blob->FromProto(layer_param->blobs()->Get(i));
+            _weight_blobs.push_back(p_blob);
+        }
     }
 }
-
 
 int Layer::SetupBottomBlob(const Blob<float>* p_blob, std::string name)
 {
@@ -64,21 +68,15 @@ int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, con
     std::vector<std::string>::iterator name_iter = _bottom.begin();
     std::map<std::string, const Blob<float>*>::iterator blob_iter = _bottom_blobs.begin();
 
-    //Get the iterator to the old blobs.
     name_iter = std::find(_bottom.begin(), _bottom.end(), old_bottom);
     blob_iter = _bottom_blobs.find(old_bottom);
 
-    //When name doesn't exist in bottom or bottom_blobs, handle error.
     if(name_iter == _bottom.end() || blob_iter == _bottom_blobs.end())
-    {
         return -1;
-    }
 
-    //_bottom.erase(name_iter);
     *name_iter = new_bottom;//should not change order
     _bottom_blobs.erase(blob_iter);
 
-    //_bottom.push_back(new_bottom);
     _bottom_blobs[new_bottom] = p_blob;
     printf("+old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
 
@@ -110,7 +108,7 @@ int Layer::Fuse(Layer* next_layer)
 int Layer::GenerateTopBlobs()
 {
     if(_top.size() != 1 || _bottom.size() != 1)
-        return -1;//The default implementation should be only called by the simple layers.
+        return -1;
     Blob<float>* p_blob = new Blob<float>();
     p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
     p_blob->Alloc();
@@ -118,10 +116,8 @@ int Layer::GenerateTopBlobs()
     return 0;
 }
 
-//Other initializaiton operations
 int Layer::Init()
 {
-    //Nothing to init in the base class.
     return 0;
 }
 
@@ -160,20 +156,15 @@ size_t Layer::top_blob_size()
 const Blob<float>* Layer::top_blob(std::string name)
 {
     if(_top_blobs.find(name) != _top_blobs.end())
-    {
         return _top_blobs[name];
-    }
     else
-    {
         return NULL;
-    }
 }
 const Blob<float>* Layer::top_blob(size_t idx)
 {
     std::string name = this->top(idx);
     return top_blob(name);
 }
-//For fusing
 const size_t Layer::weight_blob_num() const
 {
     return _weight_blobs.size();

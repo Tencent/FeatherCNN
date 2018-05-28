@@ -127,6 +127,7 @@ table ConvolutionParameter {
   group:uint = 1;
   axis:int = 1;
   force_nd_im2col:bool;
+  fractions:uint;
 }
 
 table CropParameter {
@@ -291,11 +292,12 @@ table BlobShape {
 
 table BlobProto {
   data:[float];
+  data_fix:[short];
   num:int;
   channels:int;
   height:int;
   width:int;
+  fractions:int;
 }
-
 
 root_type NetParameter;

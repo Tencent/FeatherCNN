@@ -26,17 +26,17 @@ class Blob
 {
 public:
     Blob()
-        : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
+        : _num(0), _channels(0), _height(0), _width(0), _fractions(0), _data(NULL) {}
 
     explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name() {}
 
 
     explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name() {}
 
     explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name) {}
+        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name(name) {}
 
     ~Blob()
     {
@@ -46,12 +46,7 @@ public:
 
     void Alloc();
 
-    void CopyData(const float* data, const size_t size)
-    {
-        assert(size == _num * _channels * _height * _width);
-        memcpy(_data, data, sizeof(Dtype) * size);
-    }
-    void CopyData(const float* data)
+    void CopyData(const Dtype* data)
     {
         size_t size = _num * _channels * _height * _width;
         memcpy(_data, data, sizeof(Dtype) * size);
@@ -62,11 +57,11 @@ public:
         this->_channels = p_blob->channels();
         this->_width = p_blob->width();
         this->_height = p_blob->height();
+        this->_fractions = p_blob->fractions();
     }
     void Copy(const Blob<Dtype>* p_blob)
     {
         CopyShape(p_blob);
-        //this->PrintBlobInfo();
         this->Alloc();
         assert(p_blob->data_size() == this->data_size());
         CopyData(p_blob->data());
@@ -104,12 +99,18 @@ public:
     {
         return _width;
     }
-
+    size_t fractions() const
+    {
+        return _fractions;
+    }
     void PrintBlobInfo() const
     {
         printf("----BlobInfo----\n");
-        printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
-        printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
+        printf("Shape in nchw (%zu %zu %zu %zu) [Fractions: %zu]\n", _num, _channels, _height, _width, _fractions);
+        if (0 == _fractions)
+            printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
+        else
+            printf("Data (%d %d %d %d)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
         printf("----------------\n");
     }
 
@@ -119,6 +120,7 @@ private:
     size_t _channels;
     size_t _height;
     size_t _width;
+    size_t _fractions;
 
     std::string _name;
 };
