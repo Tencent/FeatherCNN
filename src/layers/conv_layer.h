@@ -123,7 +123,7 @@ protected:
     bool bias_term;
 
     float *kernel_data;
-    short int *kernel_data_fix;
+    short *kernel_data_fix;
     float *bias_data;
 };
 };

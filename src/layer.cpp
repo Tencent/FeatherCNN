@@ -41,7 +41,7 @@ Layer::Layer(const void* layer_param_in, const RuntimeParameter<float>* rt_param
         const BlobProto* proto = (const BlobProto*) layer_param->blobs()->Get(i);
         if (0 != proto->fractions())
         {
-            Blob<short int>* p_blob = new Blob<short int>();
+            Blob<short>* p_blob = new Blob<short>();
             p_blob->FromProto(layer_param->blobs()->Get(i));
             _weight_blobs_fix.push_back(p_blob);
         }

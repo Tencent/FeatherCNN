@@ -188,7 +188,7 @@ public:
         }
         else
         {
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(short int) * eM * L));
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(short) * eM * L));
         }
         MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)));
 

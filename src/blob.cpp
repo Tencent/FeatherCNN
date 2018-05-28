@@ -58,4 +58,5 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
 
 template class Blob<float>;
 template class Blob<short>;
+template class Blob<char>;
 };
