@@ -33,11 +33,8 @@
 //#define WINOGRAD_BENCH
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
 
 void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
@@ -250,7 +247,7 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
     }    
 }
 
-void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outChannels, float *ST)
+void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outChannels)
 {
 	for (int i = 0; i < inChannels; ++i)
 	{

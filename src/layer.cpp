@@ -55,7 +55,7 @@ int Layer::SetupBottomBlob(const Blob<float>* p_blob, std::string name)
 
 int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, const Blob<float>* p_blob)
 {
-    printf("*old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+    //printf("*old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
     std::vector<std::string>::iterator name_iter = _bottom.begin();
     std::map<std::string, const Blob<float>*>::iterator blob_iter = _bottom_blobs.begin();
 
@@ -69,8 +69,7 @@ int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, con
     _bottom_blobs.erase(blob_iter);
 
     _bottom_blobs[new_bottom] = p_blob;
-    printf("+old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
-
+    //printf("+old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
     return 0;
 
 }
