@@ -20,7 +20,7 @@
 template<typename PTR_TYPE>
 CommonMemPool<PTR_TYPE>::~CommonMemPool()
 {
-    if(common_memory || common_size_map.size() || common_ptr_map.size())
+    if (common_memory || common_size_map.size() || common_ptr_map.size())
     {
         //fprintf(stderr, "Warning: common memroy not freed before pool desctruction. Proceed with free.\n");
         //PrintStats();
@@ -31,29 +31,29 @@ CommonMemPool<PTR_TYPE>::~CommonMemPool()
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::Alloc()
 {
-    if(common_memory)
+    if (common_memory)
     {
         fprintf(stderr, "Error: common memory already allocated.\n");
         return false;
     }
-    if(common_size > 0)
+    if (common_size > 0)
     {
         common_memory = (PTR_TYPE *) _mm_malloc(common_size, 128);
-        if(!common_memory)
+        if (!common_memory)
         {
             fprintf(stderr, "Error: cannot allocate common memory.\n");
             return false;
         }
     }
-    if(common_size_map.size())
+    if (common_size_map.size())
     {
         std::map<size_t, size_t>::iterator it
             = common_size_map.begin();
-        while(it != common_size_map.end())
+        while (it != common_size_map.end())
         {
             PTR_TYPE *wptr = NULL;
             wptr = (PTR_TYPE *) _mm_malloc(it->second, 128);
-            if(!wptr)
+            if (!wptr)
             {
                 fprintf(stderr, "Allocation for size %ld id %ld failed\n", it->second, it->first);
             }
@@ -67,7 +67,7 @@ bool CommonMemPool<PTR_TYPE>::Alloc()
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::Free()
 {
-    if(common_memory)
+    if (common_memory)
     {
         free(common_memory);
         common_size = 0;
@@ -81,7 +81,7 @@ bool CommonMemPool<PTR_TYPE>::Free(size_t id)
 {
     std::map<size_t, size_t>::iterator
     it = common_size_map.find(id);
-    if(it == common_size_map.end())
+    if (it == common_size_map.end())
     {
         fprintf(stderr, "Error: free common memory id %ld failed: ID doesn't exist\n", id);
         return false;
@@ -98,7 +98,7 @@ bool CommonMemPool<PTR_TYPE>::FreeAll()
     Free();
     std::map<size_t, size_t>::iterator
     it = common_size_map.begin();
-    for(; it != common_size_map.end(); ++it)
+    for (; it != common_size_map.end(); ++it)
     {
         free(common_ptr_map[it->first]);
     }
@@ -118,9 +118,9 @@ template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::Request(size_t size_byte, size_t id)
 {
     std::map<size_t, size_t>::iterator it = common_size_map.find(id);
-    if(it != common_size_map.end())
+    if (it != common_size_map.end())
     {
-        common_size_map[id] = it->second > size_byte ? it->second:size_byte;
+        common_size_map[id] = it->second > size_byte ? it->second : size_byte;
     }
     else
     {
@@ -132,7 +132,7 @@ bool CommonMemPool<PTR_TYPE>::Request(size_t size_byte, size_t id)
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::GetPtr(PTR_TYPE ** ptr)
 {
-    if(!common_memory)
+    if (!common_memory)
     {
         fprintf(stderr, "Common memroy not allocated\n");
         return false;
@@ -144,7 +144,7 @@ bool CommonMemPool<PTR_TYPE>::GetPtr(PTR_TYPE ** ptr)
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::GetPtr(PTR_TYPE ** ptr, size_t id)
 {
-    if(common_ptr_map.find(id) == common_ptr_map.end())
+    if (common_ptr_map.find(id) == common_ptr_map.end())
     {
         fprintf(stderr, "Error: common ptr for ID %ld not found\n", id);
         *ptr = NULL;
@@ -159,7 +159,7 @@ void CommonMemPool<PTR_TYPE>::PrintStats()
 {
     printf("Default common pool stat: size %ld, ptr %lx\n", common_size, (size_t)common_memory);
     std::map<size_t, size_t>::iterator it = common_size_map.begin();
-    for(; it != common_size_map.end(); ++it)
+    for (; it != common_size_map.end(); ++it)
     {
         printf("Common pool %ld stat: size %ld, ptr %lx\n", it->first, it->second, (size_t)common_ptr_map[it->first]);
     }
@@ -174,7 +174,7 @@ PrivateMemPool<PTR_TYPE>::PrivateMemPool()
 template<typename PTR_TYPE>
 PrivateMemPool<PTR_TYPE>::~PrivateMemPool()
 {
-    if(private_map.size())
+    if (private_map.size())
     {
         fprintf(stderr, "Warning: private memories are not freed before memory pool deconstruction. Proceed with free.\n");
         PrintStats();
@@ -187,7 +187,7 @@ bool PrivateMemPool<PTR_TYPE>::Alloc(PTR_TYPE ** ptr, size_t size_byte)
 {
     PTR_TYPE* wptr = NULL;
     wptr = (PTR_TYPE *) _mm_malloc(size_byte, 128);
-    if(!wptr)
+    if (!wptr)
     {
         fprintf(stderr, "Allocation of size %ld failed\n", size_byte);
         return false;
@@ -202,7 +202,7 @@ bool PrivateMemPool<PTR_TYPE>::GetSize(PTR_TYPE * ptr, size_t * size_byte)
 {
     typename std::map<PTR_TYPE *, size_t>::iterator it =
         private_map.find(ptr);
-    if(it == private_map.end())
+    if (it == private_map.end())
     {
         fprintf(stderr, "Error in free private memory: ptr not found in map\n");
         return false;
@@ -216,7 +216,7 @@ bool PrivateMemPool<PTR_TYPE>::Free(PTR_TYPE ** ptr)
 {
     typename std::map<PTR_TYPE *, size_t>::iterator it =
         private_map.find(*ptr);
-    if(it == private_map.end())
+    if (it == private_map.end())
     {
         fprintf(stderr, "Error in free private memory: ptr not found in map\n");
         return false;
@@ -232,7 +232,7 @@ bool PrivateMemPool<PTR_TYPE>::FreeAll()
 {
     typename std::map<PTR_TYPE *, size_t>::iterator it =
         private_map.begin();
-    for(; it != private_map.end(); ++it)
+    for (; it != private_map.end(); ++it)
     {
         free(it->first);
     }
@@ -246,7 +246,7 @@ void PrivateMemPool<PTR_TYPE>::PrintStats()
     size_t total_mem_size = 0;
     typename std::map<PTR_TYPE *, size_t>::iterator it =
         private_map.begin();
-    for(; it != private_map.end(); ++it)
+    for (; it != private_map.end(); ++it)
     {
         printf("Private memory ptr %lx size %ld\n", (size_t) it->first, it->second);
         total_mem_size += it->second;

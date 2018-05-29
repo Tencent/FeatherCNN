@@ -32,7 +32,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
     int outh = (inh - kh + 1) / strideh;
 
     #pragma omp parallel for num_threads(nThreads) schedule(static)
-    for(int g = 0; g < group; ++g)
+    for (int g = 0; g < group; ++g)
     {
 
         float* kp = kernel + 9 * g;
@@ -53,7 +53,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 
         float32x4_t sum1, sum2, sum3, sum4;
         int i = 0;
-        for(; i+1 <  outh; i += 2)
+        for (; i + 1 <  outh; i += 2)
         {
 #ifdef __aarch64__
             int nout = outw >> 3;
@@ -66,7 +66,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             float* og = outg + outw * i;
             float* og3 = og + outw;
 
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r00n = vld1q_f32(r0 + 4);
@@ -156,7 +156,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
                 og3 += 8;
             }
             //compute 2 * 4 in case of remain > = 4, eg: 4 5 6 7
-            for(; remain-3 > 0; remain -= 4)
+            for (; remain - 3 > 0; remain -= 4)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r00n = vld1q_f32(r0 + 4);
@@ -213,7 +213,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             k0123 = vld1q_f32(kp);
             k3456 = vld1q_f32(kp + 3);
             k6789 = vld1q_f32(kp + 6);
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r10 = vld1q_f32(r1);
@@ -252,7 +252,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             float* og = outg + outw * i;
             float* og3 = og + outw;
 
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r00n = vld1q_f32(r0 + 4);
@@ -309,7 +309,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             k0123 = vld1q_f32(kp);
             k3456 = vld1q_f32(kp + 3);
             k6789 = vld1q_f32(kp + 6);
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r10 = vld1q_f32(r1);
@@ -327,14 +327,14 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 
                 sum1 = vsetq_lane_f32(0.0f, sum1, 3);  //set third value of og to 0
                 //*og = vaddvq_f32(sum1);  //accumulate the first three value of og
-                float32x2_t ss = vadd_f32(vget_low_f32(sum1),vget_high_f32(sum1));
-                float32x2_t ss2 = vpadd_f32(ss,ss);
+                float32x2_t ss = vadd_f32(vget_low_f32(sum1), vget_high_f32(sum1));
+                float32x2_t ss2 = vpadd_f32(ss, ss);
                 *og = vget_lane_f32(ss2, 0);  //accumulate the first three value of og
 
                 sum2 = vsetq_lane_f32(0.0f, sum2, 3);  //set third value of og to 0
                 //*og3 = vaddvq_f32(sum2);  //accumulate the first three value of og
-                ss = vadd_f32(vget_low_f32(sum2),vget_high_f32(sum2));
-                ss2 = vpadd_f32(ss,ss);
+                ss = vadd_f32(vget_low_f32(sum2), vget_high_f32(sum2));
+                ss2 = vpadd_f32(ss, ss);
                 *og3 = vget_lane_f32(ss2, 0);  //accumulate the first three value of og
                 r0++;
                 r1++;
@@ -346,7 +346,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 #endif
         }
         //the remain rows
-        for(; i < outh; ++i)
+        for (; i < outh; ++i)
         {
 #ifdef __aarch64__     //1 * 16
             int nout = outw >> 4;  //outw / 16, compute 16 cols per time
@@ -357,7 +357,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 
             float* og = outg + outw * i;
             float32x4_t sum1, sum2;
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r00n = vld1q_f32(r0 + 4);
@@ -456,7 +456,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             }
 
             //the columns remained every 4 rows
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r10 = vld1q_f32(r1);
@@ -483,7 +483,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 
             float* og = outg + outw * i;
             float32x4_t sum1, sum2;
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r00n = vld1q_f32(r0 + 4);
@@ -540,7 +540,7 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
             }
 
             //the columns remained every 4 rows
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(r0);
                 float32x4_t r10 = vld1q_f32(r1);
@@ -552,8 +552,8 @@ void dwConvs1(float* output, float* input, int inw, int inh, int stridew, int st
 
                 sum1 = vsetq_lane_f32(0.0f, sum1, 3);  //set third value of og to 0
                 //*og = vaddvq_f32(sum1);  //accumulate the first three value of og
-                float32x2_t ss = vadd_f32(vget_low_f32(sum1),vget_high_f32(sum1));
-                float32x2_t ss2 = vpadd_f32(ss,ss);
+                float32x2_t ss = vadd_f32(vget_low_f32(sum1), vget_high_f32(sum1));
+                float32x2_t ss2 = vpadd_f32(ss, ss);
                 *og = vget_lane_f32(ss2, 0);  //accumulate the first three value of og
                 r0++;
                 r1++;
@@ -571,7 +571,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
     int outh = (inh - kh + 1) / strideh;
 
     #pragma omp parallel for num_threads(nThreads) schedule(static)
-    for(int g = 0; g < group; ++g)
+    for (int g = 0; g < group; ++g)
     {
 
         float* kp = kernel + 9 * g;
@@ -591,7 +591,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
 
         float32x4_t sum1, sum2, sum3, sum4;
         int i = 0;
-        for(; i <  outh; i++)   // 1 rows per loop
+        for (; i <  outh; i++)  // 1 rows per loop
         {
 #ifdef __aarch64__
             int nout = outw >> 4;  //outw / 16, compute 16 cols per time
@@ -602,7 +602,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
 
             float* og = outg + outw * i;
 
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4x2_t r0 = vld2q_f32(_r0);
                 float32x4x2_t r0n1 = vld2q_f32(_r0 + 8);
@@ -719,14 +719,14 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
                 sum1 = vaddq_f32(sum1, sum2);
                 vst1q_f32(og + 12, sum1);
 
-                _r0 +=32;
+                _r0 += 32;
                 _r1 += 32;
                 _r2 += 32;
                 og += 16;
             }
             //the columns remained every 4 rows
 #if 1                        //compute 1 * 8 outputs
-            for(; remain - 7 > 0; remain -= 8)
+            for (; remain - 7 > 0; remain -= 8)
             {
                 float32x4x2_t r0 = vld2q_f32(_r0);
                 float32x4x2_t r0n1 = vld2q_f32(_r0 + 8);
@@ -787,14 +787,14 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
                 sum1 = vaddq_f32(sum1, sum2);
                 vst1q_f32(og + 4, sum1);
 
-                _r0 +=16;
+                _r0 += 16;
                 _r1 += 16;
                 _r2 += 16;
                 og += 8;
             }
 
             //compute 1 * 4 outputs
-            for(; remain - 3 > 0; remain-=4)
+            for (; remain - 3 > 0; remain -= 4)
             {
                 float32x4x2_t r0 = vld2q_f32(_r0);
                 float32x4x2_t r0n1 = vld2q_f32(_r0 + 8);
@@ -838,7 +838,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
             k6789 = vld1q_f32(kp + 6);
 
             //compute the remain outputs which less than 4
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(_r0);
                 float32x4_t r10 = vld1q_f32(_r1);
@@ -865,7 +865,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
 
             float* og = outg + outw * i;
 
-            for(; nout > 0; nout--)
+            for (; nout > 0; nout--)
             {
                 float32x4x2_t r0 = vld2q_f32(_r0);
                 float32x4x2_t r0n1 = vld2q_f32(_r0 + 8);
@@ -926,14 +926,14 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
                 sum1 = vaddq_f32(sum1, sum2);
                 vst1q_f32(og + 4, sum1);
 
-                _r0 +=16;
+                _r0 += 16;
                 _r1 += 16;
                 _r2 += 16;
                 og += 8;
             }
 
             //compute 1 * 4 outputs
-            for(; remain - 3 > 0; remain-=4)
+            for (; remain - 3 > 0; remain -= 4)
             {
                 float32x4x2_t r0 = vld2q_f32(_r0);
                 float32x4x2_t r0n1 = vld2q_f32(_r0 + 8);
@@ -977,7 +977,7 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
             k6789 = vld1q_f32(kp + 6);
 
             //compute the remain outputs which less than 4
-            for(; remain > 0; remain--)
+            for (; remain > 0; remain--)
             {
                 float32x4_t r00 = vld1q_f32(_r0);
                 float32x4_t r10 = vld1q_f32(_r1);
@@ -990,8 +990,8 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
 
                 sum1 = vsetq_lane_f32(0.0f, sum1, 3);  //set third value of og to 0
                 //*og = vaddvq_f32(sum1);  //accumulate the first three value of og
-                float32x2_t ss = vadd_f32(vget_low_f32(sum1),vget_high_f32(sum1));
-                float32x2_t ss2 = vpadd_f32(ss,ss);
+                float32x2_t ss = vadd_f32(vget_low_f32(sum1), vget_high_f32(sum1));
+                float32x2_t ss2 = vpadd_f32(ss, ss);
                 *og = vget_lane_f32(ss2, 0);  //accumulate the first three value of og
                 _r0 += 2;
                 _r1 += 2;
@@ -1006,9 +1006,9 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
 
 void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
 {
-    if(stridew==1&&strideh==1)
+    if (stridew == 1 && strideh == 1)
         dwConvs1(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
-    else if(stridew==2&&strideh==2)
+    else if (stridew == 2 && strideh == 2)
         dwConvs2(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads);
     else
     {
@@ -1016,22 +1016,22 @@ void dwConv(float* output, float* input, int inw, int inh, int stridew, int stri
         int outh = (inh - kh) / strideh + 1;
 
         #pragma omp parallel for num_threads(nThreads) schedule(static)
-        for(int g = 0; g < group; ++g)
+        for (int g = 0; g < group; ++g)
         {
-            float* kp = kernel + kw * kh* g;
+            float* kp = kernel + kw * kh * g;
             float* outg = output + g * outw * outh;
             float* ing = input + g * inw * inh;
-            for(int i = 0; i < outh; ++i)
+            for (int i = 0; i < outh; ++i)
             {
-                for(int j = 0; j < outw; ++j)
+                for (int j = 0; j < outw; ++j)
                 {
-                    float* inp = ing + inw * (i*stridew) + (j*strideh);
+                    float* inp = ing + inw * (i * stridew) + (j * strideh);
                     float convSum = 0.f;
-                    for(int m = 0; m < kh; m++)
+                    for (int m = 0; m < kh; m++)
                     {
-                        for(int n = 0; n < kw; n++)
+                        for (int n = 0; n < kw; n++)
                         {
-                            convSum += inp[m * inw + n]* kp[m * kw + n];
+                            convSum += inp[m * inw + n] * kp[m * kw + n];
                         }
                     }
                     outg[j] = convSum;

@@ -36,7 +36,7 @@ int PReluLayer::Forward()
             for (; i < w; i++)
             {
                 if (input[i] < 0)
-                    output[i] = input[i]*slope;
+                    output[i] = input[i] * slope;
                 else
                     output[i] = input[i];
             }
@@ -59,7 +59,7 @@ int PReluLayer::Forward()
             for (; i < w; i++)
             {
                 if (input[i] < 0)
-                    output[i] = input[i]*slope_data[i];
+                    output[i] = input[i] * slope_data[i];
                 else
                     output[i] = input[i];
             }
@@ -67,11 +67,11 @@ int PReluLayer::Forward()
     }
     else if ((0 == c) && (0 != h) && (0 != w))
     {
-        for (int i=0; i<h; i++)
+        for (int i = 0; i < h; i++)
         {
-            const float* inPtr = input + i*w;
-            float* outPtr = output + i*w;
-            float slope = shared ? slope_data[0]:slope_data[i];
+            const float* inPtr = input + i * w;
+            float* outPtr = output + i * w;
+            float slope = shared ? slope_data[0] : slope_data[i];
             int j = 0;
 #ifdef __ARM_NEON
             float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
@@ -89,7 +89,7 @@ int PReluLayer::Forward()
             for (; j < w; j++)
             {
                 if (inPtr[j] < 0)
-                    outPtr[j] = inPtr[j]*slope;
+                    outPtr[j] = inPtr[j] * slope;
                 else
                     outPtr[j] = inPtr[j];
             }
@@ -99,11 +99,11 @@ int PReluLayer::Forward()
     {
         int size = w * h;
         #pragma omp parallel for num_threads(num_threads) schedule(guided)
-        for (int q=0; q<c; q++)
+        for (int q = 0; q < c; q++)
         {
-            const float* inPtr = input + q*size;
-            float* outPtr = output + q*size;
-            float slope = shared ? slope_data[0]:slope_data[q];
+            const float* inPtr = input + q * size;
+            float* outPtr = output + q * size;
+            float slope = shared ? slope_data[0] : slope_data[q];
             int i = 0;
 #ifdef __ARM_NEON
             float32x4_t vzerof32x4 = vdupq_n_f32(0.f);
@@ -118,10 +118,10 @@ int PReluLayer::Forward()
             }
             if (i > size) i -= 4;
 #endif
-            for (; i<size; i++)
+            for (; i < size; i++)
             {
                 if (inPtr[i] < 0)
-                    outPtr[i] = inPtr[i]*slope;
+                    outPtr[i] = inPtr[i] * slope;
                 else
                     outPtr[i] = inPtr[i];
             }

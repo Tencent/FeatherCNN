@@ -29,54 +29,54 @@ namespace feather
 // template<Dtype>
 class Layer
 {
-public:
-    Layer(const void* layer_param, const RuntimeParameter<float>* rt_param);//Layer param must be LayerParameter type
+    public:
+        Layer(const void* layer_param, const RuntimeParameter<float>* rt_param);//Layer param must be LayerParameter type
 
-    int SetupBottomBlob(const Blob<float>* p_blob, std::string name);
+        int SetupBottomBlob(const Blob<float>* p_blob, std::string name);
 
-    int ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, const Blob<float>* p_blob);
+        int ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, const Blob<float>* p_blob);
 
-    int TryFuse(Layer *next_layer);
+        int TryFuse(Layer *next_layer);
 
-    virtual int Fuse(Layer* next_layer);
+        virtual int Fuse(Layer* next_layer);
 
-    virtual int GenerateTopBlobs();
+        virtual int GenerateTopBlobs();
 
-    //Other initializaiton operations
-    virtual int Init();
+        //Other initializaiton operations
+        virtual int Init();
 
-    virtual int Forward();
-    std::string name();
-    std::string type();
-    std::string bottom(size_t i);
-    size_t bottom_size();
-    std::string top(size_t i);
-    size_t top_size();
-    size_t top_blob_size();
-    const Blob<float>* top_blob(std::string name);
-    const Blob<float>* top_blob(size_t idx);
-    //For fusing
-    const size_t weight_blob_num() const;
-    const Blob<float>* weight_blob(size_t i) const;
-    bool fusible() const;
-protected:
-    std::string _name;
-    std::string _type;
+        virtual int Forward();
+        std::string name();
+        std::string type();
+        std::string bottom(size_t i);
+        size_t bottom_size();
+        std::string top(size_t i);
+        size_t top_size();
+        size_t top_blob_size();
+        const Blob<float>* top_blob(std::string name);
+        const Blob<float>* top_blob(size_t idx);
+        //For fusing
+        const size_t weight_blob_num() const;
+        const Blob<float>* weight_blob(size_t i) const;
+        bool fusible() const;
+    protected:
+        std::string _name;
+        std::string _type;
 
-    std::vector<std::string> _bottom;
-    std::vector<std::string> _top;
+        std::vector<std::string> _bottom;
+        std::vector<std::string> _top;
 
-    std::map<std::string, const Blob<float>*> _bottom_blobs; //We don't want to do computation inplace.
-    std::map<std::string, Blob<float>*> _top_blobs;
+        std::map<std::string, const Blob<float>*> _bottom_blobs; //We don't want to do computation inplace.
+        std::map<std::string, Blob<float>*> _top_blobs;
 
-    std::vector<Blob<float>*> _weight_blobs;
+        std::vector<Blob<float>*> _weight_blobs;
 
-    bool _fusible;
+        bool _fusible;
 
-    size_t num_threads;
+        size_t num_threads;
 
-    CommonMemPool<float> 	*common_mempool;
+        CommonMemPool<float>    *common_mempool;
 
-    PrivateMemPool<float> 	private_mempool;
+        PrivateMemPool<float>   private_mempool;
 };
 };

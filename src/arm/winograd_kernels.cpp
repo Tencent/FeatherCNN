@@ -206,23 +206,23 @@ void winogradKernelTransformStride(float* transKernel[4], float* kernel)
 
 void transformKernel(float* UT, float* kernel, int inChannels, int outChannels, float* ST)
 {
-    for(int j = 0; j < outChannels; ++j)
+    for (int j = 0; j < outChannels; ++j)
     {
-        for(int i = 0; i < inChannels; ++i)
+        for (int i = 0; i < inChannels; ++i)
         {
             winogradKernelTransform(ST + 16 * (j * inChannels + i), kernel + 9 * (j * inChannels + i));
         }
     }
     const int stride = inChannels * outChannels * 4;
     float* utp[4];
-    for(int i = 0; i < inChannels; ++i)
+    for (int i = 0; i < inChannels; ++i)
     {
         utp[0] = UT + i * 16;
         utp[1] = utp[0] + stride;
         utp[2] = utp[1] + stride;
         utp[3] = utp[2] + stride;
         float *stp = ST + 16 * i;//For i-th input channel
-        for(int j = 0; j < outChannels; j += 4)
+        for (int j = 0; j < outChannels; j += 4)
         {
             //float *stp = ST + (i * outChannels + j) * 16;
             float32x4_t k00, k01, k02, k03;
@@ -302,19 +302,19 @@ void winogradInputFrameTransform(float* VT, int ldvt, int inChannels, float* inp
     float32x4_t d0, d1, d2, d3;
     float32x4_t w0, w1, w2, w3;
 
-    for(int ic = 0; ic < inChannels; ++ic)
+    for (int ic = 0; ic < inChannels; ++ic)
     {
 
         float *inputFrame = input + ic * frameStride;
         float *outp = VT + ic * 16;
-        for(int j = 0; j < nColBlocks; ++j)
+        for (int j = 0; j < nColBlocks; ++j)
         {
             float* r0 = inputFrame + ldin * j * 2;
             float* r1 = r0 + ldin;
             float* r2 = r1 + ldin;
             float* r3 = r2 + ldin;
 
-            for(int i = 0; i < nRowBlocks; ++i)
+            for (int i = 0; i < nRowBlocks; ++i)
             {
                 d0 = vld1q_f32(r0);
                 d1 = vld1q_f32(r1);
@@ -371,10 +371,10 @@ void winogradInputFrameTransformStride(float* VT, int ldvt, int inChannels, floa
     outp[2] = outp[1] + outStride;
     outp[3] = outp[2] + outStride;
     #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
-    for(int ic = 0; ic < inChannels; ++ic)
+    for (int ic = 0; ic < inChannels; ++ic)
     {
         //int idx = 0;
-        for(int i = 0; i < nBlocksAligned; i++)
+        for (int i = 0; i < nBlocksAligned; i++)
         {
             float *inputFrame = input + ic * frameStride;
             int fx = i % nRowBlocks;
@@ -401,9 +401,9 @@ void winogradInputFrameTransformStride(float* VT, int ldvt, int inChannels, floa
     }
 
     #pragma omp parallel for num_threads(num_threads)
-    for(int ic = 0; ic < inChannels; ++ic)
+    for (int ic = 0; ic < inChannels; ++ic)
     {
-        for(int i = nBlocksAligned; i < nBlocks; ++i)
+        for (int i = nBlocksAligned; i < nBlocks; ++i)
         {
             float *inputFrame = input + ic * frameStride;
             int fx = i % nRowBlocks;
@@ -437,7 +437,7 @@ inline void GEBPInnerKernel4x4x4(float* &vp, float* UTp, float* WTp, const int b
 
     float32x4_t u0, u1, u2, u3;
     float32x4_t v0, v1, v2, v3;
-    for(int i = beginIdx; i < endIdx; i+=4)
+    for (int i = beginIdx; i < endIdx; i += 4)
     {
         vc00 = vdupq_n_f32(0.f);
         vc01 = vdupq_n_f32(0.f);
@@ -456,7 +456,7 @@ inline void GEBPInnerKernel4x4x4(float* &vp, float* UTp, float* WTp, const int b
         vc32 = vdupq_n_f32(0.f);
         vc33 = vdupq_n_f32(0.f);
         float* up = UTp;
-        for(int ic = 0; ic < inChannels; ++ic)
+        for (int ic = 0; ic < inChannels; ++ic)
         {
             v0 = vld1q_f32(vp);
             v1 = vld1q_f32(vp + 4);
@@ -543,7 +543,7 @@ inline void GEBPInnerKernel4x3x4(float* &vp, float* UTp, float* WTp, const int b
 
     float32x4_t u0, u1, u2, u3;
     float32x4_t v0, v1, v2;
-    for(int i = beginIdx; i < endIdx; i+=3)
+    for (int i = beginIdx; i < endIdx; i += 3)
     {
         vc00 = vdupq_n_f32(0.f);
         vc01 = vdupq_n_f32(0.f);
@@ -560,7 +560,7 @@ inline void GEBPInnerKernel4x3x4(float* &vp, float* UTp, float* WTp, const int b
 
         float *up = UTp;
 
-        for(int ic = 0; ic < inChannels; ++ic)
+        for (int ic = 0; ic < inChannels; ++ic)
         {
             v0 = vld1q_f32(vp);
             v1 = vld1q_f32(vp + 4);
@@ -636,7 +636,7 @@ inline void GEBPInnerKernel4x2x4(float* &vp, float* UTp, float* WTp, const int b
     float32x4_t u0, u1, u2, u3;
     float32x4_t v0, v1;
     int idx = 0;
-    for(int i = beginIdx; i < endIdx; i+=2)
+    for (int i = beginIdx; i < endIdx; i += 2)
     {
         vc00 = vdupq_n_f32(0.f);
         vc01 = vdupq_n_f32(0.f);
@@ -649,7 +649,7 @@ inline void GEBPInnerKernel4x2x4(float* &vp, float* UTp, float* WTp, const int b
 
         float *up = UTp;
 
-        for(int ic = 0; ic < inChannels; ++ic)
+        for (int ic = 0; ic < inChannels; ++ic)
         {
             v0 = vld1q_f32(vp);
             v1 = vld1q_f32(vp + 4);
@@ -708,14 +708,14 @@ inline void GEBPInnerKernel4x1x4(float* &vp, float* UTp, float* WTp, const int b
 
     float32x4_t u0, u1, u2, u3;
     float32x4_t v0;
-    for(int i = beginIdx; i < endIdx; i++)
+    for (int i = beginIdx; i < endIdx; i++)
     {
         vc00 = vdupq_n_f32(0.f);
         vc10 = vdupq_n_f32(0.f);
         vc20 = vdupq_n_f32(0.f);
         vc30 = vdupq_n_f32(0.f);
         float *up = UTp;
-        for(int ic = 0; ic < inChannels; ++ic)
+        for (int ic = 0; ic < inChannels; ++ic)
         {
             v0 = vld1q_f32(vp);
             vp += 4;
@@ -756,23 +756,23 @@ void GEMMCubic(float* output, int ldout, float* WT, float* VT, const int ldvt, f
     const int nBlocksAligned = nBlocks - nBlocks % 4;
     const int wstride = nBlocks * 4;
 
-    for(int oc = 0; oc < outChannels; oc += 4)
+    for (int oc = 0; oc < outChannels; oc += 4)
     {
         float *vp = VT;
         float *UTp = UT + oc / 4 * inChannels * 16;
         float *WTp = WT + oc * nRowBlocks * nColBlocks * 4;
         GEBPInnerKernel4x4x4(vp, UTp, WTp, 0, nBlocksAligned, inChannels, wstride);
-        switch(nBlocks % 4)
+        switch (nBlocks % 4)
         {
-        case 1:
-            GEBPInnerKernel4x1x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-            break;
-        case 2:
-            GEBPInnerKernel4x2x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-            break;
-        case 3:
-            GEBPInnerKernel4x3x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-            break;
+            case 1:
+                GEBPInnerKernel4x1x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+                break;
+            case 2:
+                GEBPInnerKernel4x2x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+                break;
+            case 3:
+                GEBPInnerKernel4x3x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+                break;
         }
     }
 }
@@ -789,17 +789,17 @@ void GEMMCubicFourOutputChannels(float* output, int ldout, float* WT, float* VT,
     float *vp = VT;
 
     GEBPInnerKernel4x4x4(vp, UTp, WTp, 0, nBlocksAligned, inChannels, wstride);
-    switch(nBlocks % 4)
+    switch (nBlocks % 4)
     {
-    case 1:
-        GEBPInnerKernel4x1x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-        break;
-    case 2:
-        GEBPInnerKernel4x2x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-        break;
-    case 3:
-        GEBPInnerKernel4x3x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
-        break;
+        case 1:
+            GEBPInnerKernel4x1x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+            break;
+        case 2:
+            GEBPInnerKernel4x2x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+            break;
+        case 3:
+            GEBPInnerKernel4x3x4(vp, UTp, WTp, nBlocksAligned, nBlocks, inChannels, wstride);
+            break;
     }
 }
 
@@ -808,7 +808,7 @@ void winogradOutputTransform(float* output, int ldout, float* WT, int outChannel
     int nBlocks = nRowBlocks * nColBlocks;
     //Output Transform
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for(int oc = 0; oc < outChannels; ++oc)
+    for (int oc = 0; oc < outChannels; ++oc)
     {
         const int offset = nRowBlocks * nColBlocks * 4 * oc;
         float *wp[4];
@@ -821,11 +821,11 @@ void winogradOutputTransform(float* output, int ldout, float* WT, int outChannel
         float32x2_t o0, o1;
         float32x2_t d0, d1, d2, d3;
 
-        for(int j = 0; j < nColBlocks; ++j)
+        for (int j = 0; j < nColBlocks; ++j)
         {
             float* outRow0 = output  + oc * 4 * nBlocks + j * ldout * 2;
             float* outRow1 = outRow0 + ldout;
-            for(int i = 0; i < nRowBlocks; ++i)
+            for (int i = 0; i < nRowBlocks; ++i)
             {
                 o0 = vld1_f32(outRow0);
                 o1 = vld1_f32(outRow1);
@@ -863,7 +863,7 @@ void winogradOutputTransformBias(float* output, int ldout, float* WT, int outCha
     int nBlocks = nRowBlocks * nColBlocks;
     //Output Transform
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for(int oc = 0; oc < outChannels; ++oc)
+    for (int oc = 0; oc < outChannels; ++oc)
     {
         float32x2_t vBias = vdup_n_f32(biasArr[oc]);
         const int offset = nRowBlocks * nColBlocks * 4 * oc;
@@ -877,11 +877,11 @@ void winogradOutputTransformBias(float* output, int ldout, float* WT, int outCha
         float32x2_t o0, o1;
         float32x2_t d0, d1, d2, d3;
 
-        for(int j = 0; j < nColBlocks; ++j)
+        for (int j = 0; j < nColBlocks; ++j)
         {
             float* outRow0 = output  + oc * 4 * nBlocks + j * ldout * 2;
             float* outRow1 = outRow0 + ldout;
-            for(int i = 0; i < nRowBlocks; ++i)
+            for (int i = 0; i < nRowBlocks; ++i)
             {
                 s0 = vld1q_f32(wp[0]);
                 wp[0] += 4;
@@ -917,7 +917,7 @@ void winogradOutputTransformBiasReLU(float* output, int ldout, float* WT, int ou
     const float32x2_t vZero2 = vdup_n_f32(0.f);
     //Output Transform
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for(int oc = 0; oc < outChannels; ++oc)
+    for (int oc = 0; oc < outChannels; ++oc)
     {
         float32x2_t vBias = vdup_n_f32(biasArr[oc]);
         const int offset = nRowBlocks * nColBlocks * 4 * oc;
@@ -931,11 +931,11 @@ void winogradOutputTransformBiasReLU(float* output, int ldout, float* WT, int ou
         float32x2_t o0, o1;
         float32x2_t d0, d1, d2, d3;
 
-        for(int j = 0; j < nColBlocks; ++j)
+        for (int j = 0; j < nColBlocks; ++j)
         {
             float* outRow0 = output  + oc * 4 * nBlocks + j * ldout * 2;
             float* outRow1 = outRow0 + ldout;
-            for(int i = 0; i < nRowBlocks; ++i)
+            for (int i = 0; i < nRowBlocks; ++i)
             {
                 s0 = vld1q_f32(wp[0]);
                 wp[0] += 4;
@@ -974,7 +974,7 @@ void winogradOutputTransformReLU(float* output, int ldout, float* WT, int outCha
     const float32x2_t vZero2 = vdup_n_f32(0.f);
     //Output Transform
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for(int oc = 0; oc < outChannels; ++oc)
+    for (int oc = 0; oc < outChannels; ++oc)
     {
         const int offset = nRowBlocks * nColBlocks * 4 * oc;
         float *wp[4];
@@ -987,11 +987,11 @@ void winogradOutputTransformReLU(float* output, int ldout, float* WT, int outCha
         float32x2_t o0, o1;
         float32x2_t d0, d1, d2, d3;
 
-        for(int j = 0; j < nColBlocks; ++j)
+        for (int j = 0; j < nColBlocks; ++j)
         {
             float* outRow0 = output  + oc * 4 * nBlocks + j * ldout * 2;
             float* outRow1 = outRow0 + ldout;
-            for(int i = 0; i < nRowBlocks; ++i)
+            for (int i = 0; i < nRowBlocks; ++i)
             {
                 s0 = vld1q_f32(wp[0]);
                 wp[0] += 4;
@@ -1027,7 +1027,7 @@ void winogradOutputTransformReLU(float* output, int ldout, float* WT, int outCha
 void winogradNonFusedTransform_inner(float *output, int ldout, float* WT, float* VT, int ldvt, float* UT, int ldut, int inChannels, int outChannels, float* input, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float* biasArr)
 {
     winogradInputFrameTransformStride(VT, ldvt, inChannels, input, frameStride, ldin, nRowBlocks, nColBlocks, 1);
-    for(int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         GEMMCubic(output, ldout,
                   WT + i * outChannels * nRowBlocks * nColBlocks * 4,
@@ -1038,18 +1038,18 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float* WT, float*
     //out type
     switch (outType)
     {
-    case None:
-        winogradOutputTransform(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, 1);
-        break;
-    case ReLU:
-        winogradOutputTransformReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, 1);
-        break;
-    case Bias:
-        winogradOutputTransformBias(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, 1);
-        break;
-    case BiasReLU:
-        winogradOutputTransformBiasReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, 1);
-        break;
+        case None:
+            winogradOutputTransform(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, 1);
+            break;
+        case ReLU:
+            winogradOutputTransformReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, 1);
+            break;
+        case Bias:
+            winogradOutputTransformBias(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, 1);
+            break;
+        case BiasReLU:
+            winogradOutputTransformBiasReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, 1);
+            break;
     }
 }
 
@@ -1066,7 +1066,7 @@ void winogradNonFusedTransformMT_inner(float *output, int ldout, float* WT, floa
     tmr.startBench();
 #endif
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for(int i = 0; i < outChannels; i++)
+    for (int i = 0; i < outChannels; i++)
     {
         const int oc = (i * 4) % outChannels;
         const int mi = i / (outChannels / 4);
@@ -1085,18 +1085,18 @@ void winogradNonFusedTransformMT_inner(float *output, int ldout, float* WT, floa
 #endif
     switch (outType)
     {
-    case None:
-        winogradOutputTransform(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, num_threads);
-        break;
-    case ReLU:
-        winogradOutputTransformReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, num_threads);
-        break;
-    case Bias:
-        winogradOutputTransformBias(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-        break;
-    case BiasReLU:
-        winogradOutputTransformBiasReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-        break;
+        case None:
+            winogradOutputTransform(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, num_threads);
+            break;
+        case ReLU:
+            winogradOutputTransformReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, num_threads);
+            break;
+        case Bias:
+            winogradOutputTransformBias(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            break;
+        case BiasReLU:
+            winogradOutputTransformBiasReLU(output, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            break;
     }
 
 #ifdef WINOGRAD_BENCH
@@ -1112,7 +1112,7 @@ void winogradNonFusedTransform(float *output, int outChannels, float* WT, float*
     const int ldout = nRowBlocks * 2;
     const int ldvt =  nRowBlocks * 4;
     const int ldut = 16 * inChannels;
-    if(num_threads == 1)
+    if (num_threads == 1)
         winogradNonFusedTransform_inner(output, ldout, WT, VT, ldvt, UT, ldut, inChannels, outChannels, input, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr);
     else
         winogradNonFusedTransformMT_inner(output, ldout, WT, VT, ldvt, UT, ldut, inChannels, outChannels, input, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, num_threads);

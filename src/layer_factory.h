@@ -31,92 +31,92 @@ class Layer;
 
 class LayerRegistry
 {
-public:
-    typedef Layer *(*Creator)(const LayerParameter *, const RuntimeParameter<float> *);
-    typedef std::map<string, Creator> CreatorRegistry;
+    public:
+        typedef Layer *(*Creator)(const LayerParameter *, const RuntimeParameter<float> *);
+        typedef std::map<string, Creator> CreatorRegistry;
 
-    static CreatorRegistry &Registry()
-    {
-        static CreatorRegistry *g_registry_ = new CreatorRegistry();
-        return *g_registry_;
-    }
-
-    // Adds a creator.
-    static void AddCreator(const string &type, Creator creator)
-    {
-        CreatorRegistry &registry = Registry();
-        registry[type] = creator;
-    }
-
-    // Get a layer using a LayerParameter.
-    static Layer *CreateLayer(const LayerParameter *param, const RuntimeParameter<float> *rt_param)
-    {
-        const string &type = param->type()->str();
-        CreatorRegistry &registry = Registry();
-        if (registry.find(type) != registry.end())
+        static CreatorRegistry &Registry()
         {
-            return registry[type](param, rt_param);
+            static CreatorRegistry *g_registry_ = new CreatorRegistry();
+            return *g_registry_;
         }
-        else
+
+        // Adds a creator.
+        static void AddCreator(const string &type, Creator creator)
         {
-            fprintf(stderr, "Layer type %s not registered\n", type.c_str());
-            return NULL;
+            CreatorRegistry &registry = Registry();
+            registry[type] = creator;
         }
-    }
 
-    static vector<string> LayerTypeList()
-    {
-        CreatorRegistry &registry = Registry();
-        vector<string> layer_types;
-        for (typename CreatorRegistry::iterator iter = registry.begin();
-                iter != registry.end(); ++iter)
+        // Get a layer using a LayerParameter.
+        static Layer *CreateLayer(const LayerParameter *param, const RuntimeParameter<float> *rt_param)
         {
-            layer_types.push_back(iter->first);
-        }
-        return layer_types;
-    }
-
-private:
-    // Layer registry should never be instantiated - everything is done with its
-    // static variables.
-    LayerRegistry() {}
-
-    static string LayerTypeListString()
-    {
-        vector<string> layer_types = LayerTypeList();
-        string layer_types_str;
-        for (vector<string>::iterator iter = layer_types.begin();
-                iter != layer_types.end(); ++iter)
-        {
-            if (iter != layer_types.begin())
+            const string &type = param->type()->str();
+            CreatorRegistry &registry = Registry();
+            if (registry.find(type) != registry.end())
             {
-                layer_types_str += ", ";
+                return registry[type](param, rt_param);
             }
-            layer_types_str += *iter;
+            else
+            {
+                fprintf(stderr, "Layer type %s not registered\n", type.c_str());
+                return NULL;
+            }
         }
-        return layer_types_str;
-    }
+
+        static vector<string> LayerTypeList()
+        {
+            CreatorRegistry &registry = Registry();
+            vector<string> layer_types;
+            for (typename CreatorRegistry::iterator iter = registry.begin();
+                    iter != registry.end(); ++iter)
+            {
+                layer_types.push_back(iter->first);
+            }
+            return layer_types;
+        }
+
+    private:
+        // Layer registry should never be instantiated - everything is done with its
+        // static variables.
+        LayerRegistry() {}
+
+        static string LayerTypeListString()
+        {
+            vector<string> layer_types = LayerTypeList();
+            string layer_types_str;
+            for (vector<string>::iterator iter = layer_types.begin();
+                    iter != layer_types.end(); ++iter)
+            {
+                if (iter != layer_types.begin())
+                {
+                    layer_types_str += ", ";
+                }
+                layer_types_str += *iter;
+            }
+            return layer_types_str;
+        }
 };
 
 class LayerRegisterer
 {
-public:
-    LayerRegisterer(const string &type,
-                    Layer *(*creator)(const LayerParameter *, const RuntimeParameter<float>*))
-    {
-        LayerRegistry::AddCreator(type, creator);
-    }
+    public:
+        LayerRegisterer(const string &type,
+                        Layer * (*creator)(const LayerParameter *, const RuntimeParameter<float>*))
+        {
+            LayerRegistry::AddCreator(type, creator);
+        }
 };
 
 void register_layer_creators();
 
 #define REGISTER_LAYER_CREATOR(type, creator) \
-	static LayerRegisterer g_creator_f_##type(#type, creator);
+    static LayerRegisterer g_creator_f_##type(#type, creator);
 
 #define REGISTER_LAYER_CLASS(type)                            \
-	Layer *Creator_##type##Layer(const LayerParameter &param) \
-	{                                                         \
-		return Layer * (new##type##Layer(param));             \
-	}                                                         \
-	REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+    Layer *Creator_##type##Layer(const LayerParameter &param) \
+    {                                                         \
+        return Layer * (new##type##Layer(param));             \
+    }                                                         \
+    REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
 };

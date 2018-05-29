@@ -21,16 +21,16 @@ namespace feather
 {
 class PReluLayer : public Layer
 {
-public:
-    PReluLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
-        : Layer(layer_param, rt_param)
-    {
-        shared = this->_weight_blobs[0]->data_size() > 1 ? false : true;
-        slope_data = this->_weight_blobs[0]->data();
-    }
-    int Forward();
-protected:
-    bool shared;
-    float *slope_data;
+    public:
+        PReluLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
+            : Layer(layer_param, rt_param)
+        {
+            shared = this->_weight_blobs[0]->data_size() > 1 ? false : true;
+            slope_data = this->_weight_blobs[0]->data();
+        }
+        int Forward();
+    protected:
+        bool shared;
+        float *slope_data;
 };
 };

@@ -77,7 +77,7 @@ static inline float32x4_t log_ps(float32x4_t x)
     e = vsubq_f32(e, vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(one), mask)));
     x = vaddq_f32(x, tmp);
 
-    float32x4_t z = vmulq_f32(x,x);
+    float32x4_t z = vmulq_f32(x, x);
 
     float32x4_t y = vdupq_n_f32(c_cephes_log_p0);
     y = vmulq_f32(y, x);
@@ -157,12 +157,12 @@ static inline float32x4_t exp_ps(float32x4_t x)
     x = vsubq_f32(x, z);
 
     static const float cephes_exp_p[6] = { c_cephes_exp_p0, c_cephes_exp_p1, c_cephes_exp_p2, c_cephes_exp_p3, c_cephes_exp_p4, c_cephes_exp_p5 };
-    float32x4_t y = vld1q_dup_f32(cephes_exp_p+0);
-    float32x4_t c1 = vld1q_dup_f32(cephes_exp_p+1);
-    float32x4_t c2 = vld1q_dup_f32(cephes_exp_p+2);
-    float32x4_t c3 = vld1q_dup_f32(cephes_exp_p+3);
-    float32x4_t c4 = vld1q_dup_f32(cephes_exp_p+4);
-    float32x4_t c5 = vld1q_dup_f32(cephes_exp_p+5);
+    float32x4_t y = vld1q_dup_f32(cephes_exp_p + 0);
+    float32x4_t c1 = vld1q_dup_f32(cephes_exp_p + 1);
+    float32x4_t c2 = vld1q_dup_f32(cephes_exp_p + 2);
+    float32x4_t c3 = vld1q_dup_f32(cephes_exp_p + 3);
+    float32x4_t c4 = vld1q_dup_f32(cephes_exp_p + 4);
+    float32x4_t c5 = vld1q_dup_f32(cephes_exp_p + 5);
 
     y = vmulq_f32(y, x);
     z = vmulq_f32(x, x);
@@ -261,7 +261,7 @@ static inline void sincos_ps(float32x4_t x, float32x4_t *ysin, float32x4_t *ycos
 
     /* Evaluate the first polynom  (0 <= x <= Pi/4) in y1,
      *     and the second polynom      (Pi/4 <= x <= 0) in y2 */
-    float32x4_t z = vmulq_f32(x,x);
+    float32x4_t z = vmulq_f32(x, x);
     float32x4_t y1, y2;
 
     y1 = vmulq_n_f32(z, c_coscof_p0);

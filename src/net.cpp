@@ -108,7 +108,7 @@ void Net::InitFromPath(const char *model_path)
 {
     FILE *fp = NULL;
     fp = fopen(model_path, "rb");
-    if(fp == NULL)
+    if (fp == NULL)
     {
         fprintf(stderr, "Cannot open feather model!\n");
         exit(-1);
@@ -118,7 +118,7 @@ void Net::InitFromPath(const char *model_path)
 }
 void Net::InitFromFile(FILE* fp)
 {
-    if(fp == NULL)
+    if (fp == NULL)
     {
         fprintf(stderr, "Cannot open feather model!\n");
         exit(-1);
@@ -128,7 +128,7 @@ void Net::InitFromFile(FILE* fp)
     fseek(fp, 0, SEEK_SET);
     uint8_t *net_buffer = (uint8_t *) malloc(sizeof(uint8_t) * file_size);
     size_t read_size = fread(net_buffer, sizeof(uint8_t), file_size, fp);
-    if(read_size != file_size)
+    if (read_size != file_size)
     {
         fprintf(stderr, "Reading model failed! file_size %ld read size %ld\n", file_size, read_size);
         exit(-1);

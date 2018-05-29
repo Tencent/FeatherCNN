@@ -24,94 +24,94 @@ namespace feather
 template <class Dtype>
 class Blob
 {
-public:
-    Blob()
-        : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
+    public:
+        Blob()
+            : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
 
-    explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
+            : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
 
 
-    explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
+            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name() {}
 
-    explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name) {}
+        explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
+            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name) {}
 
-    ~Blob()
-    {
-        if (this->_data)
-            free(this->_data);
-    }
+        ~Blob()
+        {
+            if (this->_data)
+                free(this->_data);
+        }
 
-    void Alloc();
+        void Alloc();
 
-    void CopyData(const Dtype* data)
-    {
-        size_t size = _num * _channels * _height * _width;
-        memcpy(_data, data, sizeof(Dtype) * size);
-    }
-    void CopyShape(const Blob<Dtype>* p_blob)
-    {
-        this->_num = p_blob->num();
-        this->_channels = p_blob->channels();
-        this->_width = p_blob->width();
-        this->_height = p_blob->height();
-    }
-    void Copy(const Blob<Dtype>* p_blob)
-    {
-        CopyShape(p_blob);
-        this->Alloc();
-        assert(p_blob->data_size() == this->data_size());
-        CopyData(p_blob->data());
-    }
+        void CopyData(const Dtype* data)
+        {
+            size_t size = _num * _channels * _height * _width;
+            memcpy(_data, data, sizeof(Dtype) * size);
+        }
+        void CopyShape(const Blob<Dtype>* p_blob)
+        {
+            this->_num = p_blob->num();
+            this->_channels = p_blob->channels();
+            this->_width = p_blob->width();
+            this->_height = p_blob->height();
+        }
+        void Copy(const Blob<Dtype>* p_blob)
+        {
+            CopyShape(p_blob);
+            this->Alloc();
+            assert(p_blob->data_size() == this->data_size());
+            CopyData(p_blob->data());
+        }
 
-    void FromProto(const void *proto_in);//proto MUST be of type BlobProto*
+        void FromProto(const void *proto_in);//proto MUST be of type BlobProto*
 
-    Dtype* data() const
-    {
-        return _data;
-    }
+        Dtype* data() const
+        {
+            return _data;
+        }
 
-    size_t data_size() const
-    {
-        return _num * _channels * _height *_width;
-    }
+        size_t data_size() const
+        {
+            return _num * _channels * _height * _width;
+        }
 
-    std::string name()
-    {
-        return _name;
-    }
-    size_t num() const
-    {
-        return _num;
-    }
-    size_t channels() const
-    {
-        return _channels;
-    }
-    size_t height() const
-    {
-        return _height;
-    }
-    size_t width() const
-    {
-        return _width;
-    }
-    void PrintBlobInfo() const
-    {
-        printf("----BlobInfo----\n");
-        printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
-        printf("----------------\n");
-    }
+        std::string name()
+        {
+            return _name;
+        }
+        size_t num() const
+        {
+            return _num;
+        }
+        size_t channels() const
+        {
+            return _channels;
+        }
+        size_t height() const
+        {
+            return _height;
+        }
+        size_t width() const
+        {
+            return _width;
+        }
+        void PrintBlobInfo() const
+        {
+            printf("----BlobInfo----\n");
+            printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
+            printf("----------------\n");
+        }
 
-private:
-    Dtype* _data;
-    size_t _num;
-    size_t _channels;
-    size_t _height;
-    size_t _width;
+    private:
+        Dtype* _data;
+        size_t _num;
+        size_t _channels;
+        size_t _height;
+        size_t _width;
 
-    std::string _name;
+        std::string _name;
 };
 };

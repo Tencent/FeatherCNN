@@ -21,27 +21,27 @@
 void fully_connected_inference_direct(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads)
 {
     #pragma omp parallel for schedule(static) num_threads(num_threads)
-    for(int i=0; i<output_size; i++)
+    for (int i = 0; i < output_size; i++)
     {
         float sum = 0;
-        for(int j=0; j<input_size; j++)
-            sum += x[j]*y[i*input_size + j];
+        for (int j = 0; j < input_size; j++)
+            sum += x[j] * y[i * input_size + j];
         z[i] = sum;
     }
 }
 
 void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads)
 {
-    assert(input_size %8==0);
-    assert(output_size%8==0);
+    assert(input_size % 8 == 0);
+    assert(output_size % 8 == 0);
     #pragma omp parallel for schedule(static) num_threads(num_threads)
-    for(int k=0; k < output_size / 8; k++)
+    for (int k = 0; k < output_size / 8; k++)
     {
         const float *yPtr = y + k * 8 * input_size;
-        float32x4_t res = {0.0,0.0,0.0,0.0};
-        float32x4_t res1 = {0.0,0.0,0.0,0.0};
+        float32x4_t res = {0.0, 0.0, 0.0, 0.0};
+        float32x4_t res1 = {0.0, 0.0, 0.0, 0.0};
         float32x4_t va, vb0, vb1, vb2, vb3, vb4, vb5, vb6, vb7;
-        for(int i=0; i<input_size; i+=4)
+        for (int i = 0; i < input_size; i += 4)
         {
             //          float32x4_t v1, v2;
             va = vld1q_f32(x + i);
@@ -77,32 +77,32 @@ void fully_connected_transpose_inference_neon8(const int input_size, const int o
 
             yPtr += 32;
         }
-        vst1q_f32((float32_t *) (z+8*k), res);
-        vst1q_f32((float32_t *) (z+8*k + 4), res1);
+        vst1q_f32((float32_t *)(z + 8 * k), res);
+        vst1q_f32((float32_t *)(z + 8 * k + 4), res1);
     }
 }
 
 void fully_connected_inference_direct_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads)
 {
     #pragma omp parallel for schedule(static) num_threads(num_threads)
-    for(int i=0; i<output_size; i++)
+    for (int i = 0; i < output_size; i++)
     {
         float sum = 0.f;
-        for(int j=0; j<input_size; j++)
-            sum += x[j]*y[i*input_size + j];
+        for (int j = 0; j < input_size; j++)
+            sum += x[j] * y[i * input_size + j];
 
         sum += biasArr[i];
-        if(sum < 0.f) sum = 0.f;
+        if (sum < 0.f) sum = 0.f;
         z[i] = sum;
     }
 }
 
 void fully_connected_transpose_inference_neon8_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads)
 {
-    assert(input_size %8==0);
-    assert(output_size%8==0);
+    assert(input_size % 8 == 0);
+    assert(output_size % 8 == 0);
     #pragma omp parallel for schedule(static) num_threads(num_threads)
-    for(int k=0; k < output_size / 8; k++)
+    for (int k = 0; k < output_size / 8; k++)
     {
         float *yPtr = y + k * 8 * input_size;
         const float32x4_t vzero = vdupq_n_f32(0.f);
@@ -111,7 +111,7 @@ void fully_connected_transpose_inference_neon8_BiasReLU(int input_size, int outp
         float32x4_t res1 = vld1q_f32(biasArr + k * 8 + 4);
 
         float32x4_t va, vb0, vb1, vb2, vb3, vb4, vb5, vb6, vb7;
-        for(int i=0; i<input_size; i+=4)
+        for (int i = 0; i < input_size; i += 4)
         {
             va = vld1q_f32(x + i);
 
@@ -152,8 +152,8 @@ void fully_connected_transpose_inference_neon8_BiasReLU(int input_size, int outp
         res  = vmaxq_f32(res, vzero);
         res1 = vmaxq_f32(res1, vzero);
 
-        vst1q_f32((float32_t *) (z+8*k), res);
-        vst1q_f32((float32_t *) (z+8*k + 4), res1);
+        vst1q_f32((float32_t *)(z + 8 * k), res);
+        vst1q_f32((float32_t *)(z + 8 * k + 4), res1);
     }
 }
 /*
@@ -206,7 +206,7 @@ void fully_connected_transpose_inference_neon(int input_size, int output_size, f
 
 void matrixTranspose(float* array, size_t m, size_t n, float *buffer)//  A[m][n] -> A[n][m]
 {
-    for(int i=0; i<m; i++)    for(int j=0; j<n; j++)
-            buffer[j*m+i] = array[i*n+j];
-    memcpy(array, buffer, m*n*sizeof(float));
+    for (int i = 0; i < m; i++)    for (int j = 0; j < n; j++)
+            buffer[j * m + i] = array[i * n + j];
+    memcpy(array, buffer, m * n * sizeof(float));
 }

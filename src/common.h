@@ -22,8 +22,8 @@
 
 class StringTool
 {
-public:
-    static void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts);
+    public:
+        static void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts);
 };
 
 
