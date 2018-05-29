@@ -86,7 +86,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 				forward_net.Forward(input);
 				clock_gettime(CLOCK_MONOTONIC, &tpend);
 				double timedif = 1000000.0 *(tpend.tv_sec-tpstart.tv_sec)+(tpend.tv_nsec-tpstart.tv_nsec)/1000.0;
-				printf("----------Prediction costs %lfms\n", timedif / 1000.0);
+				printf("Prediction costs %lfms\n", timedif / 1000.0);
 				if(i > 0)
 					time += timedif;
 			}
