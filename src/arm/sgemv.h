@@ -12,9 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_SGEMV_H_
-#define TCNN_SGEMV_H_
-
+#pragma once
 #include <stdlib.h>
 
 void matrixTranspose(float* array, size_t m, size_t n, float *buffer);
@@ -22,5 +20,3 @@ void fully_connected_inference_direct(const int input_size, const int output_siz
 void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads);
 void fully_connected_inference_direct_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads);
 void fully_connected_transpose_inference_neon8_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads);
-
-#endif

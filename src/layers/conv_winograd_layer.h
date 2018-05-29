@@ -109,13 +109,10 @@ public:
         }
         float* ST = NULL;
         MEMPOOL_CHECK_RETURN(common_mempool->Request(winograd_mem_size * sizeof(float)));
-        MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&UT, 16 * input_channels * output_channels * sizeof(float)));
-        MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&ST, 16 * input_channels * output_channels * sizeof(float)));
-        if (0 == this->fractions)
-            transformKernel(UT, kernel_data, input_channels, output_channels, ST);
-        else
-            transformKernelFix(UT, kernel_data_fix, input_channels, output_channels, ST);
-        MEMPOOL_CHECK_RETURN(private_mempool.Free((void**)&ST));
+        MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&UT, 16 * input_channels * output_channels * sizeof(float)));
+        MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&ST, 16 * input_channels * output_channels * sizeof(float)));
+	transformKernel(UT, kernel_data, input_channels, output_channels, ST);
+        MEMPOOL_CHECK_RETURN(private_mempool.Free(&ST));
 
         if(bias_term && fuse_relu)
             winograd_out_type = BiasReLU;

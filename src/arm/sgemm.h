@@ -12,12 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_SGEMM_H_
-#define TCNN_SGEMM_H_
-
-
-void externalPackAFix(int M, int L, void* packA, short* a, int lda);
-void externalPackA8Fix(int M, int L, void* packA, short* a, int lda);
+#pragma once
 
 void externalPackA(int M, int L, float* packA, float* a, int lda);//External packing for A, requires space allocation for packA
 void block_sgemm_external_pack_threading( int M, int N, int L, float *A, float *B, float *C, int num_threads);
@@ -25,4 +20,3 @@ void block_sgemm_external_pack_threading( int M, int N, int L, float *A, float *
 void externalPackA8(int M, int L, float* packA, float* a, int lda);//External packing for A, requires space allocation for packA
 void block_sgemm_external_pack_threading_8x8( int M, int N, int L, float *A, float *B, float *C, int num_threads);
 
-#endif

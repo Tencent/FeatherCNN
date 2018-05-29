@@ -50,8 +50,8 @@ int LRNLayer::Init()
     alpha_over_size = alpha / local_size;
 
     size_t padded_size = width * height * (channels + 2 * _pre_pad);
-    MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&_padded_sqr_data, sizeof(float) * padded_size));
-    MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&_scale_data, sizeof(float) * width * height * channels));
+    MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&_padded_sqr_data, sizeof(float) * padded_size));
+    MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&_scale_data, sizeof(float) * width * height * channels));
     memset(_padded_sqr_data, 0, sizeof(float) * padded_size);
 
     return 0;

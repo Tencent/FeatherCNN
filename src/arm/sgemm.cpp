@@ -1747,10 +1747,6 @@ void block_sgemm_internal_pack( int M, int N, int L, float *a, int lda, float *b
     _mm_free(packB);
 }
 
-void externalPackAFix(int M, int L, void* packA, short* a, int lda)
-{
-    printf("externalPackA fix\n");
-}
 
 void externalPackA(int M, int L, float* packA, float* a, int lda)
 {
@@ -1834,11 +1830,6 @@ void block_sgemm_external_pack_threading( int M, int N, int L, float *a, float *
             block_sgemm_pack(eM, sN, L, a, L, b + i * tN, N, c + i * tN, N);
         }
     }
-}
-
-void externalPackA8Fix(int M, int L, void* packA, short* a, int lda)
-{
-    printf("externalPackA8 fix\n");
 }
 
 void externalPackA8(int M, int L, float* packA, float* a, int lda)

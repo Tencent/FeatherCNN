@@ -70,7 +70,6 @@ protected:
     std::map<std::string, Blob<float>*> _top_blobs;
 
     std::vector<Blob<float>*> _weight_blobs;
-    std::vector<Blob<short>*> _weight_blobs_fix;
 
     bool _fusible;
 
@@ -78,6 +77,6 @@ protected:
 
     CommonMemPool<float> 	*common_mempool;
 
-    PrivateMemPool<void> 	private_mempool;
+    PrivateMemPool<float> 	private_mempool;
 };
 };
