@@ -45,6 +45,17 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 	free(arr);
 }
 
+void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
+{
+	for(char *s=strtok((char *)input.data(), (char *)delim.data()); s; s=strtok(NULL, (char *)delim.data()))
+	{
+		if (s != NULL)
+		{
+			parts.push_back(s);
+		}
+	}
+}
+
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
 	printf("++++++Start Loader++++++\n");
@@ -89,4 +100,19 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 		delete [] input;
 		input = NULL;
 	}
+}
+int main(int argc, char* argv[])
+{
+	if(argc == 5)
+	{
+		size_t num_threads = atoi(argv[4]);
+		size_t loop = atoi(argv[3]);
+		test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+	}
+	else
+	{
+		fprintf(stderr, "Usage: ./testRun [feathermodel] [input_data] [loop_count] [num_threads]\n");
+		return 0;
+	}
+	return 0;
 }

@@ -1003,10 +1003,6 @@ void dwConvs2(float* output, float* input, int inw, int inh, int stridew, int st
     }
 }
 
-void dwConvFix(float* output, float* input, int inw, int inh, int stridew, int strideh, short* kernel, int kw, int kh, int group, int nThreads)
-{
-    printf("dwConv fix\n");
-}
 
 void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads)
 {
