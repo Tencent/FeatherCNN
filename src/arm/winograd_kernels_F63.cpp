@@ -2,14 +2,14 @@
 
 //Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
 
-//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
 //
 //https://opensource.org/licenses/BSD-3-Clause
 //
-//Unless required by applicable law or agreed to in writing, software distributed 
-//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
-//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+//Unless required by applicable law or agreed to in writing, software distributed
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
 #include "winograd_kernels.h"
@@ -33,11 +33,8 @@
 //#define WINOGRAD_BENCH
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
-
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
 
 void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
@@ -47,13 +44,13 @@ void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
             C[i * N + j] = 0.f;
     for (int i = 0; i < M; i++)
     {
-	    for (int j = 0; j < N; j++)
-	    {
-		    for (int k = 0; k < L; k++)
-		    {
-			    C[i * N + j] += A[i * L + k] * B[k * N + j];
-		    }
-	    }
+        for (int j = 0; j < N; j++)
+        {
+            for (int k = 0; k < L; k++)
+            {
+                C[i * N + j] += A[i * L + k] * B[k * N + j];
+            }
+        }
     }
 }
 
@@ -95,42 +92,6 @@ static inline void neon_transpose4x4_inplace_f32_cpp(
     row3 = vcombine_f32(vget_high_f32(row01.val[1]), vget_high_f32(row23.val[1]));
 }
 
-static inline void neon_transpose4x4_inplace_f32_fp(float *fp)
-{
-    /*
-     * row0 = ( x00 x01 x02 x03 )
-     * row1 = ( x10 x11 x12 x13 )
-     * row2 = ( x20 x21 x22 x23 )
-     * row3 = ( x30 x31 x32 x33 )
-     */
-    /*
-     * row01 = ( x00 x10 x02 x12 ), ( x01 x11 x03, x13 )
-     * row23 = ( x20 x30 x22 x32 ), ( x21 x31 x23, x33 )
-     */
-    float32x4_t row0 = vld1q_f32(fp);
-    float32x4_t row1 = vld1q_f32(fp + 4);
-    float32x4_t row2 = vld1q_f32(fp + 8);
-    float32x4_t row3 = vld1q_f32(fp + 12);
-
-    float32x4x2_t row01 = vtrnq_f32(row0, row1);
-    float32x4x2_t row23 = vtrnq_f32(row2, row3);
-
-    /*
-     * row0 = ( x00 x10 x20 x30 )
-     * row1 = ( x01 x11 x21 x31 )
-     * row2 = ( x02 x12 x22 x32 )
-     * row3 = ( x03 x13 x23 x33 )
-     */
-    row0 = vcombine_f32(vget_low_f32(row01.val[0]), vget_low_f32(row23.val[0]));
-    row1 = vcombine_f32(vget_low_f32(row01.val[1]), vget_low_f32(row23.val[1]));
-    row2 = vcombine_f32(vget_high_f32(row01.val[0]), vget_high_f32(row23.val[0]));
-    row3 = vcombine_f32(vget_high_f32(row01.val[1]), vget_high_f32(row23.val[1]));
-
-    vst1q_f32(fp, row0);
-    vst1q_f32(fp + 4, row1);
-    vst1q_f32(fp + 8, row2);
-    vst1q_f32(fp + 12, row3);
-}
 /*
  AT =
  ⎡1  1  1   0⎤
@@ -187,7 +148,8 @@ inline void winogradOutputTransformInplace(float32x2_t *o0, float32x2_t *o1, flo
 
 void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
 {
-    float ktm[24] = {
+    float ktm[24] =
+    {
         1.0f, 0.0f, 0.0f,
         -2.0f / 9, -2.0f / 9, -2.0f / 9,
         -2.0f / 9, 2.0f / 9, -2.0f / 9,
@@ -195,31 +157,30 @@ void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
         1.0f / 90, -1.0f / 45, 2.0f / 45,
         1.0f / 45, 1.0f / 90, 1.0f / 180,
         1.0f / 45, -1.0f / 90, 1.0f / 180,
-        0.0f, 0.0f, 1.0f};
+        0.0f, 0.0f, 1.0f
+    };
 
     float midBlock[24];
     float outBlock[24];
     float bigBlock[64];
     float32x4_t w0, w1, w2, w3;
 
-    //print_floats(kernel, 3, 3);
     naive_gemm_temp(8, 3, 3, ktm, kernel, midBlock);
     transpose_temp(8, 3, midBlock, outBlock);
     naive_gemm_temp(8, 8, 3, ktm, outBlock, bigBlock);
 
     for(int i = 0; i < 16; ++i)
     {
-	float32x4_t reg;
-	reg = vld1q_f32(bigBlock + i * 4);	
-	vst1q_f32(transKernel + i * 16, reg);
-    }    
-    //print_floats(bigBlock, 8, 8);
-   
+        float32x4_t reg;
+        reg = vld1q_f32(bigBlock + i * 4);
+        vst1q_f32(transKernel + i * 16, reg);
+    }
 }
 
 void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride, float* base, int oi, int oj)
 {
-    float ktm[24] = {
+    float ktm[24] =
+    {
         1.0f, 0.0f, 0.0f,
         -2.0f / 9, -2.0f / 9, -2.0f / 9,
         -2.0f / 9, 2.0f / 9, -2.0f / 9,
@@ -227,43 +188,44 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
         1.0f / 90, -1.0f / 45, 2.0f / 45,
         1.0f / 45, 1.0f / 90, 1.0f / 180,
         1.0f / 45, -1.0f / 90, 1.0f / 180,
-        0.0f, 0.0f, 1.0f};
+        0.0f, 0.0f, 1.0f
+    };
 
     float midBlock[24];
     float outBlock[24];
     float bigBlock[64];
     float32x4_t w0, w1, w2, w3;
 
-    //print_floats(kernel, 3, 3);
     naive_gemm_temp(8, 3, 3, ktm, kernel, midBlock);
     transpose_temp(8, 3, midBlock, outBlock);
     naive_gemm_temp(8, 8, 3, ktm, outBlock, bigBlock);
-    //print_floats(bigBlock, 8, 8);
 
     for(int i = 0; i < 16; ++i)
     {
-	float32x4_t reg;
-	reg = vld1q_f32(bigBlock + i * 4);	
-	vst1q_f32(transKernel + i * stride, reg);
-	//printf("offset %d\n", i * stride);
-	//printf("UTp offset %d i %d j %d\n", transKernel+i*stride - base, oi, oj);
-    }    
+        float32x4_t reg;
+        reg = vld1q_f32(bigBlock + i * 4);
+        vst1q_f32(transKernel + i * stride, reg);
+    }
+}
+
+void transformKernel_F6x6_3x3Fix(float *UT, short* kernel, int inChannels, int outChannels, float *ST)
+{
+    printf("transformKernel_F6x6_3x3 fix\n");
 }
 
 void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outChannels, float *ST)
 {
-	for (int i = 0; i < inChannels; ++i)
-	{
-		for (int j = 0; j < outChannels; ++j)
-		{
-			int cid = j * inChannels + i;
-			//float* UTp = UT + 64 * (i & 0xFFFFFFFC) + (i & 0x3) * 4 + j / 4 * 64 * inChannels;
-			float* UTp = UT + (j / 4) * (256 * inChannels) //Big block id for every 4 output channels.
-					+ 16 * i	//Choose the line, which is the input channel offset.
-					+ (j & 0x3) * 4;//Starting point in each block.
-			winogradKernelTransformPacked(UTp, kernel + 9 * (j * inChannels + i), 16 * inChannels, UT, i, j);
-		}
-	}
+    for (int i = 0; i < inChannels; ++i)
+    {
+        for (int j = 0; j < outChannels; ++j)
+        {
+            int cid = j * inChannels + i;
+            float* UTp = UT + (j / 4) * (256 * inChannels) //Big block id for every 4 output channels.
+                         + 16 * i	//Choose the line, which is the input channel offset.
+                         + (j & 0x3) * 4;//Starting point in each block.
+            winogradKernelTransformPacked(UTp, kernel + 9 * (j * inChannels + i), 16 * inChannels, UT, i, j);
+        }
+    }
 }
 
 /*
@@ -286,58 +248,58 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outC
  */
 
 inline void input_transform(
-	float32x4_t &r0,
-	float32x4_t &r1,
-	float32x4_t &r2,
-	float32x4_t &r3,
-	float32x4_t &r4,
-	float32x4_t &r5,
-	float32x4_t &r6,
-	float32x4_t &r7,
-	float32x4_t &t1,
-	float32x4_t &t2,
-	float32x4_t &s1,
-	float32x4_t &s2,
-	float32x4_t &p1,
-	float32x4_t &p2,
-	const float32x4_t &f5_25,
-	const float32x4_t &f4_25,
-	const float32x4_t &f4,
-	const float32x4_t &f2_5,
-	const float32x4_t &f2,
-	const float32x4_t &f1_25,
-	const float32x4_t &f0_5,
-	const float32x4_t &f0_25
+    float32x4_t &r0,
+    float32x4_t &r1,
+    float32x4_t &r2,
+    float32x4_t &r3,
+    float32x4_t &r4,
+    float32x4_t &r5,
+    float32x4_t &r6,
+    float32x4_t &r7,
+    float32x4_t &t1,
+    float32x4_t &t2,
+    float32x4_t &s1,
+    float32x4_t &s2,
+    float32x4_t &p1,
+    float32x4_t &p2,
+    const float32x4_t &f5_25,
+    const float32x4_t &f4_25,
+    const float32x4_t &f4,
+    const float32x4_t &f2_5,
+    const float32x4_t &f2,
+    const float32x4_t &f1_25,
+    const float32x4_t &f0_5,
+    const float32x4_t &f0_25
 )
 {
-	r0 = r0 - r6 + (r4 - r2) * f5_25;
-	r7 = r7 - r1 + (r3 - r5) * f5_25;
+    r0 = r0 - r6 + (r4 - r2) * f5_25;
+    r7 = r7 - r1 + (r3 - r5) * f5_25;
 
-	//r6 - r4 * f5_25 can be reused
-	//r1 - r3 * f5_25 can be reused
+    //r6 - r4 * f5_25 can be reused
+    //r1 - r3 * f5_25 can be reused
 
-	t1 = r2 + r6 - r4 * f4_25;
-	t2 = r1 + r5 - r3 * f4_25;
+    t1 = r2 + r6 - r4 * f4_25;
+    t2 = r1 + r5 - r3 * f4_25;
 
-	s1 = r4 * f1_25;	
-	s2 = r3 * f2_5;	
+    s1 = r4 * f1_25;
+    s2 = r3 * f2_5;
 
-	p1 = r6 + (r2 * f0_25 - s1);
-	p2 = r1 * f0_5 - s2 + r5 * f2;
+    p1 = r6 + (r2 * f0_25 - s1);
+    p2 = r1 * f0_5 - s2 + r5 * f2;
 
-	r3 = p1 + p2;
-	r4 = p1 - p2;
+    r3 = p1 + p2;
+    r4 = p1 - p2;
 
-	//2.5 * (r01 - r03 + r05) 
+    //2.5 * (r01 - r03 + r05)
 
-	p1 = r6 + (r2 - s1) * f4;
-	p2 = r1 * f2 - s2 + r5 * f0_5;
+    p1 = r6 + (r2 - s1) * f4;
+    p2 = r1 * f2 - s2 + r5 * f0_5;
 
-	r5 = p1 + p2;
-	r6 = p1 - p2;
+    r5 = p1 + p2;
+    r6 = p1 - p2;
 
-	r1 = vaddq_f32(t1, t2);
-	r2 = vsubq_f32(t1, t2);
+    r1 = vaddq_f32(t1, t2);
+    r2 = vsubq_f32(t1, t2);
 }
 
 void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, int num_threads)
@@ -360,9 +322,6 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     memset(VT, 0, sizeof(float) * 64 * nBlocks * inChannels);
     int hdiff = nColBlocks * 6 + 2- inputh;
     int wdiff = nRowBlocks * 6 + 2- inputw;
-	//diff ranges from 0 to 5
-    //printf("diff %d, %d\n", hdiff, wdiff);
-    //print_floats(input, inChannels* inputh , inputw);
 
 #ifdef FEATHER_USE_GCD 
     dispatch_apply(inChannels, dispatch_get_global_queue(0,0), ^(size_t ic)
@@ -375,11 +334,11 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     {
         for (int j = 0; j < nColBlocks; ++j)
         {
-	    float ext[64];
-	    float32x4_t d0, d1, d2, d3, d4, d5, d6, d7;
-	    float32x4_t l0, l1, l2, l3, l4, l5, l6, l7;
-	    float32x4_t r0, r1, r2, r3, r4, r5, r6, r7;
-	    float32x4_t m1, m2, s1, s2, t1, t2;//Auxiliary registers
+            float ext[64];
+            float32x4_t d0, d1, d2, d3, d4, d5, d6, d7;
+            float32x4_t l0, l1, l2, l3, l4, l5, l6, l7;
+            float32x4_t r0, r1, r2, r3, r4, r5, r6, r7;
+            float32x4_t m1, m2, s1, s2, t1, t2;//Auxiliary registers
             float *p0 = input + ic * frameStride + ldin * j * 6;
             float *p1 = p0 + ldin;
             float *p2 = p1 + ldin;
@@ -391,135 +350,130 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
 
             for (int i = 0; i < nRowBlocks; ++i)
             {
-		int bid = j * nRowBlocks + i;
-		float *outp = VT + (ic * nBlocks + (bid & 0xFFFFFFFC)) * 64 + (bid & 0x3) * 4;
-		if(((j * 6 + 8) > inputh) || ((i * 6 + 8) > inputw))
-		{
-			for(int t = 0; t < 16; ++t)
-			{
-				vst1q_f32(ext + t * 4, vZero);
-			}
-			int step_h = inputh - j * 6;
-			int step_w = inputw - i * 6;
-			if(step_h > 8)
-				step_h = 8;
-			if(step_w > 8)
-				step_w = 8;
-			float* edge_blk = input + ic * frameStride + (j * 6) * ldin + (i * 6);
-			//printf("small blk offset %d\n", edge_blk - input);
-			for(int n = 0; n < step_h; ++n)
-				for(int m = 0; m < step_w; ++m)
-					ext[n * 8 + m] = *(edge_blk + n * ldin + m);
-					
-			//printf("step hxw %dx%d\n", step_h, step_w);
-			//print_floats(ext, 8, 8);
-			l0 = vld1q_f32(ext);
-			r0 = vld1q_f32(ext + 4);
-			l1 = vld1q_f32(ext + 8);
-			r1 = vld1q_f32(ext + 12);
-			l2 = vld1q_f32(ext + 16);
-			r2 = vld1q_f32(ext + 20);
-			l3 = vld1q_f32(ext + 24);
-			r3 = vld1q_f32(ext + 28);
-			l4 = vld1q_f32(ext + 32);
-			r4 = vld1q_f32(ext + 36);
-			l5 = vld1q_f32(ext + 40);
-			r5 = vld1q_f32(ext + 44);
-			l6 = vld1q_f32(ext + 48);
-			r6 = vld1q_f32(ext + 52);
-			l7 = vld1q_f32(ext + 56);
-			r7 = vld1q_f32(ext + 60);
-		}
-		else 
-		{
-			l0 = vld1q_f32(p0);
-			r0 = vld1q_f32(p0 + 4);
-			p0 += 6;
-			l1 = vld1q_f32(p1);
-			r1 = vld1q_f32(p1 + 4);
-			p1 += 6;
-			l2 = vld1q_f32(p2);
-			r2 = vld1q_f32(p2 + 4);
-			p2 += 6;
-			l3 = vld1q_f32(p3);
-			r3 = vld1q_f32(p3 + 4);
-			p3 += 6;
-			l4 = vld1q_f32(p4);
-			r4 = vld1q_f32(p4 + 4);
-			p4 += 6;
-			l5 = vld1q_f32(p5);
-			r5 = vld1q_f32(p5 + 4);
-			p5 += 6;
-			l6 = vld1q_f32(p6);
-			r6 = vld1q_f32(p6 + 4);
-			p6 += 6;
-			l7 = vld1q_f32(p7);
-			r7 = vld1q_f32(p7 + 4);
-			p7 += 6;
-		}
+                int bid = j * nRowBlocks + i;
+                float *outp = VT + (ic * nBlocks + (bid & 0xFFFFFFFC)) * 64 + (bid & 0x3) * 4;
+                if(((j * 6 + 8) > inputh) || ((i * 6 + 8) > inputw))
+                {
+                    for(int t = 0; t < 16; ++t)
+                        vst1q_f32(ext + t * 4, vZero);
 
-		input_transform(l0,l1,l2,l3,l4,l5,l6,l7,//Target
-				t1,t2,s1,s2,m1,m2,//Auxiliary
-				f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
-		neon_transpose4x4_inplace_f32_cpp(l0, l1, l2, l3);				
-		neon_transpose4x4_inplace_f32_cpp(l4, l5, l6, l7);				
-		input_transform(r0,r1,r2,r3,r4,r5,r6,r7,//Target
-				t1,t2,s1,s2,m1,m2,//Auxiliary
-				f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
-		neon_transpose4x4_inplace_f32_cpp(r0, r1, r2, r3);				
-		neon_transpose4x4_inplace_f32_cpp(r4, r5, r6, r7);				
-		input_transform(l0,l1,l2,l3,r0,r1,r2,r3,//Target
-				t1,t2,s1,s2,m1,m2,//Auxiliary
-				f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
-		input_transform(l4,l5,l6,l7,r4,r5,r6,r7,//Target
-				t1,t2,s1,s2,m1,m2,//Auxiliary
-				f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
+                    int step_h = inputh - j * 6;
+                    int step_w = inputw - i * 6;
+                    if(step_h > 8) step_h = 8;
+                    if(step_w > 8) step_w = 8;
+                    float* edge_blk = input + ic * frameStride + (j * 6) * ldin + (i * 6);
+                    for(int n = 0; n < step_h; ++n)
+                        for(int m = 0; m < step_w; ++m)
+                            ext[n * 8 + m] = *(edge_blk + n * ldin + m);
+                    l0 = vld1q_f32(ext);
+                    r0 = vld1q_f32(ext + 4);
+                    l1 = vld1q_f32(ext + 8);
+                    r1 = vld1q_f32(ext + 12);
+                    l2 = vld1q_f32(ext + 16);
+                    r2 = vld1q_f32(ext + 20);
+                    l3 = vld1q_f32(ext + 24);
+                    r3 = vld1q_f32(ext + 28);
+                    l4 = vld1q_f32(ext + 32);
+                    r4 = vld1q_f32(ext + 36);
+                    l5 = vld1q_f32(ext + 40);
+                    r5 = vld1q_f32(ext + 44);
+                    l6 = vld1q_f32(ext + 48);
+                    r6 = vld1q_f32(ext + 52);
+                    l7 = vld1q_f32(ext + 56);
+                    r7 = vld1q_f32(ext + 60);
+                }
+                else
+                {
+                    l0 = vld1q_f32(p0);
+                    r0 = vld1q_f32(p0 + 4);
+                    p0 += 6;
+                    l1 = vld1q_f32(p1);
+                    r1 = vld1q_f32(p1 + 4);
+                    p1 += 6;
+                    l2 = vld1q_f32(p2);
+                    r2 = vld1q_f32(p2 + 4);
+                    p2 += 6;
+                    l3 = vld1q_f32(p3);
+                    r3 = vld1q_f32(p3 + 4);
+                    p3 += 6;
+                    l4 = vld1q_f32(p4);
+                    r4 = vld1q_f32(p4 + 4);
+                    p4 += 6;
+                    l5 = vld1q_f32(p5);
+                    r5 = vld1q_f32(p5 + 4);
+                    p5 += 6;
+                    l6 = vld1q_f32(p6);
+                    r6 = vld1q_f32(p6 + 4);
+                    p6 += 6;
+                    l7 = vld1q_f32(p7);
+                    r7 = vld1q_f32(p7 + 4);
+                    p7 += 6;
+                }
 
-		//printf("outp offset %d\n", outp - VT);
-		if(bid < nBlocksAligned){
-			vst1q_f32(outp, l0);
-			vst1q_f32(outp + 16, l4);
-			vst1q_f32(outp + 32, l1);
-			vst1q_f32(outp + 48, l5);
+                input_transform(l0,l1,l2,l3,l4,l5,l6,l7,//Target
+                                t1,t2,s1,s2,m1,m2,//Auxiliary
+                                f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
+                neon_transpose4x4_inplace_f32_cpp(l0, l1, l2, l3);
+                neon_transpose4x4_inplace_f32_cpp(l4, l5, l6, l7);
+                input_transform(r0,r1,r2,r3,r4,r5,r6,r7,//Target
+                                t1,t2,s1,s2,m1,m2,//Auxiliary
+                                f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
+                neon_transpose4x4_inplace_f32_cpp(r0, r1, r2, r3);
+                neon_transpose4x4_inplace_f32_cpp(r4, r5, r6, r7);
+                input_transform(l0,l1,l2,l3,r0,r1,r2,r3,//Target
+                                t1,t2,s1,s2,m1,m2,//Auxiliary
+                                f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
+                input_transform(l4,l5,l6,l7,r4,r5,r6,r7,//Target
+                                t1,t2,s1,s2,m1,m2,//Auxiliary
+                                f5_25,f4_25,f4,f2_5,f2,f1_25,f0_5,f0_25);//Constants
 
-			vst1q_f32(outp + 64, l2);
-			vst1q_f32(outp + 80, l6);
-			vst1q_f32(outp + 96, l3);
-			vst1q_f32(outp + 112, l7);
+                if(bid < nBlocksAligned)
+                {
+                    vst1q_f32(outp, l0);
+                    vst1q_f32(outp + 16, l4);
+                    vst1q_f32(outp + 32, l1);
+                    vst1q_f32(outp + 48, l5);
 
-			vst1q_f32(outp + 128, r0);
-			vst1q_f32(outp + 144, r4);
-			vst1q_f32(outp + 160, r1);
-			vst1q_f32(outp + 176, r5);
+                    vst1q_f32(outp + 64, l2);
+                    vst1q_f32(outp + 80, l6);
+                    vst1q_f32(outp + 96, l3);
+                    vst1q_f32(outp + 112, l7);
 
-			vst1q_f32(outp + 192, r2);
-			vst1q_f32(outp + 208, r6);
-			vst1q_f32(outp + 224, r3);
-			vst1q_f32(outp + 240, r7);
-		}else{
-			vst1q_f32(outp, l0);
-			vst1q_f32(outp + rem * 4, l4);
-			vst1q_f32(outp + rem * 8, l1);
-			vst1q_f32(outp + rem * 12, l5);
+                    vst1q_f32(outp + 128, r0);
+                    vst1q_f32(outp + 144, r4);
+                    vst1q_f32(outp + 160, r1);
+                    vst1q_f32(outp + 176, r5);
 
-			vst1q_f32(outp + rem * 16, l2);
-			vst1q_f32(outp + rem * 20, l6);
-			vst1q_f32(outp + rem * 24, l3);
-			vst1q_f32(outp + rem * 28, l7);
+                    vst1q_f32(outp + 192, r2);
+                    vst1q_f32(outp + 208, r6);
+                    vst1q_f32(outp + 224, r3);
+                    vst1q_f32(outp + 240, r7);
+                }
+                else
+                {
+                    vst1q_f32(outp, l0);
+                    vst1q_f32(outp + rem * 4, l4);
+                    vst1q_f32(outp + rem * 8, l1);
+                    vst1q_f32(outp + rem * 12, l5);
 
-			vst1q_f32(outp + rem * 32, r0);
-			vst1q_f32(outp + rem * 36, r4);
-			vst1q_f32(outp + rem * 40, r1);
-			vst1q_f32(outp + rem * 44, r5);
+                    vst1q_f32(outp + rem * 16, l2);
+                    vst1q_f32(outp + rem * 20, l6);
+                    vst1q_f32(outp + rem * 24, l3);
+                    vst1q_f32(outp + rem * 28, l7);
 
-			vst1q_f32(outp + rem * 48, r2);
-			vst1q_f32(outp + rem * 52, r6);
-			vst1q_f32(outp + rem * 56, r3);
-			vst1q_f32(outp + rem * 60, r7);
+                    vst1q_f32(outp + rem * 32, r0);
+                    vst1q_f32(outp + rem * 36, r4);
+                    vst1q_f32(outp + rem * 40, r1);
+                    vst1q_f32(outp + rem * 44, r5);
 
-		}
-	    }
-	}
+                    vst1q_f32(outp + rem * 48, r2);
+                    vst1q_f32(outp + rem * 52, r6);
+                    vst1q_f32(outp + rem * 56, r3);
+                    vst1q_f32(outp + rem * 60, r7);
+
+                }
+            }
+        }
 #ifdef FEATHER_USE_GCD
     });
 #else
@@ -672,411 +626,300 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01, vc02, vc03;
-	float32x4_t vc10, vc11, vc12, vc13;
-	float32x4_t vc20, vc21, vc22, vc23;
-	float32x4_t vc30, vc31, vc32, vc33;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1, v2, v3;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc02 = vdupq_n_f32(0.f);
-	vc03 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc12 = vdupq_n_f32(0.f);
-	vc13 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc22 = vdupq_n_f32(0.f);
-	vc23 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
-	vc32 = vdupq_n_f32(0.f);
-	vc33 = vdupq_n_f32(0.f);
-	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
-	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		v2 = vld1q_f32(vp + 8);
-		v3 = vld1q_f32(vp + 12);
-		vp += 16;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+    float32x4x4_t vc32x4x4_0;
+    float32x4x4_t vc32x4x4_1;
+    float32x4x4_t vc32x4x4_2;
+    float32x4x4_t vc32x4x4_3;
+
+    vc32x4x4_0.val[0] = vdupq_n_f32(0.f);
+    vc32x4x4_0.val[1] = vc32x4x4_0.val[0];
+    vc32x4x4_0.val[2] = vc32x4x4_0.val[0];
+    vc32x4x4_0.val[3] = vc32x4x4_0.val[0];
+    vc32x4x4_1 = vc32x4x4_0;
+    vc32x4x4_2 = vc32x4x4_0;
+    vc32x4x4_3 = vc32x4x4_0;
+
+    const float *up = UTp;
+    for (int ic = 0; ic < inChannels; ++ic, vp += 16, up += 16)
+    {
+        float32x4x4_t v32x4x4;
+        float32x4x4_t u32x4x4;
+        v32x4x4 = vld1q_f32_x4(vp);
+        u32x4x4 = vld1q_f32_x4(up);
+
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc02 = vfmaq_f32(vc02, u0, v2);
-		vc03 = vfmaq_f32(vc03, u0, v3);
+        vc32x4x4_0.val[0] = vfmaq_f32(vc32x4x4_0.val[0], u32x4x4.val[0], v32x4x4.val[0]);
+        vc32x4x4_0.val[1] = vfmaq_f32(vc32x4x4_0.val[1], u32x4x4.val[0], v32x4x4.val[1]);
+        vc32x4x4_0.val[2] = vfmaq_f32(vc32x4x4_0.val[2], u32x4x4.val[0], v32x4x4.val[2]);
+        vc32x4x4_0.val[3] = vfmaq_f32(vc32x4x4_0.val[3], u32x4x4.val[0], v32x4x4.val[3]);
 
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc12 = vfmaq_f32(vc12, u1, v2);
-		vc13 = vfmaq_f32(vc13, u1, v3);
+        vc32x4x4_1.val[0] = vfmaq_f32(vc32x4x4_1.val[0], u32x4x4.val[1], v32x4x4.val[0]);
+        vc32x4x4_1.val[1] = vfmaq_f32(vc32x4x4_1.val[1], u32x4x4.val[1], v32x4x4.val[1]);
+        vc32x4x4_1.val[2] = vfmaq_f32(vc32x4x4_1.val[2], u32x4x4.val[1], v32x4x4.val[2]);
+        vc32x4x4_1.val[3] = vfmaq_f32(vc32x4x4_1.val[3], u32x4x4.val[1], v32x4x4.val[3]);
 
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc22 = vfmaq_f32(vc22, u2, v2);
-		vc23 = vfmaq_f32(vc23, u2, v3);
+        vc32x4x4_2.val[0] = vfmaq_f32(vc32x4x4_2.val[0], u32x4x4.val[2], v32x4x4.val[0]);
+        vc32x4x4_2.val[1] = vfmaq_f32(vc32x4x4_2.val[1], u32x4x4.val[2], v32x4x4.val[1]);
+        vc32x4x4_2.val[2] = vfmaq_f32(vc32x4x4_2.val[2], u32x4x4.val[2], v32x4x4.val[2]);
+        vc32x4x4_2.val[3] = vfmaq_f32(vc32x4x4_2.val[3], u32x4x4.val[2], v32x4x4.val[3]);
 
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
-		vc32 = vfmaq_f32(vc32, u3, v2);
-		vc33 = vfmaq_f32(vc33, u3, v3);
+        vc32x4x4_3.val[0] = vfmaq_f32(vc32x4x4_3.val[0], u32x4x4.val[3], v32x4x4.val[0]);
+        vc32x4x4_3.val[1] = vfmaq_f32(vc32x4x4_3.val[1], u32x4x4.val[3], v32x4x4.val[1]);
+        vc32x4x4_3.val[2] = vfmaq_f32(vc32x4x4_3.val[2], u32x4x4.val[3], v32x4x4.val[2]);
+        vc32x4x4_3.val[3] = vfmaq_f32(vc32x4x4_3.val[3], u32x4x4.val[3], v32x4x4.val[3]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc02 = vmlaq_f32(vc02, u0, v2);
-		vc03 = vmlaq_f32(vc03, u0, v3);
+        vc32x4x4_0.val[0] = vmlaq_f32(vc32x4x4_0.val[0], u32x4x4.val[0], v32x4x4.val[0]);
+        vc32x4x4_0.val[1] = vmlaq_f32(vc32x4x4_0.val[1], u32x4x4.val[0], v32x4x4.val[1]);
+        vc32x4x4_0.val[2] = vmlaq_f32(vc32x4x4_0.val[2], u32x4x4.val[0], v32x4x4.val[2]);
+        vc32x4x4_0.val[4] = vmlaq_f32(vc32x4x4_0.val[3], u32x4x4.val[0], v32x4x4.val[3]);
 
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc12 = vmlaq_f32(vc12, u1, v2);
-		vc13 = vmlaq_f32(vc13, u1, v3);
+        vc32x4x4_1.val[0] = vmlaq_f32(vc32x4x4_1.val[0], u32x4x4.val[1], v32x4x4.val[0]);
+        vc32x4x4_1.val[1] = vmlaq_f32(vc32x4x4_1.val[1], u32x4x4.val[1], v32x4x4.val[1]);
+        vc32x4x4_1.val[2] = vmlaq_f32(vc32x4x4_1.val[2], u32x4x4.val[1], v32x4x4.val[2]);
+        vc32x4x4_1.val[3] = vmlaq_f32(vc32x4x4_1.val[3], u32x4x4.val[1], v32x4x4.val[3]);
 
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc22 = vmlaq_f32(vc22, u2, v2);
-		vc23 = vmlaq_f32(vc23, u2, v3);
+        vc32x4x4_2.val[0] = vmlaq_f32(vc32x4x4_2.val[0], u32x4x4.val[2], v32x4x4.val[0]);
+        vc32x4x4_2.val[1] = vmlaq_f32(vc32x4x4_2.val[1], u32x4x4.val[2], v32x4x4.val[1]);
+        vc32x4x4_2.val[2] = vmlaq_f32(vc32x4x4_2.val[2], u32x4x4.val[2], v32x4x4.val[2]);
+        vc32x4x4_2.val[3] = vmlaq_f32(vc32x4x4_2.val[3], u32x4x4.val[2], v32x4x4.val[3]);
 
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
-		vc32 = vmlaq_f32(vc32, u3, v2);
-		vc33 = vmlaq_f32(vc33, u3, v3);
+        vc32x4x4_3.val[0] = vmlaq_f32(vc32x4x4_3.val[0], u32x4x4.val[3], v32x4x4.val[0]);
+        vc32x4x4_3.val[1] = vmlaq_f32(vc32x4x4_3.val[1], u32x4x4.val[3], v32x4x4.val[1]);
+        vc32x4x4_3.val[2] = vmlaq_f32(vc32x4x4_3.val[2], u32x4x4.val[3], v32x4x4.val[2]);
+        vc32x4x4_3.val[3] = vmlaq_f32(vc32x4x4_3.val[3], u32x4x4.val[3], v32x4x4.val[3]);
 #endif
-	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	vst1q_f32(wp + 8, vc02);
-	vst1q_f32(wp + 12, vc03);
-	//print_floats(wp, 16);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	vst1q_f32(wp + 8, vc12);
-	vst1q_f32(wp + 12, vc13);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	vst1q_f32(wp + 8, vc22);
-	vst1q_f32(wp + 12, vc23);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
-	vst1q_f32(wp + 8, vc32);
-	vst1q_f32(wp + 12, vc33);
+    }
+    vst1q_f32_x4(WTp, vc32x4x4_0);
+    vst1q_f32_x4(WTp + 1*wstride, vc32x4x4_1);
+    vst1q_f32_x4(WTp + 2*wstride, vc32x4x4_2);
+    vst1q_f32_x4(WTp + 3*wstride, vc32x4x4_3);
 }
 
 static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01, vc02;
-	float32x4_t vc10, vc11, vc12;
-	float32x4_t vc20, vc21, vc22;
-	float32x4_t vc30, vc31, vc32;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1, v2;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc02 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc12 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc22 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
-	vc32 = vdupq_n_f32(0.f);
-	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
-	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		v2 = vld1q_f32(vp + 8);
-		vp += 12;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+    float32x4x3_t vc32x4x3_0;
+    float32x4x3_t vc32x4x3_1;
+    float32x4x3_t vc32x4x3_2;
+    float32x4x3_t vc32x4x3_3;
+    float32x4x4_t u32x4x4;
+    float32x4x3_t v32x4x3;
+
+    vc32x4x3_0.val[0] = vdupq_n_f32(0.f);
+    vc32x4x3_0.val[1] = vc32x4x3_0.val[0];
+    vc32x4x3_0.val[2] = vc32x4x3_0.val[0];
+    vc32x4x3_1 = vc32x4x3_0;
+    vc32x4x3_2 = vc32x4x3_0;
+
+    const float *up = UTp;
+    for (int ic = 0; ic < inChannels; ++ic, vp += 12, up += 16)
+    {
+        v32x4x3 = vld1q_f32_x3(vp);
+        u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc02 = vfmaq_f32(vc02, u0, v2);
+        vc32x4x3_0.val[0] = vfmaq_f32(vc32x4x3_0.val[0], u32x4x4.val[0], v32x4x3.val[0]);
+        vc32x4x3_0.val[1] = vfmaq_f32(vc32x4x3_0.val[1], u32x4x4.val[0], v32x4x3.val[1]);
+        vc32x4x3_0.val[2] = vfmaq_f32(vc32x4x3_0.val[2], u32x4x4.val[0], v32x4x3.val[2]);
 
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc12 = vfmaq_f32(vc12, u1, v2);
+        vc32x4x3_1.val[0] = vfmaq_f32(vc32x4x3_1.val[0], u32x4x4.val[1], v32x4x3.val[0]);
+        vc32x4x3_1.val[1] = vfmaq_f32(vc32x4x3_1.val[1], u32x4x4.val[1], v32x4x3.val[1]);
+        vc32x4x3_1.val[2] = vfmaq_f32(vc32x4x3_1.val[2], u32x4x4.val[1], v32x4x3.val[2]);
 
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc22 = vfmaq_f32(vc22, u2, v2);
+        vc32x4x3_2.val[0] = vfmaq_f32(vc32x4x3_2.val[0], u32x4x4.val[2], v32x4x3.val[0]);
+        vc32x4x3_2.val[1] = vfmaq_f32(vc32x4x3_2.val[1], u32x4x4.val[2], v32x4x3.val[1]);
+        vc32x4x3_2.val[2] = vfmaq_f32(vc32x4x3_2.val[2], u32x4x4.val[2], v32x4x3.val[2]);
 
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
-		vc32 = vfmaq_f32(vc32, u3, v2);
+        vc32x4x3_3.val[0] = vfmaq_f32(vc32x4x3_3.val[0], u32x4x4.val[3], v32x4x3.val[0]);
+        vc32x4x3_3.val[1] = vfmaq_f32(vc32x4x3_3.val[1], u32x4x4.val[3], v32x4x3.val[1]);
+        vc32x4x3_3.val[2] = vfmaq_f32(vc32x4x3_3.val[2], u32x4x4.val[3], v32x4x3.val[2]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc02 = vmlaq_f32(vc02, u0, v2);
+        vc32x4x3_0.val[0] = vmlaq_f32(vc32x4x3_0.val[0], u32x4x4.val[0], v32x4x3.val[0]);
+        vc32x4x3_0.val[1] = vmlaq_f32(vc32x4x3_0.val[1], u32x4x4.val[0], v32x4x3.val[1]);
+        vc32x4x3_0.val[2] = vmlaq_f32(vc32x4x3_0.val[2], u32x4x4.val[0], v32x4x3.val[2]);
 
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc12 = vmlaq_f32(vc12, u1, v2);
+        vc32x4x3_1.val[0] = vmlaq_f32(vc32x4x3_1.val[0], u32x4x4.val[1], v32x4x3.val[0]);
+        vc32x4x3_1.val[1] = vmlaq_f32(vc32x4x3_1.val[1], u32x4x4.val[1], v32x4x3.val[1]);
+        vc32x4x3_1.val[2] = vmlaq_f32(vc32x4x3_1.val[2], u32x4x4.val[1], v32x4x3.val[2]);
 
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc22 = vmlaq_f32(vc22, u2, v2);
+        vc32x4x3_2.val[0] = vmlaq_f32(vc32x4x3_2.val[0], u32x4x4.val[2], v32x4x3.val[0]);
+        vc32x4x3_2.val[1] = vmlaq_f32(vc32x4x3_2.val[1], u32x4x4.val[2], v32x4x3.val[1]);
+        vc32x4x3_2.val[2] = vmlaq_f32(vc32x4x3_2.val[2], u32x4x4.val[2], v32x4x3.val[2]);
 
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
-		vc32 = vmlaq_f32(vc32, u3, v2);
+        vc32x4x3_3.val[0] = vmlaq_f32(vc32x4x3_3.val[0], u32x4x4.val[3], v32x4x3.val[0]);
+        vc32x4x3_3.val[1] = vmlaq_f32(vc32x4x3_3.val[1], u32x4x4.val[3], v32x4x3.val[1]);
+        vc32x4x3_3.val[2] = vmlaq_f32(vc32x4x3_3.val[2], u32x4x4.val[3], v32x4x3.val[2]);
 #endif
-	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	vst1q_f32(wp + 8, vc02);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	vst1q_f32(wp + 8, vc12);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	vst1q_f32(wp + 8, vc22);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
-	vst1q_f32(wp + 8, vc32);
+    }
+
+    vst1q_f32_x3(WTp, vc32x4x3_0);
+    vst1q_f32_x3(WTp + wstride, vc32x4x3_1);
+    vst1q_f32_x3(WTp + 2*wstride, vc32x4x3_2);
+    vst1q_f32_x3(WTp + 3*wstride, vc32x4x3_3);
 }
 
 static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00, vc01;
-	float32x4_t vc10, vc11;
-	float32x4_t vc20, vc21;
-	float32x4_t vc30, vc31;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0, v1;
-	vc00 = vdupq_n_f32(0.f);
-	vc01 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc11 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc21 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	vc31 = vdupq_n_f32(0.f);
-	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
-	{
-		//if(oc == 0){
-		//print_floats(vp, 16);
-		//print_floats(up, 16);
-		//}
-		v0 = vld1q_f32(vp);
-		v1 = vld1q_f32(vp + 4);
-		vp += 8;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+    float32x4x2_t vc32x4x2_0, vc32x4x2_1, vc32x4x2_2, vc32x4x2_3;
+    float32x4x4_t u32x4x4;
+    float32x4x2_t v32x4x2;
+
+    vc32x4x2_0.val[0] = vdupq_n_f32(0.f);
+    vc32x4x2_0.val[1] = vc32x4x2_0.val[0];
+    vc32x4x2_1 = vc32x4x2_0;
+    vc32x4x2_2 = vc32x4x2_0;
+    vc32x4x2_3 = vc32x4x2_0;
+
+    const float *up = UTp;
+    for (int ic = 0; ic < inChannels; ++ic, vp += 8, up += 16)
+    {
+        v32x4x2 = vld1q_f32_x2(vp);
+        u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc01 = vfmaq_f32(vc01, u0, v1);
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc11 = vfmaq_f32(vc11, u1, v1);
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc21 = vfmaq_f32(vc21, u2, v1);
-		vc30 = vfmaq_f32(vc30, u3, v0);
-		vc31 = vfmaq_f32(vc31, u3, v1);
+        vc32x4x2_0.val[0] = vfmaq_f32(vc32x4x2_0.val[0], u32x4x4.val[0], v32x4x2.val[0]);
+        vc32x4x2_0.val[1] = vfmaq_f32(vc32x4x2_0.val[1], u32x4x4.val[0], v32x4x2.val[1]);
+        vc32x4x2_1.val[0] = vfmaq_f32(vc32x4x2_1.val[0], u32x4x4.val[1], v32x4x2.val[0]);
+        vc32x4x2_1.val[1] = vfmaq_f32(vc32x4x2_1.val[1], u32x4x4.val[1], v32x4x2.val[1]);
+        vc32x4x2_2.val[0] = vfmaq_f32(vc32x4x2_2.val[0], u32x4x4.val[2], v32x4x2.val[0]);
+        vc32x4x2_2.val[1] = vfmaq_f32(vc32x4x2_2.val[1], u32x4x4.val[2], v32x4x2.val[1]);
+        vc32x4x2_3.val[0] = vfmaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[0]);
+        vc32x4x2_3.val[1] = vfmaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[1]);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc01 = vmlaq_f32(vc01, u0, v1);
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc11 = vmlaq_f32(vc11, u1, v1);
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc21 = vmlaq_f32(vc21, u2, v1);
-		vc30 = vmlaq_f32(vc30, u3, v0);
-		vc31 = vmlaq_f32(vc31, u3, v1);
+        vc32x4x2_0.val[0] = vmlaq_f32(vc32x4x2_0.val[0], u32x4x4.val[0], v32x4x2.val[0]);
+        vc32x4x2_0.val[1] = vmlaq_f32(vc32x4x2_0.val[1], u32x4x4.val[0], v32x4x2.val[1]);
+        vc32x4x2_1.val[0] = vmlaq_f32(vc32x4x2_1.val[0], u32x4x4.val[1], v32x4x2.val[0]);
+        vc32x4x2_1.val[1] = vmlaq_f32(vc32x4x2_1.val[1], u32x4x4.val[1], v32x4x2.val[1]);
+        vc32x4x2_2.val[0] = vmlaq_f32(vc32x4x2_2.val[0], u32x4x4.val[2], v32x4x2.val[0]);
+        vc32x4x2_2.val[1] = vmlaq_f32(vc32x4x2_2.val[1], u32x4x4.val[2], v32x4x2.val[1]);
+        vc32x4x2_3.val[0] = vmlaq_f32(vc32x4x2_3.val[0], u32x4x4.val[3], v32x4x2.val[0]);
+        vc32x4x2_3.val[1] = vmlaq_f32(vc32x4x2_3.val[1], u32x4x4.val[3], v32x4x2.val[1]);
 #endif
-	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	vst1q_f32(wp + 4, vc01);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	vst1q_f32(wp + 4, vc11);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	vst1q_f32(wp + 4, vc21);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
-	vst1q_f32(wp + 4, vc31);
+    }
+    vst1q_f32_x2(WTp, vc32x4x2_0);
+    vst1q_f32_x2(WTp + wstride, vc32x4x2_1);
+    vst1q_f32_x2(WTp + 2*wstride, vc32x4x2_2);
+    vst1q_f32_x2(WTp + 3*wstride, vc32x4x2_3);
 }
 
 static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
 {
-	float32x4_t vc00;
-	float32x4_t vc10;
-	float32x4_t vc20;
-	float32x4_t vc30;
-	float32x4_t u0, u1, u2, u3;
-	float32x4_t v0;
-	vc00 = vdupq_n_f32(0.f);
-	vc10 = vdupq_n_f32(0.f);
-	vc20 = vdupq_n_f32(0.f);
-	vc30 = vdupq_n_f32(0.f);
-	const float *up = UTp;
-	// printf("WTp offset %d\n", WTp - WT);
-	//if(oc == 0)
-	//	    printf("vp offset %d i %d block offset %d depth offset %d\n", vp - (float*)pack_arr, i, (i - start_block_id) * inChannels * depth,d * depth * inChannels);
-	// printf("up offset %d\n", up - UT);
-	for (int ic = 0; ic < inChannels; ++ic)
-	{
-		//if(oc == 0){
-		//print_floats(vp, 4);
-		//print_floats(up, 16);
-		//}
-		//printf("vp %d\n", vp);
-		v0 = vld1q_f32(vp);
-		vp += 4;
-		u0 = vld1q_f32(up);
-		u1 = vld1q_f32(up + 4);
-		u2 = vld1q_f32(up + 8);
-		u3 = vld1q_f32(up + 12);
-		up += 16;
+    float32x4_t vc00;
+    float32x4_t vc10;
+    float32x4_t vc20;
+    float32x4_t vc30;
+    float32x4x4_t u32x4x4;
+    float32x4_t v0;
+
+    vc00 = vdupq_n_f32(0.f);
+    vc10 = vc00;
+    vc20 = vc00;
+    vc30 = vc00;
+
+    const float *up = UTp;
+    for (int ic = 0; ic < inChannels; ++ic, vp += 4, up += 16)
+    {
+        v0 = vld1q_f32(vp);
+        u32x4x4 = vld1q_f32_x4(up);
 #ifdef __aarch64__
-		vc00 = vfmaq_f32(vc00, u0, v0);
-		vc10 = vfmaq_f32(vc10, u1, v0);
-		vc20 = vfmaq_f32(vc20, u2, v0);
-		vc30 = vfmaq_f32(vc30, u3, v0);
+        vc00 = vfmaq_f32(vc00, u32x4x4.val[0], v0);
+        vc10 = vfmaq_f32(vc10, u32x4x4.val[1], v0);
+        vc20 = vfmaq_f32(vc20, u32x4x4.val[2], v0);
+        vc30 = vfmaq_f32(vc30, u32x4x4.val[3], v0);
 #else
-		vc00 = vmlaq_f32(vc00, u0, v0);
-		vc10 = vmlaq_f32(vc10, u1, v0);
-		vc20 = vmlaq_f32(vc20, u2, v0);
-		vc30 = vmlaq_f32(vc30, u3, v0);
+        vc00 = vmlaq_f32(vc00, u32x4x4.val[0], v0);
+        vc10 = vmlaq_f32(vc10, u32x4x4.val[1], v0);
+        vc20 = vmlaq_f32(vc20, u32x4x4.val[2], v0);
+        vc30 = vmlaq_f32(vc30, u32x4x4.val[3], v0);
 #endif
-	}
-	float *wp = WTp;
-	vst1q_f32(wp, vc00);
-	wp += wstride;
-	vst1q_f32(wp, vc10);
-	wp += wstride;
-	vst1q_f32(wp, vc20);
-	wp += wstride;
-	vst1q_f32(wp, vc30);
+    }
+
+    vst1q_f32(WTp, vc00);
+    vst1q_f32(WTp + wstride, vc10);
+    vst1q_f32(WTp + 2*wstride, vc20);
+    vst1q_f32(WTp + 3*wstride, vc30);
 }
 
 
 static inline void winograd_f6k3_output_transform_inplace(
-	float32x4_t &m0,
-	float32x4_t &m1,
-	float32x4_t &m2,
-	float32x4_t &m3,
-	float32x4_t &m4,
-	float32x4_t &m5,
-	float32x4_t &m6,
-	float32x4_t &m7)
+    float32x4_t &m0,
+    float32x4_t &m1,
+    float32x4_t &m2,
+    float32x4_t &m3,
+    float32x4_t &m4,
+    float32x4_t &m5,
+    float32x4_t &m6,
+    float32x4_t &m7)
 {
-	/*
-	 * s0 = m0 + (m1 + m2) +      (m3 + m4) + 32 * (m5 + m6)
-	 * s1 =      (m1 - m2) +  2 * (m3 - m4) + 16 * (m5 - m6)
-	 * s2 =      (m1 + m2) +  4 * (m3 + m4) +  8 * (m5 + m6)
-	 * s3 =      (m1 - m2) +  8 * (m3 - m4) +  4 * (m5 - m6)
-	 * s4 =      (m1 + m2) + 16 * (m3 + m4) +  2 * (m5 + m6)
-	 * s5 =      (m1 - m2) + 32 * (m3 - m4) +      (m5 - m6) + m7
-	 */
+    /*
+     * s0 = m0 + (m1 + m2) +      (m3 + m4) + 32 * (m5 + m6)
+     * s1 =      (m1 - m2) +  2 * (m3 - m4) + 16 * (m5 - m6)
+     * s2 =      (m1 + m2) +  4 * (m3 + m4) +  8 * (m5 + m6)
+     * s3 =      (m1 - m2) +  8 * (m3 - m4) +  4 * (m5 - m6)
+     * s4 =      (m1 + m2) + 16 * (m3 + m4) +  2 * (m5 + m6)
+     * s5 =      (m1 - m2) + 32 * (m3 - m4) +      (m5 - m6) + m7
+     */
 
-	const float32x4_t m1_add_m2 = m1 + m2;
-	const float32x4_t m1_sub_m2 = m1 - m2;
-	const float32x4_t m3_add_m4 = m3 + m4;
-	const float32x4_t m3_sub_m4 = m3 - m4;
-	const float32x4_t m5_add_m6 = m5 + m6;
-	const float32x4_t m5_sub_m6 = m5 - m6;
+    const float32x4_t m1_add_m2 = m1 + m2;
+    const float32x4_t m1_sub_m2 = m1 - m2;
+    const float32x4_t m3_add_m4 = m3 + m4;
+    const float32x4_t m3_sub_m4 = m3 - m4;
+    const float32x4_t m5_add_m6 = m5 + m6;
+    const float32x4_t m5_sub_m6 = m5 - m6;
 
-	// Finised with M[0-6] as **inputs** here.
-	m0 = m0 + m1_add_m2;
-	m5 = m7 + m1_sub_m2;
-	// Finised with M[0-7] as **inputs** here.
+    // Finised with M[0-6] as **inputs** here.
+    m0 = m0 + m1_add_m2;
+    m5 = m7 + m1_sub_m2;
+    // Finised with M[0-7] as **inputs** here.
 
 #ifdef __aarch64__
-	const float32x4_t const_16 = vdupq_n_f32(16.0f);
-	m1 = vfmaq_f32(m1_sub_m2, const_16, m5_sub_m6);
-	m4 = vfmaq_f32(m1_add_m2, const_16, m3_add_m4);
+    const float32x4_t const_16 = vdupq_n_f32(16.0f);
+    m1 = vfmaq_f32(m1_sub_m2, const_16, m5_sub_m6);
+    m4 = vfmaq_f32(m1_add_m2, const_16, m3_add_m4);
 
-	const float32x4_t const_8 = vdupq_n_f32(8.0f);
-	m2 = vfmaq_f32(m1_add_m2, const_8, m5_add_m6);
-	m3 = vfmaq_f32(m1_sub_m2, const_8, m3_sub_m4);
+    const float32x4_t const_8 = vdupq_n_f32(8.0f);
+    m2 = vfmaq_f32(m1_add_m2, const_8, m5_add_m6);
+    m3 = vfmaq_f32(m1_sub_m2, const_8, m3_sub_m4);
 
-	const float32x4_t const_32 = vdupq_n_f32(32.0f);
-	m0 = vfmaq_f32(m0, const_32, m5_add_m6);
-	m0 += m3_add_m4;
+    const float32x4_t const_32 = vdupq_n_f32(32.0f);
+    m0 = vfmaq_f32(m0, const_32, m5_add_m6);
+    m0 += m3_add_m4;
 
-	m5 = vfmaq_f32(m5, const_32, m3_sub_m4);
-	m5 += m5_sub_m6;
+    m5 = vfmaq_f32(m5, const_32, m3_sub_m4);
+    m5 += m5_sub_m6;
 
-	const float32x4_t const_2 = vdupq_n_f32(2.0f);
-	m1 = vfmaq_f32(m1, m3_sub_m4, const_2);
-	m4 = vfmaq_f32(m4, m5_add_m6, const_2);
+    const float32x4_t const_2 = vdupq_n_f32(2.0f);
+    m1 = vfmaq_f32(m1, m3_sub_m4, const_2);
+    m4 = vfmaq_f32(m4, m5_add_m6, const_2);
 
-	const float32x4_t const_4 = vdupq_n_f32(4.0f);
-	m2 = vfmaq_f32(m2, m3_add_m4, const_4);
-	m3 = vfmaq_f32(m3, m5_sub_m6, const_4);
+    const float32x4_t const_4 = vdupq_n_f32(4.0f);
+    m2 = vfmaq_f32(m2, m3_add_m4, const_4);
+    m3 = vfmaq_f32(m3, m5_sub_m6, const_4);
 #else
-	const float32x4_t const_16 = vdupq_n_f32(16.0f);
-	m1 = vmlaq_f32(m1_sub_m2, const_16, m5_sub_m6);
-	m4 = vmlaq_f32(m1_add_m2, const_16, m3_add_m4);
+    const float32x4_t const_16 = vdupq_n_f32(16.0f);
+    m1 = vmlaq_f32(m1_sub_m2, const_16, m5_sub_m6);
+    m4 = vmlaq_f32(m1_add_m2, const_16, m3_add_m4);
 
-	const float32x4_t const_8 = vdupq_n_f32(8.0f);
-	m2 = vmlaq_f32(m1_add_m2, const_8, m5_add_m6);
-	m3 = vmlaq_f32(m1_sub_m2, const_8, m3_sub_m4);
+    const float32x4_t const_8 = vdupq_n_f32(8.0f);
+    m2 = vmlaq_f32(m1_add_m2, const_8, m5_add_m6);
+    m3 = vmlaq_f32(m1_sub_m2, const_8, m3_sub_m4);
 
-	const float32x4_t const_32 = vdupq_n_f32(32.0f);
-	m0 = vmlaq_f32(m0, const_32, m5_add_m6);
-	m0 += m3_add_m4;
+    const float32x4_t const_32 = vdupq_n_f32(32.0f);
+    m0 = vmlaq_f32(m0, const_32, m5_add_m6);
+    m0 += m3_add_m4;
 
-	m5 = vmlaq_f32(m5, const_32, m3_sub_m4);
-	m5 += m5_sub_m6;
+    m5 = vmlaq_f32(m5, const_32, m3_sub_m4);
+    m5 += m5_sub_m6;
 
-	const float32x4_t const_2 = vdupq_n_f32(2.0f);
-	m1 = vmlaq_f32(m1, m3_sub_m4, const_2);
-	m4 = vmlaq_f32(m4, m5_add_m6, const_2);
+    const float32x4_t const_2 = vdupq_n_f32(2.0f);
+    m1 = vmlaq_f32(m1, m3_sub_m4, const_2);
+    m4 = vmlaq_f32(m4, m5_add_m6, const_2);
 
-	const float32x4_t const_4 = vdupq_n_f32(4.0f);
-	m2 = vmlaq_f32(m2, m3_add_m4, const_4);
-	m3 = vmlaq_f32(m3, m5_sub_m6, const_4);
+    const float32x4_t const_4 = vdupq_n_f32(4.0f);
+    m2 = vmlaq_f32(m2, m3_add_m4, const_4);
+    m3 = vmlaq_f32(m3, m5_sub_m6, const_4);
 #endif
-	
-	const float32x4_t const_0 = vdupq_n_f32(0.0f);
-	m6 = const_0;
-	m7 = const_0;	
+
+    const float32x4_t const_0 = vdupq_n_f32(0.0f);
+    m6 = const_0;
+    m7 = const_0;
 }
 
 
@@ -1087,6 +930,7 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
     int nBlocks = nRowBlocks * nColBlocks;
     int nBlocksAligned = nBlocks & 0xFFFFFFFC;
     int rem = nBlocks & 0x3;
+  
 #ifdef FEATHER_USE_GCD
     dispatch_apply(outChannels, dispatch_get_global_queue(0,0), ^(size_t oc)
 #else
@@ -1258,9 +1102,8 @@ size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 
 void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
-	int nBlocks = nRowBlocks * nColBlocks;
-	int depth = 16;
-	//float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t));
+    int nBlocks = nRowBlocks * nColBlocks;
+    int depth = 16;
 #ifdef WINOGRAD_BENCH
     Timer tmr;
     tmr.startBench();
@@ -1270,57 +1113,42 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     tmr.endBench("Input Transform:");
     tmr.startBench();
 #endif
-    //printf("=====VT=====\n");
-    //print_floats(VT, inChannels * 4 * nBlocks, 16);
-    //print_floats(VT, inChannels , 4 * nBlocks* 16);
-    //printf("=====UT=====\n");
-    //print_floats(UT, inChannels * outChannels, 64);
+
     TensorGEMM(WT,VT,UT,
 		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array, num_threads * 32);
     //printf("=============TensorGEMMOut==============\n");
     //print_floats(WT, outChannels , nBlocks * 4* 16);
 #ifdef WINOGRAD_BENCH
     tmr.endBench("Multiplication:");
-#endif
-#ifdef WINOGRAD_BENCH
     tmr.startBench();
 #endif
-    //out type
-#if 0
-    winogradOutputTransform<false, false>(output, inputh-2, inputw-2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-#else
-    switch (outType) {
-	    case None:
-		    winogradOutputTransform<false, false>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-		    break;
-	    case ReLU:
-		   winogradOutputTransform<true, false>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-		    break;
-	    case Bias:
-		    winogradOutputTransform<false, true>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-		    break;
-	    case BiasReLU:
-		    winogradOutputTransform<true, true>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
-		    break;
+
+    switch (outType)
+    {
+    case None:
+        winogradOutputTransform<false, false>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+        break;
+    case ReLU:
+        winogradOutputTransform<true, false>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+        break;
+    case Bias:
+        winogradOutputTransform<false, true>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+        break;
+    case BiasReLU:
+        winogradOutputTransform<true, true>(output, inputh-2, inputw-2,ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+        break;
     }
-#endif
 
 #ifdef WINOGRAD_BENCH
     tmr.endBench("Output transform:");
 #endif
-    //free(pack_arr);
 }
 
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float *WT, float *VT, float *UT, float *input, int inChannels, int inputh, int inputw, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
-    //assert((inputw - 2) % 6 == 0);
-    //assert((inputh - 2) % 6 == 0);
     const int inputFrameStride = inputw * inputh;
     const int nRowBlocks = (inputw + 3) / 6;//inputw - kernelw + 5
     const int nColBlocks = (inputh + 3) / 6;
     const int ldout = inputw - 2;
-    //printf("-----------------\n");
-    //printf("Block dim = %dx%d\n", nRowBlocks, nColBlocks);
-    //printf("ldout = %d\n", ldout);
     winogradNonFusedTransform_inner(output, ldout, WT, VT, UT, inChannels, outChannels, input, inputh, inputw, inputFrameStride, inputw, nRowBlocks, nColBlocks, outType, biasArr, pack_array, num_threads);
 }
