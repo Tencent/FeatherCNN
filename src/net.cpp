@@ -202,7 +202,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                 //Update the respective bottoms in other layers.
                 std::string new_bottom = layers[i]->top(0);
                 std::string old_bottom = next_layer->top(0);
-                printf("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+                //printf("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
                 for (int k = i + 1; k < layers.size(); ++k)
                 {
                     if (k == j)
@@ -214,10 +214,10 @@ bool Net::InitFromBuffer(const void *net_buffer)
                             layers[k]->ReplaceBottomBlob(old_bottom, new_bottom, layers[i]->top_blob(0));
                     }
                 }
-                printf("Erasing layer %d %s\n", j, next_layer->name().c_str());
+                //printf("Erasing layer %d %s\n", j, next_layer->name().c_str());
                 layers.erase(layers.begin() + j);
                 next_layer = layers[j];
-                printf("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
+                //printf("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
             }
         }
     }
