@@ -47,6 +47,7 @@ class ConvLayer : public Layer
 		assert(_weight_blobs.size() > 0);
 		//this->_weight_blobs[0]->PrintBlobInfo();
 		kernel_data = this->_weight_blobs[0]->data();
+		printf("kernel data %x\n", kernel_data);
 		output_channels = this->_weight_blobs[0]->num();
 		// input_channels = this->_weight_blobs[0]->channels();
 		// kernel_data

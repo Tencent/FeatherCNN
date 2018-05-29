@@ -12,8 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_COMMON_H_
-#define TCNN_COMMON_H_
+#pragma once
 
 #include <string>
 #include <cstring>
@@ -31,4 +30,3 @@ public:
 int min(int a, int b);
 void* _mm_malloc(size_t sz, size_t align);
 void _mm_free(void* ptr);
-#endif

@@ -57,7 +57,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
 	  ConvLayer *conv_layer = NULL;
 	  if(group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 512)
 	  {
-#if 1
+#if 0
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
 #else
         conv_layer = (ConvLayer*) new ConvWinogradF63Layer(layer_param, rt_param);

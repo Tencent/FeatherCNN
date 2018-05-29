@@ -1124,8 +1124,7 @@ struct ConvolutionParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table
     VT_STRIDE_W = 26,
     VT_GROUP = 28,
     VT_AXIS = 30,
-    VT_FORCE_ND_IM2COL = 32,
-    VT_FRACTIONS = 34
+    VT_FORCE_ND_IM2COL = 32
   };
   uint32_t num_output() const {
     return GetField<uint32_t>(VT_NUM_OUTPUT, 0);
@@ -1172,9 +1171,6 @@ struct ConvolutionParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table
   bool force_nd_im2col() const {
     return GetField<uint8_t>(VT_FORCE_ND_IM2COL, 0) != 0;
   }
-  uint32_t fractions() const {
-    return GetField<uint32_t>(VT_FRACTIONS, 0);
-  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NUM_OUTPUT) &&
@@ -1196,7 +1192,6 @@ struct ConvolutionParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table
            VerifyField<uint32_t>(verifier, VT_GROUP) &&
            VerifyField<int32_t>(verifier, VT_AXIS) &&
            VerifyField<uint8_t>(verifier, VT_FORCE_ND_IM2COL) &&
-           VerifyField<uint32_t>(verifier, VT_FRACTIONS) &&
            verifier.EndTable();
   }
 };
@@ -1249,9 +1244,6 @@ struct ConvolutionParameterBuilder {
   void add_force_nd_im2col(bool force_nd_im2col) {
     fbb_.AddElement<uint8_t>(ConvolutionParameter::VT_FORCE_ND_IM2COL, static_cast<uint8_t>(force_nd_im2col), 0);
   }
-  void add_fractions(uint32_t fractions) {
-    fbb_.AddElement<uint32_t>(ConvolutionParameter::VT_FRACTIONS, fractions, 0);
-  }
   explicit ConvolutionParameterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -1280,10 +1272,8 @@ inline flatbuffers::Offset<ConvolutionParameter> CreateConvolutionParameter(
     uint32_t stride_w = 0,
     uint32_t group = 1,
     int32_t axis = 1,
-    bool force_nd_im2col = false,
-    uint32_t fractions = 0) {
+    bool force_nd_im2col = false) {
   ConvolutionParameterBuilder builder_(_fbb);
-  builder_.add_fractions(fractions);
   builder_.add_axis(axis);
   builder_.add_group(group);
   builder_.add_stride_w(stride_w);
@@ -1318,8 +1308,7 @@ inline flatbuffers::Offset<ConvolutionParameter> CreateConvolutionParameterDirec
     uint32_t stride_w = 0,
     uint32_t group = 1,
     int32_t axis = 1,
-    bool force_nd_im2col = false,
-    uint32_t fractions = 0) {
+    bool force_nd_im2col = false) {
   return feather::CreateConvolutionParameter(
       _fbb,
       num_output,
@@ -1336,8 +1325,7 @@ inline flatbuffers::Offset<ConvolutionParameter> CreateConvolutionParameterDirec
       stride_w,
       group,
       axis,
-      force_nd_im2col,
-      fractions);
+      force_nd_im2col);
 }
 
 struct CropParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
@@ -2986,18 +2974,13 @@ inline flatbuffers::Offset<BlobShape> CreateBlobShapeDirect(
 struct BlobProto FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_DATA = 4,
-    VT_DATA_FIX = 6,
-    VT_NUM = 8,
-    VT_CHANNELS = 10,
-    VT_HEIGHT = 12,
-    VT_WIDTH = 14,
-    VT_FRACTIONS = 16
+    VT_NUM = 6,
+    VT_CHANNELS = 8,
+    VT_HEIGHT = 10,
+    VT_WIDTH = 12
   };
   const flatbuffers::Vector<float> *data() const {
     return GetPointer<const flatbuffers::Vector<float> *>(VT_DATA);
-  }
-  const flatbuffers::Vector<int16_t> *data_fix() const {
-    return GetPointer<const flatbuffers::Vector<int16_t> *>(VT_DATA_FIX);
   }
   int32_t num() const {
     return GetField<int32_t>(VT_NUM, 0);
@@ -3011,20 +2994,14 @@ struct BlobProto FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   int32_t width() const {
     return GetField<int32_t>(VT_WIDTH, 0);
   }
-  int32_t fractions() const {
-    return GetField<int32_t>(VT_FRACTIONS, 0);
-  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_DATA) &&
            verifier.Verify(data()) &&
-           VerifyOffset(verifier, VT_DATA_FIX) &&
-           verifier.Verify(data_fix()) &&
            VerifyField<int32_t>(verifier, VT_NUM) &&
            VerifyField<int32_t>(verifier, VT_CHANNELS) &&
            VerifyField<int32_t>(verifier, VT_HEIGHT) &&
            VerifyField<int32_t>(verifier, VT_WIDTH) &&
-           VerifyField<int32_t>(verifier, VT_FRACTIONS) &&
            verifier.EndTable();
   }
 };
@@ -3034,9 +3011,6 @@ struct BlobProtoBuilder {
   flatbuffers::uoffset_t start_;
   void add_data(flatbuffers::Offset<flatbuffers::Vector<float>> data) {
     fbb_.AddOffset(BlobProto::VT_DATA, data);
-  }
-  void add_data_fix(flatbuffers::Offset<flatbuffers::Vector<int16_t>> data_fix) {
-    fbb_.AddOffset(BlobProto::VT_DATA_FIX, data_fix);
   }
   void add_num(int32_t num) {
     fbb_.AddElement<int32_t>(BlobProto::VT_NUM, num, 0);
@@ -3049,9 +3023,6 @@ struct BlobProtoBuilder {
   }
   void add_width(int32_t width) {
     fbb_.AddElement<int32_t>(BlobProto::VT_WIDTH, width, 0);
-  }
-  void add_fractions(int32_t fractions) {
-    fbb_.AddElement<int32_t>(BlobProto::VT_FRACTIONS, fractions, 0);
   }
   explicit BlobProtoBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -3068,19 +3039,15 @@ struct BlobProtoBuilder {
 inline flatbuffers::Offset<BlobProto> CreateBlobProto(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<float>> data = 0,
-    flatbuffers::Offset<flatbuffers::Vector<int16_t>> data_fix = 0,
     int32_t num = 0,
     int32_t channels = 0,
     int32_t height = 0,
-    int32_t width = 0,
-    int32_t fractions = 0) {
+    int32_t width = 0) {
   BlobProtoBuilder builder_(_fbb);
-  builder_.add_fractions(fractions);
   builder_.add_width(width);
   builder_.add_height(height);
   builder_.add_channels(channels);
   builder_.add_num(num);
-  builder_.add_data_fix(data_fix);
   builder_.add_data(data);
   return builder_.Finish();
 }
@@ -3088,21 +3055,17 @@ inline flatbuffers::Offset<BlobProto> CreateBlobProto(
 inline flatbuffers::Offset<BlobProto> CreateBlobProtoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<float> *data = nullptr,
-    const std::vector<int16_t> *data_fix = nullptr,
     int32_t num = 0,
     int32_t channels = 0,
     int32_t height = 0,
-    int32_t width = 0,
-    int32_t fractions = 0) {
+    int32_t width = 0) {
   return feather::CreateBlobProto(
       _fbb,
       data ? _fbb.CreateVector<float>(*data) : 0,
-      data_fix ? _fbb.CreateVector<int16_t>(*data_fix) : 0,
       num,
       channels,
       height,
-      width,
-      fractions);
+      width);
 }
 
 inline const feather::NetParameter *GetNetParameter(const void *buf) {
