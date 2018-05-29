@@ -249,7 +249,7 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
 
 void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outChannels)
 {
-	printf("UT %x kernel %x inChannels %zu outChannels %zu\n", UT, kernel, inChannels, outChannels);
+	//printf("UT %x kernel %x inChannels %zu outChannels %zu\n", UT, kernel, inChannels, outChannels);
 	for (int i = 0; i < inChannels; ++i)
 	{
 		for (int j = 0; j < outChannels; ++j)

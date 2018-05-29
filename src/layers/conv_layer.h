@@ -45,12 +45,9 @@ class ConvLayer : public Layer
 		padding_bottom = conv_param->pad_h();
 
 		assert(_weight_blobs.size() > 0);
-		//this->_weight_blobs[0]->PrintBlobInfo();
 		kernel_data = this->_weight_blobs[0]->data();
-		printf("kernel data %x\n", kernel_data);
 		output_channels = this->_weight_blobs[0]->num();
 		// input_channels = this->_weight_blobs[0]->channels();
-		// kernel_data
 		if (bias_term)
 		{
 			assert(this->_weight_blobs.size() == 2);

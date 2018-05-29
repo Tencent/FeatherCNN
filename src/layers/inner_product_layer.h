@@ -33,7 +33,6 @@ class InnerProductLayer : public Layer
 		const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
 		bias_term = inner_product_param->bias_term();
 
-		_weight_blobs[0]->PrintBlobInfo();
 		assert(_weight_blobs.size() > 0);
 		kernel_data = this->_weight_blobs[0]->data();
 		output_channels = this->_weight_blobs[0]->num();
@@ -84,10 +83,8 @@ class InnerProductLayer : public Layer
 		input_height = bottom_blob->height();
 		input_channels = bottom_blob->channels();
 		input_size = bottom_blob->data_size();
-		printf("input %lu %lu %lu\n", input_channels, input_height, input_width);
 		_top_blobs[_top[0]] = new Blob<float>(1, output_channels, 1, 1);
 		_top_blobs[_top[0]]->Alloc();
-		_top_blobs[_top[0]]->PrintBlobInfo();
 		output_size = _top_blobs[_top[0]]->data_size();
 		return 0;
 	}
