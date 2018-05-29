@@ -46,32 +46,38 @@ Layer *GetInputLayer(const LayerParameter *layer_param, const RuntimeParameter<f
 }
 Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
-    const ConvolutionParameter *conv_param = layer_param->convolution_param();
-    size_t group = conv_param->group();
-    size_t kernel_height = conv_param->kernel_h();
-    size_t kernel_width = conv_param->kernel_w();
-    size_t stride_height = conv_param->stride_h();
-    size_t stride_width = conv_param->stride_w();
-
-    ConvLayer *conv_layer = NULL;
-    //printf("[conv] group:%lu kernel_height: %lu kernel_width: %lu stride %lu, %lu\n", group, kernel_height, kernel_width, stride_height, stride_width);
-    if(group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1)
-    {
+	  const ConvolutionParameter *conv_param = layer_param->convolution_param();
+	  size_t group = conv_param->group();
+	  size_t kernel_height = conv_param->kernel_h();
+  	size_t kernel_width = conv_param->kernel_w();
+  	size_t stride_height = conv_param->stride_h();
+   	size_t stride_width = conv_param->stride_w();
+	  size_t input_channels = layer_param->blobs()->Get(0)->channels();
+	  size_t output_channels = layer_param->blobs()->Get(0)->num();
+	//printf("input_channels %d\n", input_channels);
+	  ConvLayer *conv_layer = NULL;
+	  printf("stride %lu, %lu\n", stride_height, stride_width);
+	  if(group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 512)
+	  {
 #if 0
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
 #else
         conv_layer = (ConvLayer*) new ConvWinogradF63Layer(layer_param, rt_param);
 #endif
-    }
-    else if(group == 1)
-    {
-        conv_layer = (ConvLayer*) new ConvIm2colLayer(layer_param, rt_param);
-    }
-    else
-    {
-        conv_layer = new ConvDepthwiseLayer(layer_param, rt_param);
-    }
-    return (Layer *) conv_layer;
+	}
+	else if(group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 4)
+	{
+		conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
+	}
+	else if(group == 1)
+	{
+		conv_layer = (ConvLayer*) new ConvIm2colLayer(layer_param, rt_param);
+	}
+	else//Should be depthwise convolution layer.
+	{
+		conv_layer = new ConvDepthwiseLayer(layer_param, rt_param);
+	}
+	return (Layer *) conv_layer;
 }
 Layer *GetBatchNormLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {

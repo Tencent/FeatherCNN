@@ -18,10 +18,18 @@
 #include <arm_neon.h>
 #include <assert.h>
 #include <string.h>
-#include <omp.h>
 
-//#define DEBUG_PRINT_KERNEL
-//#define DEBUG_PRINT_OUT
+
+//#define FEATHER_USE_GCD
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+#ifdef FEATHER_USE_GCD
+#include <dispatch/dispatch.h>
+#endif
+
 //#define WINOGRAD_BENCH
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels);
@@ -138,7 +146,7 @@ inline void winogradOutputTransformInplace(float32x2_t *o0, float32x2_t *o1, flo
  * k(2, 0) k(2, 1) k(2, 2) k(2, 3) k(2, 4)....
  */
 
-void winogradKernelTransform(float *transKernel, float *kernel)
+void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
 {
     float ktm[24] =
     {
@@ -315,8 +323,14 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     int hdiff = nColBlocks * 6 + 2- inputh;
     int wdiff = nRowBlocks * 6 + 2- inputw;
 
-    #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+#ifdef FEATHER_USE_GCD 
+    dispatch_apply(inChannels, dispatch_get_global_queue(0,0), ^(size_t ic)
+#else
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+#endif
     for (int ic = 0; ic < inChannels; ++ic)
+#endif
     {
         for (int j = 0; j < nColBlocks; ++j)
         {
@@ -460,131 +474,154 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                 }
             }
         }
+#ifdef FEATHER_USE_GCD
+    });
+#else
     }
+#endif
 }
 
-const int cache_block = 8;
-
-void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, int num_threads, float* pack_arr)
+void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, const int inChannels, const int outChannels, const int nRowBlocks, const int nColBlocks, const int num_threads, float* pack_arr, const int cache_block)
 {
-    const int nBlocks = nRowBlocks * nColBlocks;
-    const int nBlocksAligned = nBlocks - nBlocks % 4;
-    const int wstride = nBlocks * 4 * depth;
-    const int vstride = nBlocks * 4 * depth;
+	//Real depth in floating point is $depth * 4.
+	const int nBlocks = nRowBlocks * nColBlocks;
+	const int nBlocksAligned = nBlocks - nBlocks % 4;
+	const int wstride = nBlocks * 4 * depth;
+	const int vstride = nBlocks * 4 * depth;
 
-    assert(nBlocks >= 1);
-    assert(outChannels % 4 == 0);
 
-    int pass = nBlocks / cache_block;
-    int r = nBlocks % cache_block;
-    if(r > 0) ++pass;
+	//assert(nBlocks % 4 == 0);
+	assert(nBlocks >= 1);
+	assert(outChannels % 4 == 0);
+	//int pass = nBlocksAligned / cache_block;
+	//int r = nBlocksAligned % cache_block;
+	int pass = nBlocks / cache_block;
+	int r = nBlocks % cache_block;
+	if(r > 0)
+		++pass;
+	//printf("nBlocks %d, pass block %d pass %d r %d\n", nBlocks, cache_block, pass, r);
+	//TODO: Increase r value when it's too small.
+	//We will be caching for 4 * $cache_block * $depth floats.
+	for (int p = 0; p < pass; p++)
+	{
+		//int tid = omp_get_thread_num();
+		//int tid = 0;
 
-    //TODO: Increase r value when it's too small.
-    //We will be caching for 4 * $cache_block * $depth floats.
-    for (int p = 0; p < pass; p++)
-    {
-        //int tid = omp_get_thread_num();
-        int tid = 0;
-        float32x4_t v0, v1, v2, v3;
+		int start_block_id = p * cache_block;
+		int end_block_id = start_block_id + cache_block;
 
-        int start_block_id = p * cache_block;
-        int end_block_id = start_block_id + cache_block;
+		end_block_id = (end_block_id > nBlocks) ? nBlocks: end_block_id;
+		int end_block_id_aligned = end_block_id & 0xFFFFFFFC;
+		const int rem = end_block_id % 4;
 
-        end_block_id = (end_block_id > nBlocks) ? nBlocks: end_block_id;
-        int end_block_id_aligned = end_block_id & 0xFFFFFFFC;
 
-        float* pack_workp = pack_arr + tid * cache_block * inChannels * depth * 4;
-        //#pragma omp for collapse(2)
-        for (int i = start_block_id; i < end_block_id_aligned; i += 4)
-        {
-            for(int d = 0; d < depth; ++d)
-            {
-                const float *svp = VT + i * 4 * depth + d * 4 * 4;
-                for (int ic = 0; ic < inChannels; ++ic, svp += vstride, pack_workp += 16)
-                {
-                    float32x4x4_t v32x4x4;
-                    v32x4x4 = vld1q_f32_x4(svp);
-                    vst1q_f32_x4(pack_workp, v32x4x4);
-                }
-            }
-        }
-        if(end_block_id % 4 > 0)
-        {
-            int i = end_block_id_aligned;
-            int len = end_block_id - i;
-            //len should be in 1~3
-            for(int d = 0; d < depth; ++d)
-            {
-                //These branches are inefficient on GPUs, but won't cost much on CPUs
-                const float *svp = VT + i * 4 * depth + d * 4 * len;
-                for (int ic = 0; ic < inChannels; ++ic)
-                {
-                    v0 = vld1q_f32(svp);
-                    if(len > 1)
-                        v1 = vld1q_f32(svp + 4);
-                    if(len > 2)
-                        v2 = vld1q_f32(svp + 8);
-                    svp += vstride;
+		/*I have no idea which packing method is faster, seeems that they are not the major bottleneck after loop swapping*/
+#ifdef _OPENMP
+#pragma omp parallel num_threads(num_threads)
+#endif
+		{
+#ifdef _OPENMP
+#pragma omp for collapse(2)
+#endif
+		for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
+		{
+			for(int d = 0; d < depth; ++d)
+			{
+				float *pack_workp = pack_arr + (i - start_block_id) * depth * inChannels * 4+ d * inChannels * 4 * ((i < end_block_id_aligned)?4:rem);
+				float32x4_t v0, v1, v2, v3;
+				for (int ic = 0; ic < inChannels; ++ic)
+				{
+					if(i < end_block_id_aligned){
+						const float *svp = VT + i * 4 * depth + d * 4 * 4 + ic * vstride;
+						//print_floats(svp, 16);
+						v0 = vld1q_f32(svp);
+						v1 = vld1q_f32(svp + 4);
+						v2 = vld1q_f32(svp + 8);
+						v3 = vld1q_f32(svp + 12);
+						svp += vstride;
+						vst1q_f32(pack_workp     , v0);
+						vst1q_f32(pack_workp +  4, v1);
+						vst1q_f32(pack_workp +  8, v2);
+						vst1q_f32(pack_workp + 12, v3);
+						pack_workp += 16;
+					} else {
+						//print_floats(svp, 4 * len);
+						const float *svp = VT + i * 4 * depth + d * 4 * rem + ic * vstride;
+						v0 = vld1q_f32(svp);
+						if(rem > 1)
+							v1 = vld1q_f32(svp + 4);
+						if(rem > 2)
+							v2 = vld1q_f32(svp + 8);
+						svp += vstride;
 
-                    vst1q_f32(pack_workp, v0);
-                    if(len > 1)
-                        vst1q_f32(pack_workp +  4, v1);
-                    if(len > 2)
-                        vst1q_f32(pack_workp +  8, v2);
-                    pack_workp += len * 4;
-                }
-            }
-        }
+						vst1q_f32(pack_workp     , v0);
+						if(rem > 1)
+							vst1q_f32(pack_workp +  4, v1);
+						if(rem > 2)
+							vst1q_f32(pack_workp +  8, v2);
+						pack_workp += rem * 4;
+					}
+				}
+			}
+		}
+#ifdef FEATHER_USE_GCD
+			dispatch_apply(outChannels / 4, dispatch_get_global_queue(0,0), ^(size_t dispatch_i)
+			{
+			int oc = dispatch_i * 4;
+	
+#else
+#ifdef _OPENMP
+#pragma omp for collapse(3)
+#endif
+			for (int oc = 0; oc < outChannels; oc += 4)
+			{
+#endif
+				for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
+				{
+					for (int d = 0; d < depth; ++d)
+					{
+						if(i < end_block_id_aligned){
+							const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
+							const float *vp = pack_arr 
+								+ (i - start_block_id) * inChannels * depth * 4//which block
+								+ d * depth * inChannels;
+							float *WTp = WT + oc * wstride + i * depth * 4 + d * 16 + (i % 4) * 4;
+							TensorGEMMInnerKernel4x4x4(WTp, wstride, UTp, vp, inChannels);
+						}
+						else
+						{
+							int i = end_block_id & 0xFFFFFFC;
+							int len = end_block_id & 0x3;
+							//printf("end_block_id %d i %d len %d wstride %d\n", end_block_id, i, len, wstride);
+							//We are going to compute the remains here.
+							//for (int oc = 0; oc < outChannels; oc += 4)
+							//{
+							const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
+							const float *vp = pack_arr 
+								//+ tid * cache_block * inChannels * depth * 4//which thread
+								+ (i - start_block_id) * inChannels * depth * 4//which block
+								+ d * depth * inChannels * (4 * len) / 16;
+							float *WTp = WT + oc * wstride + i * depth * 4 + d * 4 * len + (i % 4) * 4;
+							if(len == 1){
+								TensorGEMMInnerKernel4x1x4(WTp, wstride, UTp, vp, inChannels);
+							}
+							if(len == 2){
+								TensorGEMMInnerKernel4x2x4(WTp, wstride, UTp, vp, inChannels);
+							}
+							if(len == 3){
+								TensorGEMMInnerKernel4x3x4(WTp, wstride, UTp, vp, inChannels);
+							}
+						}
+					}
+				}
+#ifdef FEATHER_USE_GCD
+			});
+#else
+			}
+#endif
 
-        #pragma omp parallel num_threads(num_threads)
-        {
-            #pragma omp for collapse(3)
-            for (int oc = 0; oc < outChannels; oc += 4)
-            {
-                for (int i = start_block_id; i < end_block_id_aligned; i += 4)
-                {
-                    for (int d = 0; d < depth; ++d)
-                    {
-                        const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
-                        const float *vp = pack_arr + tid * cache_block * inChannels * depth * 4//which thread
-                                          + (i - start_block_id) * inChannels * depth * 4//which block
-                                          + d * depth * inChannels;
-                        float *WTp = WT + oc * wstride + i * depth * 4 + d * 16 + (i % 4) * 4;
-                        TensorGEMMInnerKernel4x4x4(WTp, wstride, UTp, vp, inChannels);
-                    }
-                }
-            }
-            if(end_block_id % 4 > 0)
-            {
-                int i = end_block_id & 0xFFFFFFC;
-                int len = end_block_id & 0x3;
-                //We are going to compute the remains here.
-                for (int d = 0; d < depth; ++d)
-                {
-                    for (int oc = 0; oc < outChannels; oc += 4)
-                    {
-                        const float *UTp = UT + d * 16 * inChannels + oc / 4 * inChannels * 16 * depth;
-                        const float *vp = pack_arr + tid * cache_block * inChannels * depth * 4//which thread
-                                          + (i - start_block_id) * inChannels * depth * 4//which block
-                                          + d * depth * inChannels * (4 * len) / 16;
-                        float *WTp = WT + oc * wstride + i * depth * 4 + d * 4 * len + (i % 4) * 4;
-                        if(len == 1)
-                        {
-                            TensorGEMMInnerKernel4x1x4(WTp, wstride, UTp, vp, inChannels);
-                        }
-                        if(len == 2)
-                        {
-                            TensorGEMMInnerKernel4x2x4(WTp, wstride, UTp, vp, inChannels);
-                        }
-                        if(len == 3)
-                        {
-                            TensorGEMMInnerKernel4x3x4(WTp, wstride, UTp, vp, inChannels);
-                        }
-                    }
-                }
-            }
-        }
-    }
+		}
+	}
 }
 
 static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, const float* &UTp, const float* &vp, const int &inChannels)
@@ -893,157 +930,174 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
     int nBlocks = nRowBlocks * nColBlocks;
     int nBlocksAligned = nBlocks & 0xFFFFFFFC;
     int rem = nBlocks & 0x3;
-    #pragma omp parallel for num_threads(num_threads) schedule(static) collapse(3)
-    for (int oc = 0; oc < outChannels; ++oc)
-    {
-        for (int j = 0; j < nColBlocks; ++j)
-        {
-            for(int i = 0; i < nRowBlocks; ++i)
-            {
-                float32x4_t vBias = vdupq_n_f32(biasArr[oc]);
-                float ext[48];
-                const int offset = nRowBlocks * nColBlocks * 64 * oc;
-                float *wp;
-                float32x4_t s0, s1, s2, s3;
-                float32x2_t o0, o1;
-                float32x2_t d0, d1, d2, d3;
-                int bid = nRowBlocks * j + i;
-                wp = WT + oc * nBlocks * 64 + (bid & 0xFFFFFFFC) * 64 + (bid & 0x3) * 4;
-                float32x4_t l0, l1, l2, l3, l4, l5, l6, l7;
-                float32x4_t r0, r1, r2, r3, r4, r5, r6, r7;
-                if(bid < nBlocksAligned)
-                {
-                    l0 = vld1q_f32(wp);
-                    r0 = vld1q_f32(wp + 16);
-                    l1 = vld1q_f32(wp + 32);
-                    r1 = vld1q_f32(wp + 48);
-                    l2 = vld1q_f32(wp + 64);
-                    r2 = vld1q_f32(wp + 80);
-                    l3 = vld1q_f32(wp + 96);
-                    r3 = vld1q_f32(wp + 112);
-                    l4 = vld1q_f32(wp + 128);
-                    r4 = vld1q_f32(wp + 144);
-                    l5 = vld1q_f32(wp + 160);
-                    r5 = vld1q_f32(wp + 176);
-                    l6 = vld1q_f32(wp + 192);
-                    r6 = vld1q_f32(wp + 208);
-                    l7 = vld1q_f32(wp + 224);
-                    r7 = vld1q_f32(wp + 240);
-                }
-                else
-                {
-                    l0 = vld1q_f32(wp);
-                    r0 = vld1q_f32(wp + rem * 4);
-                    l1 = vld1q_f32(wp + rem * 8);
-                    r1 = vld1q_f32(wp + rem * 12);
-                    l2 = vld1q_f32(wp + rem * 16);
-                    r2 = vld1q_f32(wp + rem * 20);
-                    l3 = vld1q_f32(wp + rem * 24);
-                    r3 = vld1q_f32(wp + rem * 28);
-                    l4 = vld1q_f32(wp + rem * 32);
-                    r4 = vld1q_f32(wp + rem * 36);
-                    l5 = vld1q_f32(wp + rem * 40);
-                    r5 = vld1q_f32(wp + rem * 44);
-                    l6 = vld1q_f32(wp + rem * 48);
-                    r6 = vld1q_f32(wp + rem * 52);
-                    l7 = vld1q_f32(wp + rem * 56);
-                    r7 = vld1q_f32(wp + rem * 60);
-                }
+  
+#ifdef FEATHER_USE_GCD
+    dispatch_apply(outChannels, dispatch_get_global_queue(0,0), ^(size_t oc)
+#else
+#pragma omp parallel for num_threads(num_threads) schedule(static) collapse(3)
+      for (int oc = 0; oc < outChannels; ++oc)
+#endif
+      {
+	      for (int j = 0; j < nColBlocks; ++j)
+	      {
+		      for(int i = 0; i < nRowBlocks; ++i){
+			      float32x4_t vBias = vdupq_n_f32(biasArr[oc]);
+			      float ext[48];
+			      const int offset = nRowBlocks * nColBlocks * 64 * oc;
+			      float *wp;
+			      float32x4_t s0, s1, s2, s3;
+			      float32x2_t o0, o1;
+			      float32x2_t d0, d1, d2, d3;
+			      int bid = nRowBlocks * j + i; 
+			      wp = WT + oc * nBlocks * 64 + (bid & 0xFFFFFFFC) * 64 + (bid & 0x3) * 4;
+			      float32x4_t l0, l1, l2, l3, l4, l5, l6, l7;
+			      float32x4_t r0, r1, r2, r3, r4, r5, r6, r7;
+			      if(bid < nBlocksAligned){
+				      l0 = vld1q_f32(wp);
+				      r0 = vld1q_f32(wp + 16);
+				      l1 = vld1q_f32(wp + 32);
+				      r1 = vld1q_f32(wp + 48);
+				      l2 = vld1q_f32(wp + 64);
+				      r2 = vld1q_f32(wp + 80);
+				      l3 = vld1q_f32(wp + 96);
+				      r3 = vld1q_f32(wp + 112);
+				      l4 = vld1q_f32(wp + 128);
+				      r4 = vld1q_f32(wp + 144);
+				      l5 = vld1q_f32(wp + 160);
+				      r5 = vld1q_f32(wp + 176);
+				      l6 = vld1q_f32(wp + 192);
+				      r6 = vld1q_f32(wp + 208);
+				      l7 = vld1q_f32(wp + 224);
+				      r7 = vld1q_f32(wp + 240);
+			      } else {
+				      //print_floats(wp, 64);
+				      l0 = vld1q_f32(wp);
+				      r0 = vld1q_f32(wp + rem * 4);
+				      l1 = vld1q_f32(wp + rem * 8);
+				      r1 = vld1q_f32(wp + rem * 12);
+				      l2 = vld1q_f32(wp + rem * 16);
+				      r2 = vld1q_f32(wp + rem * 20);
+				      l3 = vld1q_f32(wp + rem * 24);
+				      r3 = vld1q_f32(wp + rem * 28);
+				      l4 = vld1q_f32(wp + rem * 32);
+				      r4 = vld1q_f32(wp + rem * 36);
+				      l5 = vld1q_f32(wp + rem * 40);
+				      r5 = vld1q_f32(wp + rem * 44);
+				      l6 = vld1q_f32(wp + rem * 48);
+				      r6 = vld1q_f32(wp + rem * 52);
+				      l7 = vld1q_f32(wp + rem * 56);
+				      r7 = vld1q_f32(wp + rem * 60);
+			      }
 
-                winograd_f6k3_output_transform_inplace(l0, l1, l2, l3, l4, l5, l6, l7);
-                winograd_f6k3_output_transform_inplace(r0, r1, r2, r3, r4, r5, r6, r7);
-                neon_transpose4x4_inplace_f32_cpp(l0, l1, l2, l3);
-                neon_transpose4x4_inplace_f32_cpp(l4, l5, l6, l7);
-                neon_transpose4x4_inplace_f32_cpp(r0, r1, r2, r3);
-                neon_transpose4x4_inplace_f32_cpp(r4, r5, r6, r7);
-                winograd_f6k3_output_transform_inplace(l0, l1, l2, l3, r0, r1, r2, r3);
-                winograd_f6k3_output_transform_inplace(l4, l5, l6, l7, r4, r5, r6, r7);
-                float *outFrame = output + oc * outputw * outputh + j * outputw * 6 + i * 6;
+			      winograd_f6k3_output_transform_inplace(l0, l1, l2, l3, l4, l5, l6, l7);	
+			      winograd_f6k3_output_transform_inplace(r0, r1, r2, r3, r4, r5, r6, r7);	
+			      neon_transpose4x4_inplace_f32_cpp(l0, l1, l2, l3);
+			      neon_transpose4x4_inplace_f32_cpp(l4, l5, l6, l7);
+			      neon_transpose4x4_inplace_f32_cpp(r0, r1, r2, r3);
+			      neon_transpose4x4_inplace_f32_cpp(r4, r5, r6, r7);
+			      winograd_f6k3_output_transform_inplace(l0, l1, l2, l3, r0, r1, r2, r3);	
+			      winograd_f6k3_output_transform_inplace(l4, l5, l6, l7, r4, r5, r6, r7);	
+			      float *outFrame = output + oc * outputw * outputh + j * outputw * 6 + i * 6;
+			      //printf("block %d outFrame offset %d\n", bid, outFrame - output);
 
-                if(HAS_BIAS)
-                {
-                    l0 = vaddq_f32(l0, vBias);
-                    l1 = vaddq_f32(l1, vBias);
-                    l2 = vaddq_f32(l2, vBias);
-                    l3 = vaddq_f32(l3, vBias);
-                    l4 = vaddq_f32(l4, vBias);
-                    l5 = vaddq_f32(l5, vBias);
-                    l6 = vaddq_f32(l6, vBias);
-                    l7 = vaddq_f32(l7, vBias);
-                    r0 = vaddq_f32(r0, vBias);
-                    r1 = vaddq_f32(r1, vBias);
-                    r4 = vaddq_f32(r4, vBias);
-                    r5 = vaddq_f32(r5, vBias);
-                }
+			      if(HAS_BIAS)
+			      {
+				l0 = vaddq_f32(l0, vBias);
+				l1 = vaddq_f32(l1, vBias);
+				l2 = vaddq_f32(l2, vBias);
+				l3 = vaddq_f32(l3, vBias);
+				l4 = vaddq_f32(l4, vBias);
+				l5 = vaddq_f32(l5, vBias);
+				l6 = vaddq_f32(l6, vBias);
+				l7 = vaddq_f32(l7, vBias);
+				r0 = vaddq_f32(r0, vBias);
+				r1 = vaddq_f32(r1, vBias);
+				r4 = vaddq_f32(r4, vBias);
+				r5 = vaddq_f32(r5, vBias);
+			      }
 
-                if(HAS_RELU)
-                {
-                    l0 = vmaxq_f32(l0, vZero);
-                    l1 = vmaxq_f32(l1, vZero);
-                    l2 = vmaxq_f32(l2, vZero);
-                    l3 = vmaxq_f32(l3, vZero);
-                    l4 = vmaxq_f32(l4, vZero);
-                    l5 = vmaxq_f32(l5, vZero);
-                    l6 = vmaxq_f32(l6, vZero);
-                    l7 = vmaxq_f32(l7, vZero);
-                    r0 = vmaxq_f32(r0, vZero);
-                    r1 = vmaxq_f32(r1, vZero);
-                    r4 = vmaxq_f32(r4, vZero);
-                    r5 = vmaxq_f32(r5, vZero);
-                }
+			      if(HAS_RELU)
+			      {
+				l0 = vmaxq_f32(l0, vZero);
+				l1 = vmaxq_f32(l1, vZero);
+				l2 = vmaxq_f32(l2, vZero);
+				l3 = vmaxq_f32(l3, vZero);
+				l4 = vmaxq_f32(l4, vZero);
+				l5 = vmaxq_f32(l5, vZero);
+				l6 = vmaxq_f32(l6, vZero);
+				l7 = vmaxq_f32(l7, vZero);
+				r0 = vmaxq_f32(r0, vZero);
+				r1 = vmaxq_f32(r1, vZero);
+				r4 = vmaxq_f32(r4, vZero);
+				r5 = vmaxq_f32(r5, vZero);
+			      }
+				
+			      if(((j * 6 + 6) > outputh) || ((i * 6 + 6) > outputw))
+			      {
+				      for(int t = 0; t < 12; ++t)
+				      {
+					      vst1q_f32(ext + t * 4, vZero);
+				      }
+				      int step_h = outputh - j * 6;
+				      int step_w = outputw - i * 6;
+				      if(step_h > 6)
+					      step_h = 6;
+				      if(step_w > 6)
+					      step_w = 6;
+				      //printf("step %dx%d\n", step_h, step_w);
+				      vst1q_f32(ext, l0);
+				      vst1q_f32(ext + 4, l4);
+				      vst1q_f32(ext + 8, l1);
+				      vst1q_f32(ext + 12, l5);
+				      vst1q_f32(ext + 16, l2);
+				      vst1q_f32(ext + 20, l6);
+				      vst1q_f32(ext + 24, l3);
+				      vst1q_f32(ext + 28, l7);
+				      vst1q_f32(ext + 32, r0);
+				      vst1q_f32(ext + 36, r4);
+				      vst1q_f32(ext + 40, r1);
+				      vst1q_f32(ext + 44, r5);
+				      for(int n = 0; n < step_h; ++n)
+				      {
+					      for(int m = 0; m < step_w; ++m)
+					      {
+						      *(outFrame + (n * ldout + m)) = ext[n * 8 + m];
+					      }
+				      }
 
-                if(((j * 6 + 6) > outputh) || ((i * 6 + 6) > outputw))
-                {
-                    for(int t = 0; t < 12; ++t)
-                        vst1q_f32(ext + t * 4, vZero);
-                    int step_h = outputh - j * 6;
-                    int step_w = outputw - i * 6;
-                    if(step_h > 6) step_h = 6;
-                    if(step_w > 6) step_w = 6;
-                    vst1q_f32(ext, l0);
-                    vst1q_f32(ext + 4, l4);
-                    vst1q_f32(ext + 8, l1);
-                    vst1q_f32(ext + 12, l5);
-                    vst1q_f32(ext + 16, l2);
-                    vst1q_f32(ext + 20, l6);
-                    vst1q_f32(ext + 24, l3);
-                    vst1q_f32(ext + 28, l7);
-                    vst1q_f32(ext + 32, r0);
-                    vst1q_f32(ext + 36, r4);
-                    vst1q_f32(ext + 40, r1);
-                    vst1q_f32(ext + 44, r5);
-                    for(int n = 0; n < step_h; ++n)
-                        for(int m = 0; m < step_w; ++m)
-                            *(outFrame + (n * ldout + m)) = ext[n * 8 + m];
-                }
-                else
-                {
-                    vst1q_f32(outFrame, l0);
-                    vst1_f32(outFrame + 4, vget_low_f32(l4));
-                    outFrame += ldout;
-                    vst1q_f32(outFrame, l1);
-                    vst1_f32(outFrame + 4, vget_low_f32(l5));
-                    outFrame += ldout;
-                    vst1q_f32(outFrame, l2);
-                    vst1_f32(outFrame + 4, vget_low_f32(l6));
-                    outFrame += ldout;
-                    vst1q_f32(outFrame, l3);
-                    vst1_f32(outFrame + 4, vget_low_f32(l7));
-                    outFrame += ldout;
-                    vst1q_f32(outFrame, r0);
-                    vst1_f32(outFrame + 4, vget_low_f32(r4));
-                    outFrame += ldout;
-                    vst1q_f32(outFrame, r1);
-                    vst1_f32(outFrame + 4, vget_low_f32(r5));
-                }
-            }
-        }
-    }
+			      }
+			      else
+			      {
+				      vst1q_f32(outFrame, l0);
+				      vst1_f32(outFrame + 4, vget_low_f32(l4));
+				      outFrame += ldout;
+				      vst1q_f32(outFrame, l1);
+				      vst1_f32(outFrame + 4, vget_low_f32(l5));
+				      outFrame += ldout;
+				      vst1q_f32(outFrame, l2);
+				      vst1_f32(outFrame + 4, vget_low_f32(l6));
+				      outFrame += ldout;
+				      vst1q_f32(outFrame, l3);
+				      vst1_f32(outFrame + 4, vget_low_f32(l7));
+				      outFrame += ldout;
+				      vst1q_f32(outFrame, r0);
+				      vst1_f32(outFrame + 4, vget_low_f32(r4));
+				      outFrame += ldout;
+				      vst1q_f32(outFrame, r1);
+				      vst1_f32(outFrame + 4, vget_low_f32(r5));
+			      }
+		      }
+	      }
+#ifdef FEATHER_USE_GCD
+      });
+#else
+      }
+#endif
 }
 
-size_t getPackArraySize_F6x6_3x3(int inChannels)
+size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 {
-    return cache_block * inChannels *  64;/**depth in floats*/
+	return 32 * num_threads * inChannels *  64;/**depth in floats*/
 }
 
 void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
@@ -1061,8 +1115,9 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
 #endif
 
     TensorGEMM(WT,VT,UT,
-               16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array);
-
+		    16, inChannels, outChannels, nRowBlocks, nColBlocks, num_threads, pack_array, num_threads * 32);
+    //printf("=============TensorGEMMOut==============\n");
+    //print_floats(WT, outChannels , nBlocks * 4* 16);
 #ifdef WINOGRAD_BENCH
     tmr.endBench("Multiplication:");
     tmr.startBench();

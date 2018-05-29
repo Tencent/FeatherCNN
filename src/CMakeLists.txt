@@ -4,7 +4,7 @@ file(GLOB LAYER_HEADERS layers/*.h)
 file(GLOB LAYER_SRC layers/*.cpp)
 file(GLOB FLATBUFFERS_HEADERS flatbuffers/*.h)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wno-format")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wno-format")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -std=c++11 -Wall")
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
