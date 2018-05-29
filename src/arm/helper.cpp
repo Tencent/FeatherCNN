@@ -22,37 +22,37 @@
 void print_vec2(float32x4_t* vp)
 {
     float* ep = (float *) vp;
-    printf("input %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep+1), *(ep+2), *(ep+3));
+    printf("input %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
 }
 
 void print_vec3(float32x4_t* vp)
 {
     float* ep = (float *) vp;
-    printf("transformed %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep+1), *(ep+2), *(ep+3));
+    printf("transformed %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
 }
 
 void print_vec(float32x4_t* vp, const char* comment)
 {
     float* ep = (float *) vp;
-    printf("%s %.3f, %.3f, %.3f, %.3f\n", comment, *(ep), *(ep+1), *(ep+2), *(ep+3));
+    printf("%s %.3f, %.3f, %.3f, %.3f\n", comment, *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
 }
 
 
 void print_vec(float32x4_t* vp)
 {
     float* ep = (float *) vp;
-    printf("vec %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep+1), *(ep+2), *(ep+3));
+    printf("vec %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
 }
 
 void print_arr(float* vp)
 {
     float* ep = (float *) vp;
-    printf("arr %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep+1), *(ep+2), *(ep+3));
+    printf("arr %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
 }
 
 void print_floats(const float* arr, const int len)
 {
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         printf("%.2f ", arr[i]);
     }
@@ -61,9 +61,9 @@ void print_floats(const float* arr, const int len)
 
 void print_floats(const float* arr, const int dimX, const int dimY)
 {
-    for(int i = 0; i < dimX; ++i)
+    for (int i = 0; i < dimX; ++i)
     {
-        for(int j = 0; j < dimY; ++j)
+        for (int j = 0; j < dimY; ++j)
             printf("%.2f ", arr[i * dimY + j]);
         printf("\n");
     }
@@ -74,10 +74,10 @@ void print_floats(const float* arr, const int dimX, const int dimY)
 void diff(float* arr1, float* arr2, int len)
 {
     float dif = 0.0f;
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         float err = fabsf(arr1[i] - arr2[i]);
-        if(err > 1.0f)
+        if (err > 1.0f)
         {
             dif += err;
         }
@@ -87,12 +87,12 @@ void diff(float* arr1, float* arr2, int len)
 void diff(float* arr1, float* arr2, int M, int N)
 {
     float dif = 0.0f;
-    for(int i = 0; i < M; ++i)
+    for (int i = 0; i < M; ++i)
     {
-        for(int j = 0; j < N; ++j)
+        for (int j = 0; j < N; ++j)
         {
             float err = fabsf(arr1[i * N + j] - arr2[i * N + j]);
-            if(err > 1.0f)
+            if (err > 1.0f)
             {
                 dif += err;
                 printf("Error position (%d, %d), value %.2f, %.2f\n", i, j, arr1[i * N + j], arr2[i * N + j]);
@@ -112,13 +112,13 @@ void Timer::startBench()
 void Timer::endBench(const char* comment)
 {
     clock_gettime(CLOCK_MONOTONIC, &stop);
-    double elapsedTime = (stop.tv_sec - start.tv_sec)* 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
+    double elapsedTime = (stop.tv_sec - start.tv_sec) * 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
     printf("%s %lfms\n", comment, elapsedTime);
 }
 
 void Timer::endBench(const char* comment, double fold)
 {
     clock_gettime(CLOCK_MONOTONIC, &stop);
-    double elapsedTime = (stop.tv_sec - start.tv_sec)* 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
+    double elapsedTime = (stop.tv_sec - start.tv_sec) * 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
     printf("%s %lfms\n", comment, elapsedTime / fold);
 }

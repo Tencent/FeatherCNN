@@ -27,27 +27,27 @@ Layer::Layer(const void* layer_param_in, const RuntimeParameter<float>* rt_param
     _name = layer_param->name()->str();
     _type = layer_param->type()->str();
 
-    for(int i = 0; i < VectorLength(layer_param->bottom()); ++i)
+    for (int i = 0; i < VectorLength(layer_param->bottom()); ++i)
         _bottom.push_back(layer_param->bottom()->Get(i)->str());
 
-    for(int i = 0; i < VectorLength(layer_param->top()); ++i)
+    for (int i = 0; i < VectorLength(layer_param->top()); ++i)
         _top.push_back(layer_param->top()->Get(i)->str());
 
     size_t blob_num = VectorLength(layer_param->blobs());
 
     /* Construct weight blobs */
-    for(int i = 0; i < blob_num; ++i)
+    for (int i = 0; i < blob_num; ++i)
     {
         const BlobProto* proto = (const BlobProto*) layer_param->blobs()->Get(i);
-	Blob<float>* p_blob = new Blob<float>();
-	p_blob->FromProto(layer_param->blobs()->Get(i));
-	_weight_blobs.push_back(p_blob);
+        Blob<float>* p_blob = new Blob<float>();
+        p_blob->FromProto(layer_param->blobs()->Get(i));
+        _weight_blobs.push_back(p_blob);
     }
 }
 
 int Layer::SetupBottomBlob(const Blob<float>* p_blob, std::string name)
 {
-    if(std::find(_bottom.begin(), _bottom.end(), name) == _bottom.end())
+    if (std::find(_bottom.begin(), _bottom.end(), name) == _bottom.end())
         return -1;
     _bottom_blobs[name] = p_blob;
     return 0;
@@ -62,7 +62,7 @@ int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, con
     name_iter = std::find(_bottom.begin(), _bottom.end(), old_bottom);
     blob_iter = _bottom_blobs.find(old_bottom);
 
-    if(name_iter == _bottom.end() || blob_iter == _bottom_blobs.end())
+    if (name_iter == _bottom.end() || blob_iter == _bottom_blobs.end())
         return -1;
 
     *name_iter = new_bottom;//should not change order
@@ -77,11 +77,11 @@ int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, con
 int Layer::TryFuse(Layer *next_layer)
 {
     //Judge if next_layer points to this layer.
-    for(int i = 0; i < next_layer->bottom_size(); ++i)
+    for (int i = 0; i < next_layer->bottom_size(); ++i)
     {
-        for(int j = 0; j < this->top_size(); ++j)
+        for (int j = 0; j < this->top_size(); ++j)
         {
-            if(this->top(j).compare(next_layer->bottom(i)) == 0)
+            if (this->top(j).compare(next_layer->bottom(i)) == 0)
             {
                 return Fuse(next_layer);
             }
@@ -97,7 +97,7 @@ int Layer::Fuse(Layer* next_layer)
 
 int Layer::GenerateTopBlobs()
 {
-    if(_top.size() != 1 || _bottom.size() != 1)
+    if (_top.size() != 1 || _bottom.size() != 1)
         return -1;
     Blob<float>* p_blob = new Blob<float>();
     p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
@@ -145,7 +145,7 @@ size_t Layer::top_blob_size()
 }
 const Blob<float>* Layer::top_blob(std::string name)
 {
-    if(_top_blobs.find(name) != _top_blobs.end())
+    if (_top_blobs.find(name) != _top_blobs.end())
         return _top_blobs[name];
     else
         return NULL;
@@ -161,7 +161,7 @@ const size_t Layer::weight_blob_num() const
 }
 const Blob<float>* Layer::weight_blob(size_t i) const
 {
-    return i > _weight_blobs.size()? NULL:_weight_blobs[i];
+    return i > _weight_blobs.size() ? NULL : _weight_blobs[i];
 }
 bool Layer::fusible() const
 {

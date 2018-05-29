@@ -40,7 +40,7 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
         this->Alloc();
         for (int i = 0; i < data_length; ++i)
         {
-	    this->_data[i] = proto->data()->Get(i);
+            this->_data[i] = proto->data()->Get(i);
         }
     }
     else

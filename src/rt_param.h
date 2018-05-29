@@ -23,24 +23,24 @@
 template<typename Dtype>
 class RuntimeParameter
 {
-public:
-    RuntimeParameter() : _common_mempool(NULL), _num_threads(1)
-    {
-    }
-    RuntimeParameter(CommonMemPool<Dtype> *common_mempool, size_t num_threads)
-        : _common_mempool(common_mempool), _num_threads(num_threads)
-    {
-    }
-    CommonMemPool<Dtype>* common_mempool() const
-    {
-        return _common_mempool;
-    }
-    size_t num_threads() const
-    {
-        return _num_threads;
-    }
+    public:
+        RuntimeParameter() : _common_mempool(NULL), _num_threads(1)
+        {
+        }
+        RuntimeParameter(CommonMemPool<Dtype> *common_mempool, size_t num_threads)
+            : _common_mempool(common_mempool), _num_threads(num_threads)
+        {
+        }
+        CommonMemPool<Dtype>* common_mempool() const
+        {
+            return _common_mempool;
+        }
+        size_t num_threads() const
+        {
+            return _num_threads;
+        }
 
-private:
-    CommonMemPool<Dtype> *_common_mempool;
-    size_t _num_threads;
+    private:
+        CommonMemPool<Dtype> *_common_mempool;
+        size_t _num_threads;
 };

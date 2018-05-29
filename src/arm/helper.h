@@ -31,12 +31,12 @@ void diff(float* arr1, float* arr2, int M, int N);
 #include <time.h>
 class Timer
 {
-public:
-    Timer() {}
-    virtual ~Timer() {}
-    void startBench();
-    void endBench(const char *commets);
-    void endBench(const char *commets, double fold);
-private:
-    timespec start, stop;
+    public:
+        Timer() {}
+        virtual ~Timer() {}
+        void startBench();
+        void endBench(const char *commets);
+        void endBench(const char *commets, double fold);
+    private:
+        timespec start, stop;
 };

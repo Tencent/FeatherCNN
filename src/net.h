@@ -23,21 +23,21 @@ namespace feather
 {
 class Net
 {
-public:
-    Net(size_t num_threads);
-    ~Net();
+    public:
+        Net(size_t num_threads);
+        ~Net();
 
-    void InitFromPath(const char *model_path);
-    void InitFromFile(FILE *fp);
-    bool InitFromBuffer(const void *net_buffer);
+        void InitFromPath(const char *model_path);
+        void InitFromFile(FILE *fp);
+        bool InitFromBuffer(const void *net_buffer);
 
-    int  Forward(float* input);
-    void TraverseNet();
-    int GetBlobDataSize(size_t* data_size, std::string blob_name);
-    int ExtractBlob(float* output_ptr, std::string blob_name);//Don't forget to free this memory.
-private:
-    std::vector<Layer *> layers;
-    RuntimeParameter<float> *rt_param;
-    std::map<std::string, const Blob<float> *> blob_map;
+        int  Forward(float* input);
+        void TraverseNet();
+        int GetBlobDataSize(size_t* data_size, std::string blob_name);
+        int ExtractBlob(float* output_ptr, std::string blob_name);//Don't forget to free this memory.
+    private:
+        std::vector<Layer *> layers;
+        RuntimeParameter<float> *rt_param;
+        std::map<std::string, const Blob<float> *> blob_map;
 };
 };

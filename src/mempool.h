@@ -23,50 +23,50 @@
 template<typename PTR_TYPE>
 class CommonMemPool
 {
-public:
-    CommonMemPool():common_size(0), common_memory(NULL) {}
-    ~CommonMemPool();
+    public:
+        CommonMemPool(): common_size(0), common_memory(NULL) {}
+        ~CommonMemPool();
 
-    //Single common memory pool
-    bool Request(size_t size_byte);
-    bool GetPtr(PTR_TYPE ** ptr);
-    bool Free();
+        //Single common memory pool
+        bool Request(size_t size_byte);
+        bool GetPtr(PTR_TYPE ** ptr);
+        bool Free();
 
-    //Multiple common pools by ID
-    bool Request(size_t size_byte, size_t id);
-    bool GetPtr(PTR_TYPE ** ptr, size_t id);
-    bool Free(size_t id);
+        //Multiple common pools by ID
+        bool Request(size_t size_byte, size_t id);
+        bool GetPtr(PTR_TYPE ** ptr, size_t id);
+        bool Free(size_t id);
 
-    bool Alloc();
-    bool FreeAll();
-    void PrintStats();
+        bool Alloc();
+        bool FreeAll();
+        void PrintStats();
 
-private:
-    //Default common memory pool
-    size_t common_size;
-    PTR_TYPE * common_memory;
+    private:
+        //Default common memory pool
+        size_t common_size;
+        PTR_TYPE * common_memory;
 
-    //Map common ID to size
-    std::map<size_t, size_t> common_size_map;
-    //Map common ID to pointer
-    std::map<size_t, PTR_TYPE *> common_ptr_map;
+        //Map common ID to size
+        std::map<size_t, size_t> common_size_map;
+        //Map common ID to pointer
+        std::map<size_t, PTR_TYPE *> common_ptr_map;
 };
 
 template<typename PTR_TYPE>
 class PrivateMemPool
 {
-public:
-    PrivateMemPool();
-    ~PrivateMemPool();
+    public:
+        PrivateMemPool();
+        ~PrivateMemPool();
 
-    //For private and instant memory allocation
-    bool Alloc(PTR_TYPE ** ptr, size_t size_byte);
-    bool GetSize(PTR_TYPE * ptr, size_t *size_byte);
-    bool Free(PTR_TYPE ** ptr);
-    bool FreeAll();
-    void PrintStats();
-private:
-    //Map private pointer to size
-    std::map<PTR_TYPE *, size_t> private_map;
+        //For private and instant memory allocation
+        bool Alloc(PTR_TYPE ** ptr, size_t size_byte);
+        bool GetSize(PTR_TYPE * ptr, size_t *size_byte);
+        bool Free(PTR_TYPE ** ptr);
+        bool FreeAll();
+        void PrintStats();
+    private:
+        //Map private pointer to size
+        std::map<PTR_TYPE *, size_t> private_map;
 };
 #endif
