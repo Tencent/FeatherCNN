@@ -2,14 +2,14 @@
 
 //Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
 
-//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
 //
 //https://opensource.org/licenses/BSD-3-Clause
 //
-//Unless required by applicable law or agreed to in writing, software distributed 
-//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
-//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+//Unless required by applicable law or agreed to in writing, software distributed
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
 #include <net.h>
@@ -21,16 +21,9 @@
 #include <iostream>
 #include <fstream>
 
-void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
-{
-	for(char *s=strtok((char *)input.data(), (char *)delim.data()); s; s=strtok(NULL, (char *)delim.data()))
-	{
-		if (s != NULL)
-		{
-			parts.push_back(s);
-		}
-	}
-}
+using namespace std;
+using namespace feather;
+
 
 void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 {
@@ -96,20 +89,4 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 		delete [] input;
 		input = NULL;
 	}
-}
-
-int main(int argc, char* argv[])
-{
-	if(argc == 5)
-	{
-		size_t num_threads = atoi(argv[4]);
-		size_t loop = atoi(argv[3]);
-		test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
-	}
-	else
-	{
-		fprintf(stderr, "Usage: ./testRun [feathermodel] [input_data] [loop_count] [num_threads]\n");
-		return 0;
-	}
-	return 0;
 }

@@ -2,14 +2,14 @@
 
 //Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
 
-//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
 //
 //https://opensource.org/licenses/BSD-3-Clause
 //
-//Unless required by applicable law or agreed to in writing, software distributed 
-//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
-//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+//Unless required by applicable law or agreed to in writing, software distributed
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
 #pragma once
@@ -17,25 +17,26 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
+#include <common.h>
 
 namespace feather
 {
 template <class Dtype>
 class Blob
 {
-  public:
+public:
     Blob()
-        : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
-    
+        : _num(0), _channels(0), _height(0), _width(0), _fractions(0), _data(NULL) {}
+
     explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name() {}
 
 
     explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name() {}
 
     explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
-        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name) {}
+        : _data(data), _num(num), _channels(channels), _height(height), _width(width), _fractions(0), _name(name) {}
 
     ~Blob()
     {
@@ -45,12 +46,7 @@ class Blob
 
     void Alloc();
 
-    void CopyData(const float* data, const size_t size)
-    {
-        assert(size == _num * _channels * _height * _width);
-        memcpy(_data, data, sizeof(Dtype) * size);
-    }
-    void CopyData(const float* data)
+    void CopyData(const Dtype* data)
     {
         size_t size = _num * _channels * _height * _width;
         memcpy(_data, data, sizeof(Dtype) * size);
@@ -61,14 +57,14 @@ class Blob
         this->_channels = p_blob->channels();
         this->_width = p_blob->width();
         this->_height = p_blob->height();
+        this->_fractions = p_blob->fractions();
     }
     void Copy(const Blob<Dtype>* p_blob)
     {
-	    CopyShape(p_blob);
-	    this->PrintBlobInfo();
-	    this->Alloc();
-	    assert(p_blob->data_size() == this->data_size());
-	    CopyData(p_blob->data());
+        CopyShape(p_blob);
+        this->Alloc();
+        assert(p_blob->data_size() == this->data_size());
+        CopyData(p_blob->data());
     }
 
     void FromProto(const void *proto_in);//proto MUST be of type BlobProto*
@@ -78,10 +74,10 @@ class Blob
         return _data;
     }
 
-	size_t data_size() const
-	{
-		return _num * _channels * _height *_width;
-	}
+    size_t data_size() const
+    {
+        return _num * _channels * _height *_width;
+    }
 
     std::string name()
     {
@@ -103,20 +99,28 @@ class Blob
     {
         return _width;
     }
-
+    size_t fractions() const
+    {
+        return _fractions;
+    }
     void PrintBlobInfo() const
     {
         printf("----BlobInfo----\n");
-        printf("Shape in nchw (%zu %zu %zu %zu)\n", _num, _channels, _height, _width);
+        printf("Shape in nchw (%zu %zu %zu %zu) [Fractions: %zu]\n", _num, _channels, _height, _width, _fractions);
+        if (0 == _fractions)
+            printf("Data (%9.6f %9.6f %9.6f %9.6f)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
+        else
+            printf("Data (%d %d %d %d)\n", *((Dtype*)_data+0), *((Dtype*)_data+1), *((Dtype*)_data+2), *((Dtype*)_data+3));
         printf("----------------\n");
     }
 
-  private:
+private:
     Dtype* _data;
     size_t _num;
     size_t _channels;
     size_t _height;
     size_t _width;
+    size_t _fractions;
 
     std::string _name;
 };
