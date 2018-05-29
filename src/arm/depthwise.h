@@ -12,12 +12,8 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_DEPTH_WISE_H_
-#define TCNN_DEPTH_WISE_H_
+#pragma once
 
 #include <stdio.h>
 
 void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads);
-void dwConvFix(float* output, float* input, int inw, int inh, int stridew, int strideh, short* kernel, int kw, int kh, int group, int nThreads);
-
-#endif /* TCNN_DEPTH_WISE_H_ */

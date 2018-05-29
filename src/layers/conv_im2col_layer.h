@@ -182,37 +182,20 @@ public:
         int M = (int)output_channels;
         int L = (int)input_channels * (int)kernel_height * (int)kernel_width;
         int eM = M + (8 - M % 8) % 8;
-        if (0 == fractions)
-        {
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(float) * eM * L));
-        }
-        else
-        {
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc((void**)&packed_kernel, sizeof(short) * eM * L));
-        }
+	MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * eM * L));
         MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)));
 
-        if (0 != this->fractions)
-        {
-            if (M % 8 == 0)
-                externalPackA8Fix(M, L, packed_kernel, kernel_data_fix, L);
-            else
-                externalPackAFix(M, L, packed_kernel, kernel_data_fix, L);
-        }
-        else
-        {
-            if (M % 8 == 0)
-                externalPackA8(M, L, (float *)packed_kernel, kernel_data, L);
-            else
-                externalPackA(M, L, (float *)packed_kernel, kernel_data, L);
-        }
+	if (M % 8 == 0)
+		externalPackA8(M, L, (float *)packed_kernel, kernel_data, L);
+	else
+		externalPackA(M, L, (float *)packed_kernel, kernel_data, L);
         //Setup input and output pointers.
         input = _bottom_blobs[_bottom[0]]->data();
         output = _top_blobs[_top[0]]->data();
         return 0;
     }
 private:
-    void* packed_kernel;
+    float* packed_kernel;
     float* img_buffer;
 
     float* input;

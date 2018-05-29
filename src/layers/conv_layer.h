@@ -28,7 +28,6 @@ public:
     ConvLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
         : Layer(layer_param, rt_param)
     {
-        int i = 0;
         //From proto
         const ConvolutionParameter *conv_param = layer_param->convolution_param();
         bias_term = conv_param->bias_term();
@@ -44,22 +43,12 @@ public:
         padding_top = conv_param->pad_h();
         padding_right = conv_param->pad_w();
         padding_bottom = conv_param->pad_h();
-        fractions = conv_param->fractions();
 
-        if (0 == fractions)
-        {
-            kernel_data = this->_weight_blobs[0]->data();
-            output_channels = this->_weight_blobs[0]->num();
-            i++;
-        }
-        else
-        {
-            kernel_data_fix = this->_weight_blobs_fix[0]->data();
-            output_channels = this->_weight_blobs_fix[0]->num();
-        }
+	kernel_data = this->_weight_blobs[0]->data();
+	output_channels = this->_weight_blobs[0]->num();
 
         if (bias_term)
-            bias_data = this->_weight_blobs[i]->data();
+            bias_data = this->_weight_blobs[1]->data();
     }
 
     int GenerateTopBlobs()
@@ -119,11 +108,9 @@ protected:
     size_t padding_bottom;
 
     size_t group;
-    size_t fractions;
     bool bias_term;
 
     float *kernel_data;
-    short *kernel_data_fix;
     float *bias_data;
 };
 };

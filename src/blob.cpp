@@ -32,22 +32,15 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     this->_channels = proto->channels();
     this->_height = proto->height();
     this->_width = proto->width();
-    this->_fractions = proto->fractions();
     size_t data_length;
-    if (0 == this->_fractions)
-        data_length = proto->data()->Length();
-    else
-        data_length = proto->data_fix()->Length();
+    data_length = proto->data()->Length();
 
     if (_num * _channels * _height * _width == data_length)
     {
         this->Alloc();
         for (int i = 0; i < data_length; ++i)
         {
-            if (0 == this->_fractions)
-                this->_data[i] = proto->data()->Get(i);
-            else
-                this->_data[i] = proto->data_fix()->Get(i);
+	    this->_data[i] = proto->data()->Get(i);
         }
     }
     else

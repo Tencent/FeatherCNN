@@ -12,8 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_GENERIC_KERNELS_H_
-#define TCNN_GENERIC_KERNELS_H_
+#pragma once
 
 #include <stdio.h>
 
@@ -42,4 +41,3 @@ void biasReluVec(float* arr, int len, float bias);
 void reluVecOpenmp(float* arr, int len, int nThreads);
 void biasVecOpenmp(float* arr, int len, float bias, int nThreads);
 void biasReluVecOpenmp(float* arr, int len, float bias, int nThreads);
-#endif /* TCNN_GENERIC_KERNELS_H_ */
