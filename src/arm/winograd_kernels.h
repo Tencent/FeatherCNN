@@ -28,5 +28,5 @@ void transformKernel(float* UT, float* kernel, int inChannels, int outChannels, 
 void winogradNonFusedTransform(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, int num_threads);
 
 size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads);
-void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels, float *ST);
+void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels);
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, float* pack_array, int num_threads);

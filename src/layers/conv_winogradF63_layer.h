@@ -2,14 +2,14 @@
 
 //Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
 
-//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except 
 //in compliance with the License. You may obtain a copy of the License at
 //
 //https://opensource.org/licenses/BSD-3-Clause
 //
-//Unless required by applicable law or agreed to in writing, software distributed
-//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-//CONDITIONS OF ANY KIND, either express or implied. See the License for the
+//Unless required by applicable law or agreed to in writing, software distributed 
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 //specific language governing permissions and limitations under the License.
 
 #pragma once
@@ -84,12 +84,12 @@ class ConvWinogradF63Layer : public ConvLayer
 		winograd_mem_size += packArraySize; //WT
 		winograd_mem_size += inputw * inputh * input_channels;                           //Padded Input
 
-		float* ST = NULL;
+		//float* ST = NULL;
 		MEMPOOL_CHECK_RETURN(common_mempool->Request(winograd_mem_size * sizeof(float)));
 		MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&UT, 64 * input_channels * output_channels * sizeof(float)));
-		MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&ST, 64 * input_channels * output_channels * sizeof(float)));
-		transformKernel_F6x6_3x3(UT, kernel_data, input_channels, output_channels, ST);
-		MEMPOOL_CHECK_RETURN(private_mempool.Free(&ST));
+		//MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&ST, 64 * input_channels * output_channels * sizeof(float)));
+		transformKernel_F6x6_3x3(UT, kernel_data, input_channels, output_channels);
+		//MEMPOOL_CHECK_RETURN(private_mempool.Free(&ST));
 		if(bias_term && fuse_relu){
 			winograd_out_type = BiasReLU;
 		}else if(bias_term)
