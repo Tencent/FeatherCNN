@@ -94,6 +94,5 @@ We have tested FeatherCNN on a bunch of devices, see [**this page**](https://git
 
 ## User Groups
 
-Telegram: https://t.me/FeatherCNN
-
-QQ: 728147343
+* Telegram: <https://t.me/FeatherCNN>
+* [QQ](https://im.qq.com): 728147343
