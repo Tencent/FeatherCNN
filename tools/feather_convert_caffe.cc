@@ -613,14 +613,7 @@ defalut:
             }
             else if (layer_type.compare("Dropout") == 0)
             {
-                float scale = 1.0f;
-                auto caffe_dropout_param = caffe_layer.dropout_param();
 
-                scale = caffe_dropout_param.dropout_ratio();
-
-                feather::DropoutParameterBuilder dropout_param_builder(fbb);
-                dropout_param_builder.add_dropout_ratio(scale);
-                dropout_param = dropout_param_builder.Finish();
             }
 
             auto layer_name_fbb = fbb.CreateString(layer_name);
