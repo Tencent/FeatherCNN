@@ -401,13 +401,23 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 printf("bias term %d\n", caffe_conv_param.bias_term());
                 conv_param_builder.add_bias_term(caffe_conv_param.bias_term());
 
-                conv_param_builder.add_kernel_h(caffe_conv_param.kernel_size(0));
-                if (caffe_conv_param.kernel_size_size() == 1)
-                    conv_param_builder.add_kernel_w(caffe_conv_param.kernel_size(0));
-                else if (caffe_conv_param.kernel_size_size() == 2)
-                    conv_param_builder.add_kernel_w(caffe_conv_param.kernel_size(1));
-                else
-                    ;
+		if(caffe_conv_param.kernel_size_size() > 0){
+			conv_param_builder.add_kernel_h(caffe_conv_param.kernel_size(0));
+			if (caffe_conv_param.kernel_size_size() == 1)
+				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_size(0));
+			else if (caffe_conv_param.kernel_size_size() == 2)
+				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_size(1));
+			else
+				;
+		} else {
+			if(caffe_conv_param.has_kernel_h() && caffe_conv_param.has_kernel_w())
+			{
+				conv_param_builder.add_kernel_h(caffe_conv_param.kernel_h());	
+				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_w());	
+			}
+			else
+				fprintf(stderr, "Bad kernel_h/w configuration.\n");
+		}
 
                 if (caffe_conv_param.stride_size() == 1)
                 {
@@ -461,7 +471,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     conv_param_builder.add_group(caffe_conv_param.group());
 
                 printf("+ num_output %u\n", caffe_conv_param.num_output());
-                printf("+ kernel_h %d\n", caffe_conv_param.kernel_size(0));
+                //printf("+ kernel_h %d\n", caffe_conv_param.kernel_size(0));
                 printf("+ stride_size %d\n", caffe_conv_param.stride_size());
                 printf("+ group %d\n", caffe_conv_param.group());
                 conv_param = conv_param_builder.Finish();
@@ -564,6 +574,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 auto caffe_softmax_param = caffe_layer.softmax_param();
                 feather::SoftmaxParameterBuilder softmax_param_builder(fbb);
                 softmax_param_builder.add_axis(caffe_softmax_param.axis());
+		softmax_param_builder.Finish();
             }
             else if (layer_type.compare("Scale") == 0)
             {
