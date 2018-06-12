@@ -183,7 +183,6 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
     for (int i = 0; i < channels; i++)
     {
         int j = 0;
-#if 0
         float32x4_t v_alpha = vdupq_n_f32(alpha[i]);
         float32x4_t v_beta  = vdupq_n_f32(beta[i]);
         float32x4_t v_scale = vdupq_n_f32(0.f);
@@ -195,7 +194,7 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
 
         const float *inputCur = input + i * stride;
         float *outputCur = output + i * stride;
-        for (; j < stride; j += 4)
+        for (; j < ((int)stride) - 4; j += 4)
         {
             float32x4_t v_input = vld1q_f32(inputCur + j);
 #ifdef __aarch64__
@@ -211,8 +210,6 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
                 v_norm = vmaxq_f32(v_norm, v_zero);
             vst1q_f32(outputCur + j, v_norm);
         }
-        if (j > stride) j -= 4;
-#endif
         for (; j < stride; j++)
         {
             float norm = beta[i] * input[i * stride + j] + alpha[i];
