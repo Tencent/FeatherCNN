@@ -2,5 +2,5 @@
 
 ./build_scripts/build_android.sh
 pushd test
-./install.sh
+./test/install.sh
 popd
