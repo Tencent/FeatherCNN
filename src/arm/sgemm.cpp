@@ -1886,7 +1886,7 @@ void block_sgemm_external_pack_threading_8x8(int M, int N, int L, float *a, floa
     unsigned int tN = N / num_threads / factor;
 
     tN = (tN + 7) & 0xFFFFFFF8;
-    unsigned int lastSN = N - (num_threads * factor - 1) * tN;
+    int lastSN = N - (num_threads * factor - 1) * tN;
     while (lastSN <= 0)
     {
         --num_threads;
