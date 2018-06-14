@@ -47,8 +47,33 @@ class ConvDepthwiseLayer : public ConvLayer
             float *output = _top_blobs[_top[0]]->data();
             int inputw = input_width + padding_left + padding_right;
             int inputh = input_height + padding_top + padding_bottom;
-            pad_input(padded_input, input, input_channels, input_width, input_height, padding_left, padding_top, padding_right, padding_bottom);
-            dwConv(output, padded_input, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads);
+/*
+	    printf("group %d %d %d %d %d %d %d %d\n", group, input_channels, input_height, input_width, padding_top, padding_bottom, padding_left, padding_right);
+	    printf("stride %d %d %d %d\n",  stride_width, stride_height, kernel_width, kernel_height);
+
+	    printf("====INPUT=========\n");
+	    for(int i=0;i<input_channels*input_height*input_width;i++)	printf("%f ", input[i]);
+	    printf("====INPUT=========\n");
+
+	    printf("====KERNEL=========\n");
+	    for(int i=0;i<input_channels*input_height*input_width;i++)	printf("%f ", kernel_data[i]);
+	    printf("====KERNEL=========\n");
+            
+
+	    printf("====BIAS=========\n");
+	    for(int i=0;i<input_channels;i++)	printf("%f ", bias_data[i]);
+	    printf("====BIAS=========\n");
+*/
+	   
+	    if(padding_left==0 && padding_right==0 && padding_top==0 && padding_bottom==0)	;
+	    else 
+	    	pad_input(padded_input, input, input_channels, input_width, input_height, padding_left, padding_top, padding_right, padding_bottom);
+	    
+	    if(inputw==kernel_width && inputh==kernel_height)
+            	globalDwConv(output, input, input_channels, inputw, inputh, kernel_data, group, num_threads);
+	    else 	
+            	dwConv(output, padded_input, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads);
+
             if (bias_term)
             {
                 size_t out_stride = output_width * output_height;

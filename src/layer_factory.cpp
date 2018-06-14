@@ -33,8 +33,10 @@
 #include "layers/pooling_layer.h"
 #include "layers/eltwise_layer.h"
 #include "layers/inner_product_layer.h"
+
 #include "layers/softmax_layer.h"
 #include "layers/concat_layer.h"
+#include "layers/filter_layer.h"
 
 #include <stdio.h>
 
@@ -57,6 +59,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     ConvLayer *conv_layer = NULL;
     if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 512)
     {
+//	printf("F63\n");
 #if 0
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
 #else
@@ -65,18 +68,25 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     }
     else if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 4)
     {
+//	printf("F23\n");
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
     }
     else if (group == 1)
     {
+//	printf("Im2col\n");
         conv_layer = (ConvLayer*) new ConvIm2colLayer(layer_param, rt_param);
     }
     else//Should be depthwise convolution layer.
     {
+//	printf("Depthwise convolution\n");
         conv_layer = new ConvDepthwiseLayer(layer_param, rt_param);
     }
     return (Layer *) conv_layer;
 }
+//Layer *GetDepthwiseConvolutionLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+//{
+//    return (Layer *)new ConvDepthwiseLayer(layer_param, rt_param);
+//}
 Layer *GetBatchNormLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
     return (Layer *)new BatchNormLayer(layer_param, rt_param);
@@ -125,11 +135,16 @@ Layer *GetSoftmaxLayer(const LayerParameter *layer_param, const RuntimeParameter
 {
     return (Layer *)new SoftmaxLayer(layer_param, rt_param);
 }
+Layer *GetFilterLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+    return (Layer *)new FilterLayer(layer_param, rt_param);
+}
 
 void register_layer_creators()
 {
     REGISTER_LAYER_CREATOR(Input, GetInputLayer);
     REGISTER_LAYER_CREATOR(Convolution, GetConvolutionLayer);
+    //REGISTER_LAYER_CREATOR(DepthwiseConvolution, GetDepthwiseConvolutionLayer);
     REGISTER_LAYER_CREATOR(BatchNorm, GetBatchNormLayer);
     REGISTER_LAYER_CREATOR(LRN, GetLRNLayer);
     REGISTER_LAYER_CREATOR(Concat, GetConcatLayer);
@@ -142,5 +157,6 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Eltwise, GetEltwiseLayer);
     REGISTER_LAYER_CREATOR(InnerProduct, GetInnerProductLayer);
     REGISTER_LAYER_CREATOR(Softmax, GetSoftmaxLayer);
+    REGISTER_LAYER_CREATOR(Filter, GetFilterLayer);
 }
 };

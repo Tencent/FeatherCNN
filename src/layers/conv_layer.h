@@ -32,7 +32,18 @@ class ConvLayer : public Layer
             const ConvolutionParameter *conv_param = layer_param->convolution_param();
             bias_term = conv_param->bias_term();
 
-            group = conv_param->group();
+	    group = conv_param->group();
+	    if(group == 0)	group = 1;
+/*
+	    if(this->type().compare("DepthwiseConvolution") == 0)
+	    {
+		printf("depthwise convolution\n");
+	    }
+	    else
+	    {
+		    //group = conv_param->group();
+	    }
+*/
             kernel_height = conv_param->kernel_h();
             kernel_width = conv_param->kernel_w();
 
@@ -48,7 +59,11 @@ class ConvLayer : public Layer
             kernel_data = this->_weight_blobs[0]->data();
             output_channels = this->_weight_blobs[0]->num();
             // input_channels = this->_weight_blobs[0]->channels();
-            if (bias_term)
+      
+	    if(stride_width  == 0)	stride_width  = 1;
+	    if(stride_height == 0) 	stride_height = 1; 
+
+	    if (bias_term)
             {
                 assert(this->_weight_blobs.size() == 2);
                 bias_data = this->_weight_blobs[1]->data();
@@ -59,6 +74,7 @@ class ConvLayer : public Layer
         {
             //Conv layer has and only has one bottom blob.
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+	    printf("bottom name %s ptr 0x%lx\n", _bottom[0].c_str(), bottom_blob);
             input_width = bottom_blob->width();
             input_height = bottom_blob->height();
             input_channels = bottom_blob->channels();

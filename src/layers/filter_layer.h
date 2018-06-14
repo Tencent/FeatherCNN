@@ -14,7 +14,27 @@
 
 #pragma once
 
-#include <stdio.h>
+#include "../feather_simple_generated.h"
+#include "../layer.h"
 
-void globalDwConv(float* output, const float* input, int input_channels, int inw, int inh, float* kernel, int group, int nThreads);
-void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads);
+namespace feather
+{
+class FilterLayer : public Layer
+{
+    public:
+        FilterLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
+            : num_output(0),
+              Layer(layer_param, rt_param)
+        {
+            num_output = layer_param->filter_param()->num_output();
+        }
+
+        int GenerateTopBlobs();
+        int Forward();
+        int Init();
+
+    private:
+        int    num_output;
+        float* select_weights;
+};
+};
