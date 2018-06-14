@@ -54,6 +54,24 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
     return 0;
 }
 
+int Net::PrintBlobData(std::string blob_name)
+{
+    size_t data_size;
+    this->GetBlobDataSize(&data_size, blob_name);
+    float *arr = (float*) malloc(sizeof(float) * data_size);
+    this->ExtractBlob(arr, blob_name);
+    size_t len = data_size;
+
+    for (int i = 0; i < len; ++i)
+    {
+        printf("%f\t", arr[i]);
+    }
+    printf("\n");
+    free(arr);
+	
+    return 0;
+}
+
 int Net::GetBlobDataSize(size_t *data_size, std::string name)
 {
     if (blob_map.find(std::string(name)) == blob_map.end())
@@ -79,17 +97,20 @@ int Net::Forward(float *input)
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-        //printf("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
+//        printf("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
         layers[i]->Forward();
 #if 0
         for (size_t j = 0; j < layers[i]->top_blob_size(); j++)
             layers[i]->top_blob(j)->PrintBlobInfo();
+
+	PrintBlobData(layers[i]->name());	
 #endif
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
         printf("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
+
     }
     return 0;
 }

@@ -76,6 +76,8 @@ struct BlobShape;
 
 struct BlobProto;
 
+struct FilterParameter;
+
 namespace EltwiseParameter_ {
 
 enum EltwiseOp {
@@ -435,14 +437,15 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_POOLING_PARAM = 50,
     VT_POWER_PARAM = 52,
     VT_PRELU_PARAM = 54,
-    VT_REDUCTION_PARAM = 56,
-    VT_RELU_PARAM = 58,
-    VT_RESHAPE_PARAM = 60,
-    VT_SCALE_PARAM = 62,
-    VT_SIGMOID_PARAM = 64,
-    VT_SOFTMAX_PARAM = 66,
-    VT_SLICE_PARAM = 68,
-    VT_TANH_PARAM = 70
+    VT_FILTER_PARAM = 56,
+    VT_REDUCTION_PARAM = 58,
+    VT_RELU_PARAM = 60,
+    VT_RESHAPE_PARAM = 62,
+    VT_SCALE_PARAM = 64,
+    VT_SIGMOID_PARAM = 66,
+    VT_SOFTMAX_PARAM = 68,
+    VT_SLICE_PARAM = 70,
+    VT_TANH_PARAM = 72
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
@@ -521,6 +524,9 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   const PReLUParameter *prelu_param() const {
     return GetPointer<const PReLUParameter *>(VT_PRELU_PARAM);
+  }
+  const FilterParameter *filter_param() const {
+    return GetPointer<const FilterParameter *>(VT_FILTER_PARAM);
   }
   const ReductionParameter *reduction_param() const {
     return GetPointer<const ReductionParameter *>(VT_REDUCTION_PARAM);
@@ -603,6 +609,8 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyTable(power_param()) &&
            VerifyOffset(verifier, VT_PRELU_PARAM) &&
            verifier.VerifyTable(prelu_param()) &&
+           VerifyOffset(verifier, VT_FILTER_PARAM) &&
+           verifier.VerifyTable(filter_param()) &&
            VerifyOffset(verifier, VT_REDUCTION_PARAM) &&
            verifier.VerifyTable(reduction_param()) &&
            VerifyOffset(verifier, VT_RELU_PARAM) &&
@@ -704,6 +712,9 @@ struct LayerParameterBuilder {
   void add_prelu_param(flatbuffers::Offset<PReLUParameter> prelu_param) {
     fbb_.AddOffset(LayerParameter::VT_PRELU_PARAM, prelu_param);
   }
+  void add_filter_param(flatbuffers::Offset<FilterParameter> filter_param) {
+    fbb_.AddOffset(LayerParameter::VT_FILTER_PARAM, filter_param);
+  }
   void add_reduction_param(flatbuffers::Offset<ReductionParameter> reduction_param) {
     fbb_.AddOffset(LayerParameter::VT_REDUCTION_PARAM, reduction_param);
   }
@@ -768,6 +779,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
     flatbuffers::Offset<PoolingParameter> pooling_param = 0,
     flatbuffers::Offset<PowerParameter> power_param = 0,
     flatbuffers::Offset<PReLUParameter> prelu_param = 0,
+    flatbuffers::Offset<FilterParameter> filter_param = 0,
     flatbuffers::Offset<ReductionParameter> reduction_param = 0,
     flatbuffers::Offset<ReLUParameter> relu_param = 0,
     flatbuffers::Offset<ReshapeParameter> reshape_param = 0,
@@ -785,6 +797,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
   builder_.add_reshape_param(reshape_param);
   builder_.add_relu_param(relu_param);
   builder_.add_reduction_param(reduction_param);
+  builder_.add_filter_param(filter_param);
   builder_.add_prelu_param(prelu_param);
   builder_.add_power_param(power_param);
   builder_.add_pooling_param(pooling_param);
@@ -842,6 +855,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
     flatbuffers::Offset<PoolingParameter> pooling_param = 0,
     flatbuffers::Offset<PowerParameter> power_param = 0,
     flatbuffers::Offset<PReLUParameter> prelu_param = 0,
+    flatbuffers::Offset<FilterParameter> filter_param = 0,
     flatbuffers::Offset<ReductionParameter> reduction_param = 0,
     flatbuffers::Offset<ReLUParameter> relu_param = 0,
     flatbuffers::Offset<ReshapeParameter> reshape_param = 0,
@@ -878,6 +892,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
       pooling_param,
       power_param,
       prelu_param,
+      filter_param,
       reduction_param,
       relu_param,
       reshape_param,
@@ -3066,6 +3081,46 @@ inline flatbuffers::Offset<BlobProto> CreateBlobProtoDirect(
       channels,
       height,
       width);
+}
+
+struct FilterParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  enum {
+    VT_NUM_OUTPUT = 4
+  };
+  int32_t num_output() const {
+    return GetField<int32_t>(VT_NUM_OUTPUT, 0);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int32_t>(verifier, VT_NUM_OUTPUT) &&
+           verifier.EndTable();
+  }
+};
+
+struct FilterParameterBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_num_output(int32_t num_output) {
+    fbb_.AddElement<int32_t>(FilterParameter::VT_NUM_OUTPUT, num_output, 0);
+  }
+  explicit FilterParameterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  FilterParameterBuilder &operator=(const FilterParameterBuilder &);
+  flatbuffers::Offset<FilterParameter> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<FilterParameter>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<FilterParameter> CreateFilterParameter(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    int32_t num_output = 0) {
+  FilterParameterBuilder builder_(_fbb);
+  builder_.add_num_output(num_output);
+  return builder_.Finish();
 }
 
 inline const feather::NetParameter *GetNetParameter(const void *buf) {
