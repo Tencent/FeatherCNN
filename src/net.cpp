@@ -139,7 +139,7 @@ void Net::InitFromPath(const char *model_path)
 }
 
 
-void InitFromStringPath(std::string model_path)
+void Net::InitFromStringPath(std::string model_path)
 {
 	InitFromPath(model_path.c_str());
 }
