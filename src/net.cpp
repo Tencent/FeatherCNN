@@ -137,6 +137,13 @@ void Net::InitFromPath(const char *model_path)
     this->InitFromFile(fp);
     fclose(fp);
 }
+
+
+void InitFromStringPath(std::string model_path)
+{
+	InitFromPath(model_path.c_str());
+}
+
 void Net::InitFromFile(FILE* fp)
 {
     if (fp == NULL)
