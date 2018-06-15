@@ -56,6 +56,8 @@ An example:
 
 [**Android Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-Guide)
 
+[**Android ADB Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-ADB-Guide)
+
 ## Usage
 
 ### Model Format Conversion
