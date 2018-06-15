@@ -54,7 +54,7 @@ class ConvIm2colLayer : public ConvLayer
         {
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));
 	    if(group <=0)	group = 1;
-#if 0
+#if 1
             if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
             {
                 if (output_channels % 8 == 0)

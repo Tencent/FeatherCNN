@@ -16,7 +16,6 @@
 
 #include "layer.h"
 #include "rt_param.h"
-
 #include <vector>
 
 namespace feather
@@ -28,6 +27,7 @@ class Net
         ~Net();
 
         void InitFromPath(const char *model_path);
+        void InitFromStringPath(std::string model_path);
         void InitFromFile(FILE *fp);
         bool InitFromBuffer(const void *net_buffer);
 
