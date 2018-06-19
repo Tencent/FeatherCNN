@@ -84,9 +84,6 @@ class ConvWinogradF63Layer : public ConvLayer
             winograd_mem_size += packArraySize; //WT
             winograd_mem_size += inputw * inputh * input_channels;                           //Padded Input
 
-	    printf("====kernel_data=======\n");
-	    for(int i=0;i<3*12*9;i++)	printf("%f ", kernel_data[i]);
-	    printf("====kernel_data=======\n");
             MEMPOOL_CHECK_RETURN(common_mempool->Request(winograd_mem_size * sizeof(float)));
             MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&UT, 64 * input_channels * output_channels * sizeof(float)));
             transformKernel_F6x6_3x3(UT, kernel_data, input_channels, output_channels);
