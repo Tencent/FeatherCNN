@@ -15,7 +15,9 @@
 #include <string.h>
 #include <pthread.h>
 #include <arm_neon.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "common.h"
 #include "sgemm.h"
 
@@ -1883,10 +1885,10 @@ void block_sgemm_external_pack_threading_8x8(int M, int N, int L, float *a, floa
     if (num_threads > 8)   num_threads = 8;
 
     const int factor = 1;
-    unsigned int tN = N / num_threads / factor;
+    int tN = N / num_threads / factor;
 
     tN = (tN + 7) & 0xFFFFFFF8;
-    unsigned int lastSN = N - (num_threads * factor - 1) * tN;
+    int lastSN = N - (num_threads * factor - 1) * tN;
     while (lastSN <= 0)
     {
         --num_threads;
@@ -1904,7 +1906,11 @@ void block_sgemm_external_pack_threading_8x8(int M, int N, int L, float *a, floa
     {
         #pragma omp parallel num_threads(num_threads)
         {
+#ifdef _OPENMP
             int tid = omp_get_thread_num();
+#else
+            int tid = 0;
+#endif
             int sN = tN;
             if (tid == num_threads - 1)
                 sN = N - tid * tN;
