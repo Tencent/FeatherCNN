@@ -16,7 +16,6 @@
 #define TCNN_MEMORY_POOL_H_
 
 #include <map>
-#include <common.h>
 
 #define MEMPOOL_CHECK_RETURN(var) {if(!var){fprintf(stderr, "Err in file %s line %d\n", __FILE__, __LINE__);return false;}}
 

@@ -15,6 +15,8 @@
 #include "feather_simple_generated.h"
 #include "blob.h"
 
+#include "common.h"
+
 namespace feather
 {
 template<class Dtype>

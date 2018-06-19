@@ -17,7 +17,6 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
-#include <common.h>
 
 namespace feather
 {
