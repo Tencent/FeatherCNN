@@ -437,15 +437,15 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_POOLING_PARAM = 50,
     VT_POWER_PARAM = 52,
     VT_PRELU_PARAM = 54,
-    VT_FILTER_PARAM = 56,
-    VT_REDUCTION_PARAM = 58,
-    VT_RELU_PARAM = 60,
-    VT_RESHAPE_PARAM = 62,
-    VT_SCALE_PARAM = 64,
-    VT_SIGMOID_PARAM = 66,
-    VT_SOFTMAX_PARAM = 68,
-    VT_SLICE_PARAM = 70,
-    VT_TANH_PARAM = 72
+    VT_REDUCTION_PARAM = 56,
+    VT_RELU_PARAM = 58,
+    VT_RESHAPE_PARAM = 60,
+    VT_SCALE_PARAM = 62,
+    VT_SIGMOID_PARAM = 64,
+    VT_SOFTMAX_PARAM = 66,
+    VT_SLICE_PARAM = 68,
+    VT_TANH_PARAM = 70,
+    VT_FILTER_PARAM = 72
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
