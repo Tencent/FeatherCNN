@@ -274,6 +274,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                     }
                 }
                 //LOGD("Erasing layer %d %s\n", j, next_layer->name().c_str());
+		delete layers[j];
                 layers.erase(layers.begin() + j);
                 next_layer = layers[j];
                 //LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
