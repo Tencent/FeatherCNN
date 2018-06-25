@@ -58,6 +58,8 @@ void SplitString(const std::string &input, const std::string &delim, std::vector
 
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
+	for(int i = 0; i < 1; ++i){
+
     printf("++++++Start Loader++++++\n");
     feather::Net forward_net(num_threads);
     forward_net.InitFromPath(model_path.c_str());
@@ -71,7 +73,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 
     while (getline(in, line))
     {
-        for (int i = 0; i < 1; ++i)
+        for (int i = 0; i < 2; ++i)
         {
             std::vector<std::string> parts;
             SplitString(line, delim, parts);
@@ -101,6 +103,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
         delete [] input;
         input = NULL;
     }
+	}
 }
 int main(int argc, char* argv[])
 {
