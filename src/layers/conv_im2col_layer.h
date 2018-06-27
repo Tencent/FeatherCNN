@@ -45,8 +45,13 @@ class ConvIm2colLayer : public ConvLayer
 {
     public:
         ConvIm2colLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : img_buffer(0), ConvLayer(layer_param, rt_param)
+            : fuse_relu(false), kc(0), nc(0), img_buffer(0), ConvLayer(layer_param, rt_param)
         {
+		_fusible = true;
+		kc = 304;
+		nc = 304;
+		//kc = 400;
+		//nc = 400;
         }
 
 
@@ -54,6 +59,7 @@ class ConvIm2colLayer : public ConvLayer
         {
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));
 	    if(group <=0)	group = 1;
+#if 0
 #if 1
             if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
             {
@@ -97,7 +103,6 @@ class ConvIm2colLayer : public ConvLayer
             naive_sgemm(output_channels, output_height * output_width, input_channels * kernel_width * kernel_height, kernel_data, img_buffer, output);
 #endif
 
-
             if (bias_term)
             {
                 size_t out_stride = output_width * output_height;
@@ -110,9 +115,35 @@ class ConvIm2colLayer : public ConvLayer
                     }
                 }
             }
+#else
+	    const int M = output_channels;
+	    const int N = output_height * output_width;
+	    const int K = input_channels * kernel_width * kernel_height;
+	    if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
+	    {
+		    packed_sgemm(M, N, K, packed_kernel, input, N, output, N, nc, kc, bias_data, num_threads);
+	    }
+	    else
+	    {
+		    Im2col();
+		    packed_sgemm(M, N, K, packed_kernel, img_buffer, N, output, N, nc, kc, bias_data, num_threads);
+	    }
+#endif
             return 0;
         }
 
+        int Fuse(Layer *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                fuse_relu = true;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
 
         bool Im2col()
         {
@@ -186,21 +217,34 @@ class ConvIm2colLayer : public ConvLayer
         int Init()
         {
             int M = (int)output_channels;
-            int L = (int)input_channels * (int)kernel_height * (int)kernel_width;
-            int eM = M + (8 - M % 8) % 8;
+	    int N = output_height * output_width;
+            int K = (int)input_channels * (int)kernel_height * (int)kernel_width;
+//            int eM = M + (8 - M % 8) % 8;
 
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * eM * L));
             MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)));
 
+#if 1
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * M * K));
+	    packed_sgemm_init<8>(M, K, kc, packed_kernel, kernel_data, K);
+	    if(bias_term && fuse_relu)
+		    packed_sgemm = packed_sgemm_activation<true, true>;
+	    else if(bias_term)
+		    packed_sgemm = packed_sgemm_activation<true, false>;
+	    else if(fuse_relu)
+		    packed_sgemm = packed_sgemm_activation<false, true>;
+	    else
+		    packed_sgemm = packed_sgemm_activation<false, false>;
+
+#else
             if (M % 8 == 0)
             {
-                externalPackA8(M, L, packed_kernel, kernel_data, L);
+                externalPackA8(M, K, packed_kernel, kernel_data, K);
             }
             else
             {
-                externalPackA(M, L, packed_kernel, kernel_data, L);
+                externalPackA(M, K, packed_kernel, kernel_data, K);
             }
-
+#endif
             //Setup input and output pointers.
             input = _bottom_blobs[_bottom[0]]->data();
             //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
@@ -212,11 +256,15 @@ class ConvIm2colLayer : public ConvLayer
             //printf("++bias term %d\n", bias_term);
             return 0;
         }
+
     private:
         float* packed_kernel;
         float* img_buffer;
 
         float* input;
         float* output;
+	bool fuse_relu;
+	int  kc, nc;
+	void (*packed_sgemm)(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads);
 };
 };
