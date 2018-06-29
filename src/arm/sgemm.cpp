@@ -365,15 +365,18 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 				pL[n] = pC[n];
 			}
 		}
+		
+		int step = COL_BATCH*kc;	
+		float* pA = packA + i * kc;
+		float* pB = packB;
 		for(int j = 0; j < nc_ceil; j+=COL_BATCH)
 		{
 			float* pC = loadC + j;
-			float* pA = packA + i * kc;
-			float* pB = packB + j * kc;
 			//inner_kernel_Nx8_template<8>(kc, pA, pB, pC, nc_ceil);
 			inner_kernel_8x8(kc, pA, pB, pC, nc_ceil);
 			//printf("~~~~~~~~~~~~~\n");
 			//tool::print_floats(loadC, 8, nc);
+			pB += step;
 		}
 		//Write Results
 		for(int m = 0; m < ROW_BATCH; ++m)
@@ -537,18 +540,22 @@ void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 	for(int k = 0; k < kc; ++k)
 	{
 		float* pB = B + k * ldb;
+
+		float* pPack = packB + k*COL_BATCH;
+		int    step = COL_BATCH*kc;
 		for(int j = 0; j < nc_floor; j += COL_BATCH)
 		{
-			float* pPack = packB + (j / COL_BATCH) * kc * COL_BATCH + k * COL_BATCH;
+//			float* pPack = packB + (j / COL_BATCH) * kc * COL_BATCH + k * COL_BATCH;
 			vst1q_f32(pPack,     vld1q_f32(pB));
 			vst1q_f32(pPack + 4, vld1q_f32(pB + 4));
 			pB += 8;
+			pPack += step;
 		}
 		if(nc_floor < nc)
 		{
 			int j = nc_floor;
 			int n_len = nc - nc_floor;
-			float* pPack = packB + (j / COL_BATCH) * kc * COL_BATCH + k * COL_BATCH;
+			float* pPack = packB + j  * kc  + k*COL_BATCH;
 			for(int i = 0; i < n_len; ++i)
 			{
 				pPack[i] = pB[i];
@@ -596,7 +603,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 			else
 				n_len = nc;
 			//I'm going to pack B in here.
-			memset(packB, 0, sizeof(float) * kc * nc);
+//			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
 			compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
 		}
@@ -616,7 +623,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 				n_len = N - nt * nc;
 			else
 				n_len = nc;
-			memset(packB, 0, sizeof(float) * kc * nc);
+//			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
 				//printf("+++++++++++++++\n");
 			//tool::print_floats(packB, K,  N);
