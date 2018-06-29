@@ -197,7 +197,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
             for (int b = 0; b < layers[i]->bottom_size(); ++b)
             {
                 std::string blob_name = layers[i]->bottom(b);
-                // printf("blob name %s\n", blob_name.c_str());
+                //printf("blob name %s\n", blob_name.c_str());
                 //TODO handle error: when blob_name has not been inserted into map.
                 if (blob_map.find(blob_name) != blob_map.end())
                     layers[i]->SetupBottomBlob(blob_map[blob_name], blob_name);
