@@ -83,10 +83,10 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     }
     return (Layer *) conv_layer;
 }
-//Layer *GetDepthwiseConvolutionLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
-//{
-//    return (Layer *)new ConvDepthwiseLayer(layer_param, rt_param);
-//}
+Layer *GetDepthwiseConvolutionLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+    return (Layer *)new ConvDepthwiseLayer(layer_param, rt_param);
+}
 Layer *GetBatchNormLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
     return (Layer *)new BatchNormLayer(layer_param, rt_param);
@@ -144,7 +144,7 @@ void register_layer_creators()
 {
     REGISTER_LAYER_CREATOR(Input, GetInputLayer);
     REGISTER_LAYER_CREATOR(Convolution, GetConvolutionLayer);
-    //REGISTER_LAYER_CREATOR(DepthwiseConvolution, GetDepthwiseConvolutionLayer);
+    REGISTER_LAYER_CREATOR(DepthwiseConvolution, GetDepthwiseConvolutionLayer);
     REGISTER_LAYER_CREATOR(BatchNorm, GetBatchNormLayer);
     REGISTER_LAYER_CREATOR(LRN, GetLRNLayer);
     REGISTER_LAYER_CREATOR(Concat, GetConcatLayer);

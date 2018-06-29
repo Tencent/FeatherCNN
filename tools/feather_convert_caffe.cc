@@ -1,5 +1,5 @@
 #include "caffe.pb.h"
-#include "feather_simple_generated.h"
+#include "../src/feather_simple_generated.h"
 
 #include <iostream>
 #include <fstream>
@@ -224,6 +224,10 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 
             if (layer_type.compare("Input") == 0)
                 continue;
+            //if (layer_type.compare("Sigmoid") == 0)
+            //    continue;
+            //if (layer_type.compare("Concat") == 0)
+            //    continue;
 
             std::vector<std::string> bottom_vec;
             std::vector<std::string> top_vec;
@@ -392,8 +396,9 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             flatbuffers::Offset<feather::InnerProductParameter> inner_product_param;
             flatbuffers::Offset<feather::PReLUParameter> prelu_param;
             flatbuffers::Offset<feather::DropoutParameter> dropout_param;
+            flatbuffers::Offset<feather::FilterParameter> filter_param;
 
-            if (layer_type.compare("Convolution") == 0 || (layer_type.compare("ConvolutionDepthwise") == 0))
+            if (layer_type.compare("Convolution") == 0 || (layer_type.compare("DepthwiseConvolution") == 0))
             {
                 printf("+ %s\n", layer_type.c_str());
                 auto caffe_conv_param = caffe_layer.convolution_param();
@@ -402,6 +407,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 conv_param_builder.add_bias_term(caffe_conv_param.bias_term());
 
 		if(caffe_conv_param.kernel_size_size() > 0){
+			//printf("caffe_conv_param.kernel_size_size %d\n", caffe_conv_param.kernel_size_size());
 			conv_param_builder.add_kernel_h(caffe_conv_param.kernel_size(0));
 			if (caffe_conv_param.kernel_size_size() == 1)
 				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_size(0));
@@ -465,8 +471,11 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     conv_param_builder.add_pad_w(0);
                 }
 
-                if (layer_type.compare("ConvolutionDepthwise") == 0)
-                    conv_param_builder.add_group(caffe_conv_param.num_output());
+		if (layer_type.compare("DepthwiseConvolution") == 0)
+		{
+			layer_type = "Convolution";
+			conv_param_builder.add_group(caffe_conv_param.num_output());
+		}
                 else
                     conv_param_builder.add_group(caffe_conv_param.group());
 
@@ -618,6 +627,13 @@ defalut:
             {
                 //Do nothing
             }
+            else if (layer_type.compare("Filter") == 0)
+            {
+                auto   caffe_filter_param = caffe_layer.filter_param();
+                size_t num_output = caffe_filter_param.num_output();
+                printf("Filter param: num_output %ld\n", num_output);
+		filter_param = feather::CreateFilterParameter(fbb, num_output);
+            }
             else if (layer_type.compare("PReLU") == 0)
             {
 
@@ -635,10 +651,12 @@ defalut:
             layer_builder.add_blobs(blobs_fbvec);
             layer_builder.add_name(layer_name_fbb);
             layer_builder.add_type(layer_type_fbb);
-            if (layer_type.compare("Convolution") == 0 || (layer_type.compare("ConvolutionDepthwise") == 0))
+            if (layer_type.compare("Convolution") == 0 || (layer_type.compare("DepthwiseConvolution") == 0))
                 layer_builder.add_convolution_param(conv_param);
             else if (layer_type.compare("LRN") == 0)
                 layer_builder.add_lrn_param(lrn_param);
+            else if (layer_type.compare("Filter") == 0)
+                layer_builder.add_filter_param(filter_param);
             else if (layer_type.compare("Pooling") == 0)
                 layer_builder.add_pooling_param(pooling_param);
             else if (layer_type.compare("InnerProduct") == 0)

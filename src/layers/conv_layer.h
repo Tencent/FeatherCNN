@@ -34,16 +34,6 @@ class ConvLayer : public Layer
 
 	    group = conv_param->group();
 	    if(group == 0)	group = 1;
-/*
-	    if(this->type().compare("DepthwiseConvolution") == 0)
-	    {
-		printf("depthwise convolution\n");
-	    }
-	    else
-	    {
-		    //group = conv_param->group();
-	    }
-*/
             kernel_height = conv_param->kernel_h();
             kernel_width = conv_param->kernel_w();
 
