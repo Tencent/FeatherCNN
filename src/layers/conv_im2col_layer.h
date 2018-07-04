@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define Enable_NaiveGEMM 0
+
 namespace feather
 {
 void naive_sgemm(int M, int N, int L, float* A, float* B, float* C)
@@ -47,7 +49,8 @@ class ConvIm2colLayer : public ConvLayer
         ConvIm2colLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
             : fuse_relu(false), kc(0), nc(0), img_buffer(0), ConvLayer(layer_param, rt_param)
         {
-		_fusible = true;
+		if(Enable_NaiveGEMM)	_fusible = false;
+		else			_fusible = true;
 		kc = 304;
 		nc = 304;
 		//kc = 400;
@@ -59,9 +62,8 @@ class ConvIm2colLayer : public ConvLayer
         {
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));
 	    if(group <=0)	group = 1;
-#if 0
-#if 1
-            if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
+#if (Enable_NaiveGEMM)
+/*            if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1)
             {
                 if (output_channels % 8 == 0)
                 {
@@ -98,10 +100,10 @@ class ConvIm2colLayer : public ConvLayer
                                                             packed_kernel, img_buffer + k * block, output, (int)num_threads);
                 }
             }
-#else
+*/
+	    printf("naiveGEMM\n");
             Im2col();
             naive_sgemm(output_channels, output_height * output_width, input_channels * kernel_width * kernel_height, kernel_data, img_buffer, output);
-#endif
 
             if (bias_term)
             {
@@ -116,6 +118,7 @@ class ConvIm2colLayer : public ConvLayer
                 }
             }
 #else
+	    printf("newGEMM\n");
 	    const int M = output_channels;
 	    const int N = output_height * output_width;
 	    const int K = input_channels * kernel_width * kernel_height;
