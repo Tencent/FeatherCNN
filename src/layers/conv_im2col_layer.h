@@ -101,7 +101,6 @@ class ConvIm2colLayer : public ConvLayer
                 }
             }
 */
-	    printf("naiveGEMM\n");
             Im2col();
             naive_sgemm(output_channels, output_height * output_width, input_channels * kernel_width * kernel_height, kernel_data, img_buffer, output);
 
@@ -118,7 +117,6 @@ class ConvIm2colLayer : public ConvLayer
                 }
             }
 #else
-	    printf("newGEMM\n");
 	    const int M = output_channels;
 	    const int N = output_height * output_width;
 	    const int K = input_channels * kernel_width * kernel_height;
