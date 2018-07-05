@@ -27,7 +27,7 @@
 #include <stdio.h>
 
 
-#define USE_LEGACY_SGEMM
+//#define USE_LEGACY_SGEMM
 
 namespace feather
 {
@@ -267,7 +267,6 @@ class ConvIm2colLayer : public ConvLayer
             int K = (int)input_channels * (int)kernel_height * (int)kernel_width;
             int eM = M + (8 - M % 8) % 8;
 
-            MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)))
 
 #ifdef USE_LEGACY_SGEMM
 	    pack_array_size = 0;
@@ -282,7 +281,7 @@ class ConvIm2colLayer : public ConvLayer
             }
 #else
 	    pack_array_size = (kc + 8) * nc * num_threads;
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * (M * K + pack_array_size)))
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * (M * K)))
 	    packed_sgemm_init<8>(M, K, kc, packed_kernel, kernel_data, K);
 	    
             //MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&pack_array, sizeof(float) * (kc + 8) * nc) * this->num_threads);
@@ -295,6 +294,7 @@ class ConvIm2colLayer : public ConvLayer
 	    else
 		    packed_sgemm = packed_sgemm_activation<false, false>;
 #endif
+            MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * (pack_array_size + (input_channels * kernel_height * kernel_width) * (output_width * output_height))))
             //Setup input and output pointers.
             input = _bottom_blobs[_bottom[0]]->data();
             output = _top_blobs[_top[0]]->data();
