@@ -1,29 +1,14 @@
 #include "sgemm.h"
-//#include <immintrin.h>
+#include "helper.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <arm_neon.h>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
-namespace tool{
-void print_floats(float* arr, int len){
-    for(int i = 0; i < len; ++i){
-        printf("%.2f ", arr[i]);
-    }
-    printf("\n\n");
-}
-
-void print_floats(float* arr, int dimX, int dimY){
-    for(int i = 0; i < dimX; ++i){
-        for(int j = 0; j < dimY; ++j)
-            printf("%.2f ", arr[i * dimY + j]);
-    printf("\n");
-    }
-    printf("\n");
-}
-};
 int align_ceil(int num, int align)
 {
 	return num + (align - (num % align)) % align;
@@ -193,10 +178,8 @@ void inner_kernel_Nx8_template(int K, float *packA, float *packB, float *c, int 
 	}
 	vb0 = vld1q_f32(bptr);
 	vb1 = vld1q_f32(bptr + 4);
-	//tool::print_floats(bptr, 8);
 	for(int p = 0; p < (K-1); ++p){
 		va = vdupq_n_f32(aptr[0]);
-		//va = vld1q_f32(aptr[0]);
 		vc0 = vfmaq_f32(vc0, vb0, va);
 		vc1 = vfmaq_f32(vc1, vb1, va);
 		if(N > 1){
@@ -366,16 +349,13 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			}
 		}
 		
-		int step = COL_BATCH*kc;	
+		int step = COL_BATCH * kc;	
 		float* pA = packA + i * kc;
 		float* pB = packB;
 		for(int j = 0; j < nc_ceil; j+=COL_BATCH)
 		{
 			float* pC = loadC + j;
-			//inner_kernel_Nx8_template<8>(kc, pA, pB, pC, nc_ceil);
 			inner_kernel_8x8(kc, pA, pB, pC, nc_ceil);
-			//printf("~~~~~~~~~~~~~\n");
-			//tool::print_floats(loadC, 8, nc);
 			pB += step;
 		}
 		//Write Results
@@ -431,7 +411,6 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			float* pL = loadC + m * nc_ceil;
 			for(int n = 0; n < nc_floor; n += 8)
 			{
-				//_mm256_store_ps(pL + n, _mm256_load_ps(pC + n));
 				vst1q_f32(pL + n, vld1q_f32(pC + n));
 				vst1q_f32(pL + n + 4, vld1q_f32(pC + n + 4));
 			}
@@ -487,8 +466,6 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 				pC[n] = l;
 			}
 		}
-		//printf("-------------\n");
-		//tool::print_floats(loadC, 8 * nc);
 	}
 }
 
@@ -565,7 +542,7 @@ void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 }
 	
 template<bool fuseBias, bool fuseRelu>
-void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads)
+void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads, float* pack_array)
 {
 	const int ROW_BATCH = 8;
 	const int COL_BATCH = 8;
@@ -584,16 +561,23 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	
 	//float *packB = (float*) malloc(kc * nc * sizeof(float));
 	//Our GEMM is implemented in GEPB fashion, as the operands are row-major
+	float* packB = pack_array;
+	float* loadC = pack_array + kc * nc;
 	int k_len = kc;
 	int n_len = nc;
 	for(int kt = 0; kt < KBlocks - 1; ++kt)
 	{
 		//k_len = (kt == KBlocks - 1) ? (K - kt * kc) : kc;
 #pragma omp parallel for num_threads(num_threads) schedule(static)
-		for(int nt = 0; nt < NBlocks; ++nt)
-		{
-			float loadC[ROW_BATCH * nc];
-			float packB[kc * nc];
+      	for(int nt = 0; nt < NBlocks; ++nt)
+      	{
+#ifdef _OPENMP
+			int tid = omp_get_thread_num();
+			packB = pack_array + tid * (kc + 8) * nc;
+			loadC = packB + kc * nc;
+#endif
+			//float loadC[ROW_BATCH * nc];
+			//float packB[kc * nc];
 			//float* pA = packA + kt * kc * M_align;
 			float* pA = packA + kt * kc * M;
 			float* pB = b + kt * kc * ldb + nt * nc;
@@ -612,10 +596,15 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 		int kt = KBlocks - 1;
 		k_len = (K - kt * kc);
 #pragma omp parallel for num_threads(num_threads) schedule(static)
-		for(int nt = 0; nt < NBlocks; ++nt)
-		{
-			float loadC[ROW_BATCH * nc];
-			float packB[kc * nc];
+      	for(int nt = 0; nt < NBlocks; ++nt)
+      	{
+#ifdef _OPENMP
+			int tid = omp_get_thread_num();
+			packB = pack_array + tid * (kc + 8) * nc;
+			loadC = packB + kc * nc;
+#endif
+			//float loadC[ROW_BATCH * nc];
+			//float packB[kc * nc];
 			float* pA = packA + kt * kc * M;
 			float* pB = b + kt * kc * ldb + nt * nc;
 			float* pC = c + nt * nc; 
@@ -625,16 +614,13 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 				n_len = nc;
 //			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
-				//printf("+++++++++++++++\n");
-			//tool::print_floats(packB, K,  N);
-			//tool::print_floats(packB, K * N / 8, 8);
 			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
 		}
 	}
 	//free(packB);
 }
 
-template void packed_sgemm_activation<false, false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int);
-template void packed_sgemm_activation<false,  true>(int, int, int, float *, float *, int, float *, int , int , int , float* , int);
-template void packed_sgemm_activation<true,  false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int);
-template void packed_sgemm_activation<true,   true>(int, int, int, float *, float *, int, float *, int , int , int , float* , int);
+template void packed_sgemm_activation<false, false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);
+template void packed_sgemm_activation<false,  true>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);
+template void packed_sgemm_activation<true,  false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);
+template void packed_sgemm_activation<true,   true>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);
