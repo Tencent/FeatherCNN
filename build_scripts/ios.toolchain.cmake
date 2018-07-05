@@ -24,6 +24,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
+
 # Set additional variables.
 # If we don't set some of these, CMake will end up using the host version.
 # We want the full path, however, so we can pass EXISTS and other checks in
@@ -41,3 +42,13 @@ message(STATUS "CC path is ${CC_FULL_PATH}")
 #SET(CMAKE_OBJCOPY      ${CC_DIR}/aarch64-${TARGET_ABI}-objcopy CACHE FILEPATH "objcopy")
 #SET(CMAKE_STRIP        ${CC_DIR}/aarch64-${TARGET_ABI}-strip   CACHE FILEPATH "strip")
 #SET(CMAKE_CPP          ${CC_DIR}/aarch64-${TARGET_ABI}-cpp     CACHE FILEPATH "cpp")
+
+set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE 1)
+# Without this, Xcode adds -fembed-bitcode-marker compile options instead of -fembed-bitcode set(CMAKE_C_FLAGS "-fembed-bitcode ${CMAKE_C_FLAGS}")
+set(CMAKE_XCODE_ATTRIBUTE_BITCODE_GENERATION_MODE "bitcode") 
+set(BITCODE_FLAGS "-fembed-bitcode")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${BITCODE_FLAGS}"  CACHE INTERNAL "ios c compiler flags" FORCE) 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BITCODE_FLAGS}" CACHE INTERNAL "ios c compiler flags" FORCE)
+
+
+

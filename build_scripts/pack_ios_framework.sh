@@ -26,8 +26,9 @@ ln -s Versions/Current/Resources $IOSPKGNAME/Resources
 ln -s Versions/Current/${NAME} $IOSPKGNAME/${NAME}
 lipo -create \
     build-ios/arm64/install/${NAME}/lib/lib${NAME}.a \
-    build-ios/armv7s/install/${NAME}/lib/lib${NAME}.a \
-    build-ios/simulator/install/${NAME}/lib/lib${NAME}.a \
+    build-ios/armv7/install/${NAME}/lib/lib${NAME}.a \
+    build-ios/x86_64/install/${NAME}/lib/lib${NAME}.a \
+    build-ios/i386/install/${NAME}/lib/lib${NAME}.a \
     -o $IOSPKGNAME/Versions/A/${NAME}
 #build-ios-sim/install/${NAME}/lib/lib${NAME}.a \
 cp -r build-ios/arm64/install/${NAME}/include/* $IOSPKGNAME/Versions/A/Headers/
