@@ -14,6 +14,7 @@
 
 #pragma once
 
+#if __ARM_NEON
 #include <arm_neon.h>
 
 //#define __ANDROID_DEBUG
@@ -43,12 +44,14 @@ void diff(float* arr1, float* arr2, int len);
 void diff(float* arr1, float* arr2, int M, int N);
 
 //Thanks nihui for this code snippet!
-#if __ARM_NEON
 #ifndef __aarch64__
+
+#ifndef __APPLE__
 static inline float32x4_t vfmaq_f32(float32x4_t _s, float32x4_t _a, float32x4_t _b)
 {
 	return vmlaq_f32(_s, _a, _b);
 }
+#endif
 static inline float32x4_t vfmaq_laneq_f32(float32x4_t _s, float32x4_t _a, float32x4_t _b, int lane)
 {
 	if(lane == 0) return vmlaq_lane_f32(_s, _a, vget_low_f32(_b), 0);
