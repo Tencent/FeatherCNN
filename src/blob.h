@@ -45,6 +45,8 @@ class Blob
 
         void Alloc();
 
+        void Realloc(size_t elem_size);
+
         void CopyData(const Dtype* data)
         {
             size_t size = _num * _channels * _height * _width;

@@ -27,6 +27,16 @@ void Blob<Dtype>::Alloc()
 }
 
 template<class Dtype>
+void Blob<Dtype>::Realloc(size_t elem_size)
+{
+    if(elem_size > this->data_size())
+    {
+        _mm_free(_data);
+        _data = (Dtype*) _mm_malloc(elem_size * sizeof(Dtype), 32);
+    }
+}
+
+template<class Dtype>
 void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobProto*
 {
     const BlobProto* proto = (const BlobProto*) proto_in;

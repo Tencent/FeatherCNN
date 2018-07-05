@@ -82,7 +82,7 @@ void diff(float* arr1, float* arr2, int len)
             dif += err;
         }
     }
-    printf("The difference is %.2f\n", dif);
+    LOGD("The difference is %.2f\n", dif);
 }
 void diff(float* arr1, float* arr2, int M, int N)
 {
@@ -95,11 +95,11 @@ void diff(float* arr1, float* arr2, int M, int N)
             if (err > 1.0f)
             {
                 dif += err;
-                printf("Error position (%d, %d), value %.2f, %.2f\n", i, j, arr1[i * N + j], arr2[i * N + j]);
+                LOGD("Error position (%d, %d), value %.2f, %.2f\n", i, j, arr1[i * N + j], arr2[i * N + j]);
             }
         }
     }
-    printf("The difference is %.2f\n", dif);
+    LOGD("The difference is %.2f\n", dif);
 }
 
 #include <time.h>

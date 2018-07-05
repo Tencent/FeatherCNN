@@ -13,4 +13,4 @@ void packed_sgemm_init(int M, int K, int kc, float* packA, float* A, int lda);
 
 //void packed_sgemm(int M, int N, int K, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc);
 template<bool fuseBias, bool fuseRelu>
-void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads);
+void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads, float* pack_array);
