@@ -9,12 +9,13 @@
 #include <omp.h>
 #endif
 
+typedef void (*InnerKernel)(int K, float *packA, float *packB, float *c, int ldc);
+
 int align_ceil(int num, int align)
 {
 	return num + (align - (num % align)) % align;
 }
 
-void (*inner_kernel_Nx8)(int K, float *packA, float *packB, float *c, int ldc);
 
 void inner_kernel_8x8(int K, float *packA, float *packB, float *c, int ldc)
 {
@@ -291,39 +292,32 @@ void inner_kernel_Nx8_template(int K, float *packA, float *packB, float *c, int 
 	}
 }
 
-void set_kernel(int k)
+
+InnerKernel get_kernel(int k)
 {
 	switch(k)
 	{
 		case 1:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<1>;
-			break;
+			return inner_kernel_Nx8_template<1>;
 		case 2:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<2>;
-			break;
+			return inner_kernel_Nx8_template<2>;
 		case 3:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<3>;
-			break;
+			return inner_kernel_Nx8_template<3>;
 		case 4:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<4>;
-			break;
+			return inner_kernel_Nx8_template<4>;
 		case 5:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<5>;
-			break;
+			return inner_kernel_Nx8_template<5>;
 		case 6:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<6>;
-			break;
+			return inner_kernel_Nx8_template<6>;
 		case 7:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<7>;
-			break;
-		case 0:
-			inner_kernel_Nx8 = inner_kernel_Nx8_template<8>;
-			break;
+			return inner_kernel_Nx8_template<7>;
+		default:
+			return inner_kernel_Nx8_template<8>;
 	}
 }
 
 template<bool fuseBias, bool fuseRelu>
-inline void compute_block_activation(int M, int nc, int kc, float* packA, float* packB, float* loadC, float *C, int ldc, float* bias, int bias_len)
+inline void compute_block_activation(int M, int nc, int kc, float* packA, float* packB, float* loadC, float *C, int ldc, float* bias, int bias_len, InnerKernel inner_kernel_Nx8_local)
 {
 	const int COL_BATCH = 8;
 	const int ROW_BATCH = 8;
@@ -343,9 +337,12 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 				vst1q_f32(pL + n, vld1q_f32(pC + n));
 				vst1q_f32(pL + n + 4, vld1q_f32(pC + n + 4));
 			}
-			for(int n = nc - nc % 8; n < nc; ++n)
+			for(int n = nc - nc % 8; n < nc_ceil; ++n)
 			{
-				pL[n] = pC[n];
+				if(n < nc)
+					pL[n] = pC[n];
+				else
+					pL[n] = 0.f;
 			}
 		}
 		
@@ -394,7 +391,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 				if(fuseBias && ((i + m) < bias_len))
 					l += bias[i + m];
 				if(fuseRelu)
-					l = (l > 0) ? l : 0;
+					l = (l > 0.f) ? l : 0.f;
 				pC[n] = l;
 			}
 		}
@@ -424,7 +421,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			float* pC = loadC + j;
 			float* pA = packA + i * kc;
 			float* pB = packB + j * kc;
-			inner_kernel_Nx8(kc, pA, pB, pC, nc_ceil);
+			inner_kernel_Nx8_local(kc, pA, pB, pC, nc_ceil);
 		}
 		//Write Results
 		for(int m = 0; m < m_len; ++m)
@@ -462,7 +459,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 				if(fuseBias && ((i + m) < bias_len))
 					l += bias[i + m];
 				if(fuseRelu)
-					l = (l > 0) ? l : 0;
+					l = (l > 0.f) ? l : 0.f;
 				pC[n] = l;
 			}
 		}
@@ -506,7 +503,6 @@ void packed_sgemm_init(int M, int K, int kc, float* packA, float* A, int lda)
 }
 
 
-//template void packed_sgemm_init<6>(int M, int K, int kc, float* packedA, float* A, int lda);
 template void packed_sgemm_init<8>(int M, int K, int kc, float* packedA, float* A, int lda);
 
 void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
@@ -546,7 +542,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 {
 	const int ROW_BATCH = 8;
 	const int COL_BATCH = 8;
-	set_kernel(M % ROW_BATCH);
+	InnerKernel inner_kernel_Nx8_local = get_kernel(M % ROW_BATCH);
 	for(int i = 0; i < M; ++i){
 		memset(c + ldc * i, 0, sizeof(float) * N);
 	}
@@ -589,7 +585,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 			//I'm going to pack B in here.
 //			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
-			compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
+			compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_Nx8_local);
 		}
 	}
 	{
@@ -614,7 +610,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 				n_len = nc;
 //			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
-			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
+			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_Nx8_local);
 		}
 	}
 	//free(packB);
