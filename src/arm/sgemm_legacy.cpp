@@ -44,20 +44,25 @@ void sgemm_8x5( int L, float *a, int lda, float *b, int ldb, float *c, int ldc )
 void sgemm_8x6( int L, float *a, int lda, float *b, int ldb, float *c, int ldc );
 void sgemm_8x7( int L, float *a, int lda, float *b, int ldb, float *c, int ldc );
 
-void (*sgemm_tiny_scale)(int L, float *a, int lda, float *b, int ldb, float *c, int ldc) = NULL;
+//void (*sgemm_tiny_scale)(int L, float *a, int lda, float *b, int ldb, float *c, int ldc) = NULL;
+typedef void (*SGEMMInnerKernel)(int L, float *a, int lda, float *b, int ldb, float *c, int ldc);
+
 
 void internalPackA1(int L, float* packA, float* a, int lda);
 void internalPackA2(int L, float* packA, float* a, int lda);
 void internalPackA3(int L, float* packA, float* a, int lda);
 void internalPackA4(int L, float* packA, float* a, int lda);
 void internalPackA8(int L, float* packA, float* a, int lda);
-void (*internalPackA)(int L, float* packA, float* a, int lda) = NULL;
+
+
+//void (*internalPackA)(int L, float* packA, float* a, int lda) = NULL;
+typedef void (*PackAFunc)(int L, float* packA, float* a, int lda);
 
 void internalPackB4(int L, float* packA, float* a, int lda);
 void internalPackB8(int L, float* packA, float* a, int lda);
 
-void SGEBP_externalPackA_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB);
-void SGEBP_externalPackA_tiny_scale_8x8( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB);
+void SGEBP_externalPackA_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB, PackAFunc, SGEMMInnerKernel);
+void SGEBP_externalPackA_tiny_scale_8x8( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB, SGEMMInnerKernel);
 
 void sgemm_4x4_pack( int, float *, int, float *, int, float *, int );
 void sgemm_4x8_pack( int, float *, int, float *, int, float *, int );
@@ -87,62 +92,61 @@ void externalPackA8(int M, int L, float* packA, float* a, int lda){
     }
 }
 
+SGEMMInnerKernel get_innerkernel_4(int N)
+{
+    switch(N % 8){
+        case 1:
+            return sgemm_4x1;
+        case 2:
+            return sgemm_4x2;
+        case 3:
+            return sgemm_4x3;
+        case 4:
+            return sgemm_4x4;
+        case 5:
+            return sgemm_4x5;
+        case 6:
+            return sgemm_4x6;
+        case 7:
+            return sgemm_4x7;
+	default:
+	    return NULL;
+    }
+}
+
+SGEMMInnerKernel get_innerkernel_8(int N)
+{
+    switch(N % 8){
+        case 1:
+            return sgemm_8x1;
+        case 2:
+            return sgemm_8x2;
+        case 3:
+            return sgemm_8x3;
+        case 4:
+            return sgemm_8x4;
+        case 5:
+            return sgemm_8x5;
+        case 6:
+            return sgemm_8x6;
+        case 7:
+            return sgemm_8x7;
+	default:
+	    return NULL;
+    }
+}
+
+
 /*
  * Row major GEneral Matrix Multiplication that fits in any dimension by padding.
  */
 void block_sgemm_external_pack( int M, int N, int L, float *a, float *b, float *c){
     int eM = M + (4 - M % 4) % 4;
-    switch(N % 8){
-        case 1:
-            sgemm_tiny_scale = sgemm_4x1;
-            break;
-        case 2:
-            sgemm_tiny_scale = sgemm_4x2;
-            break;
-        case 3:
-            sgemm_tiny_scale = sgemm_4x3;
-            break;
-        case 4:
-            sgemm_tiny_scale = sgemm_4x4;
-            break;
-        case 5:
-            sgemm_tiny_scale = sgemm_4x5;
-            break;
-        case 6:
-            sgemm_tiny_scale = sgemm_4x6;
-            break;
-        case 7:
-            sgemm_tiny_scale = sgemm_4x7;
-            break;
-    }
     block_sgemm_pack(eM, N, L, a, L, b, N, c, N);
 }
 
 void block_sgemm_external_pack_threading( int M, int N, int L, float *a, float *b, float *c, int num_threads){
     int eM = M + (4 - M % 4) % 4;
-    switch(N % 8){
-        case 1:
-            sgemm_tiny_scale = sgemm_4x1;
-            break;
-        case 2:
-            sgemm_tiny_scale = sgemm_4x2;
-            break;
-        case 3:
-            sgemm_tiny_scale = sgemm_4x3;
-            break;
-        case 4:
-            sgemm_tiny_scale = sgemm_4x4;
-            break;
-        case 5:
-            sgemm_tiny_scale = sgemm_4x5;
-            break;
-        case 6:
-            sgemm_tiny_scale = sgemm_4x6;
-            break;
-        case 7:
-            sgemm_tiny_scale = sgemm_4x7;
-            break;
-    }
     const int factor = 1;
     int tN = N / num_threads / factor;
     tN = tN + (8 - tN % 8) % 8;
@@ -161,29 +165,6 @@ void block_sgemm_external_pack_threading( int M, int N, int L, float *a, float *
 
 void block_sgemm_external_pack_threading_8x8( int M, int N, int L, float *a, float *b, float *c, int num_threads){
     int eM = M + (8 - M % 8) % 8;
-    switch(N % 8){
-        case 1:
-            sgemm_tiny_scale = sgemm_8x1;
-            break;
-        case 2:
-            sgemm_tiny_scale = sgemm_8x2;
-            break;
-        case 3:
-            sgemm_tiny_scale = sgemm_8x3;
-            break;
-        case 4:
-            sgemm_tiny_scale = sgemm_8x4;
-            break;
-        case 5:
-            sgemm_tiny_scale = sgemm_8x5;
-            break;
-        case 6:
-            sgemm_tiny_scale = sgemm_8x6;
-            break;
-        case 7:
-            sgemm_tiny_scale = sgemm_8x7;
-            break;
-    }
     unsigned int tN = N / num_threads;
     //tN = tN + (8 - tN % 8) % 8;
     tN = (tN + 7) & 0xFFFFFFF8;
@@ -221,47 +202,10 @@ void block_sgemm_external_pack_threading_8x8( int M, int N, int L, float *a, flo
 }
 
 void block_sgemm( int M, int N, int L, float *a, float *b, float *c){
-    switch(N % 8){
-        case 1:
-            sgemm_tiny_scale = sgemm_4x1;
-            break;
-        case 2:
-            sgemm_tiny_scale = sgemm_4x2;
-            break;
-        case 3:
-            sgemm_tiny_scale = sgemm_4x3;
-            break;
-        case 4:
-            sgemm_tiny_scale = sgemm_4x4;
-            break;
-        case 5:
-            sgemm_tiny_scale = sgemm_4x5;
-            break;
-        case 6:
-            sgemm_tiny_scale = sgemm_4x6;
-            break;
-        case 7:
-            sgemm_tiny_scale = sgemm_4x7;
-            break;
-    }
-    switch(M % 4){
-        case 0:
-            internalPackA = internalPackA4;
-            break;
-        case 1:
-            internalPackA = internalPackA1;
-            break;
-        case 2:
-            internalPackA = internalPackA2;
-            break;
-        case 3:
-            internalPackA = internalPackA3;
-            break;
-    }
     block_sgemm_internal_pack(M, N, L, a, L, b, N, c, N);
 }
 
-void SGEBP_externalPackA_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB){
+void SGEBP_externalPackA_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB, SGEMMInnerKernel sgemm_tiny_scale){
     //Align L to achieve better performance for better cache line alignment.
     int eL = L + (4 - L % 4) % 4;
     int remN = N % 8;
@@ -278,7 +222,7 @@ void SGEBP_externalPackA_tiny_scale( int M, int N, int L, float *a, int lda, flo
     }
 }
 
-void SGEBP_externalPackA_tiny_scale_8x8( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB){
+void SGEBP_externalPackA_tiny_scale_8x8( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB, SGEMMInnerKernel sgemm_tiny_scale){
     //Align L to achieve better performance for better cache line alignment.
     int eL = L + (4 - L % 4) % 4;
     int remN = N % 8;
@@ -295,7 +239,7 @@ void SGEBP_externalPackA_tiny_scale_8x8( int M, int N, int L, float *a, int lda,
     }
 }
 
-void SGEBP_internalPack_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB){
+void SGEBP_internalPack_tiny_scale( int M, int N, int L, float *a, int lda, float *b, int ldb, float *c, int ldc, float* packA, float* packB, PackAFunc internalPackA, SGEMMInnerKernel sgemm_tiny_scale){
     //Align L for better cache line alignment.
     int eL = L + (4 - L % 4) % 4;
     int remM = M % 4;
@@ -334,6 +278,8 @@ void block_sgemm_pack(int M, int N, int L, float *a, int lda, float *b, int ldb,
         return;
     }
     
+    SGEMMInnerKernel sgemm_tiny_scale = get_innerkernel_4(N % 8);
+    
     for(int l = 0; l < N; l += nc){
         int lb = min(N - l, nc);
         float* packAptr = a;
@@ -342,7 +288,7 @@ void block_sgemm_pack(int M, int N, int L, float *a, int lda, float *b, int ldb,
             int ib = min(M - i, mc);
             for(int p = 0; p < L; p += kc){
                 int pb = min(L - p, kc);
-                SGEBP_externalPackA_tiny_scale(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB);
+                SGEBP_externalPackA_tiny_scale(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB, sgemm_tiny_scale);
                 packAptr += ib * pb;
             }
         }
@@ -359,6 +305,7 @@ void block_sgemm_pack_8x8( int M, int N, int L, float *a, int lda, float *b, int
     if (NULL == packB) {
         return;
     }
+    SGEMMInnerKernel sgemm_tiny_scale = get_innerkernel_8(N % 8);
 //#pragma omp parallel for num_threads(num_threads)
     for(int l = 0; l < N; l += nc){
         float* packAptr = a;
@@ -367,7 +314,7 @@ void block_sgemm_pack_8x8( int M, int N, int L, float *a, int lda, float *b, int
 		int lb = min(N - l, nc);
 		int ib = min(M - i, mc);
                 int pb = min(L - p, kc);
-                SGEBP_externalPackA_tiny_scale_8x8(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB);
+                SGEBP_externalPackA_tiny_scale_8x8(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB, sgemm_tiny_scale);
                 packAptr += ib * pb;
             }
         }
@@ -383,6 +330,7 @@ void block_sgemm_pack_8x8( int M, int N, int L, float *a, int lda, float *b, int
     if (NULL == packB) {
         return;
     }
+    SGEMMInnerKernel sgemm_tiny_scale = get_innerkernel_8(N % 8);
     for(int l = 0; l < N; l += nc){
         float* packAptr = a;
         for(int i = 0; i < M; i += mc){
@@ -391,7 +339,7 @@ void block_sgemm_pack_8x8( int M, int N, int L, float *a, int lda, float *b, int
 		int lb = min(N - l, nc);
 		int ib = min(M - i, mc);
                 int pb = min(L - p, kc);
-                SGEBP_externalPackA_tiny_scale_8x8(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB);
+                SGEBP_externalPackA_tiny_scale_8x8(ib, lb, pb, packAptr, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, NULL, packB, sgemm_tiny_scale);
                 packAptr += ib * pb;
             }
         }
@@ -413,14 +361,29 @@ void block_sgemm_internal_pack( int M, int N, int L, float *a, int lda, float *b
         _mm_free(packA);
         return;
     }
-    
+    PackAFunc internalPackA;
+    switch(M % 4){
+        case 0:
+            internalPackA = internalPackA4;
+            break;
+        case 1:
+            internalPackA = internalPackA1;
+            break;
+        case 2:
+            internalPackA = internalPackA2;
+            break;
+        case 3:
+            internalPackA = internalPackA3;
+            break;
+    }
+    SGEMMInnerKernel sgemm_tiny_scale = get_innerkernel_8(N % 8);
     for(int l = 0; l < N; l += nc){
         int lb = min(N - l, nc);
         for(int i = 0; i < M; i += mc){
             int ib = min(M - i, mc);
             for(int p = 0; p < L; p += kc){
                 int pb = min(L - p, kc);
-                SGEBP_internalPack_tiny_scale(ib, lb, pb, a + i * lda + p, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, packA, packB);
+                SGEBP_internalPack_tiny_scale(ib, lb, pb, a + i * lda + p, lda, b + p * ldb + l, ldb, c + i * ldc + l, ldc, packA, packB, internalPackA, sgemm_tiny_scale);
             }
         }
     }
