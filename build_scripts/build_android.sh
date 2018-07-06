@@ -30,8 +30,8 @@ mkdir -p include/feather
 cp ../arm64-v8a/install/feather/include/* ./include/feather/
 mkdir -p arm64-v8a
 cp ../arm64-v8a/install/feather/lib/* ./arm64-v8a/
-#mkdir -p armeabi-v7a
-#cp ../armeabi-v7a/install/feather/lib/* ./armeabi-v7a/
+mkdir -p armeabi-v7a
+cp ../armeabi-v7a/install/feather/lib/* ./armeabi-v7a/
 #mkdir -p armeabi
 #cp ../armeabi/install/feather/lib/* ./armeabi/
 #popd 
