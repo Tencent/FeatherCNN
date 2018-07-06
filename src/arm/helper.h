@@ -17,8 +17,7 @@
 #if __ARM_NEON
 #include <arm_neon.h>
 
-#define __ANDROID_DEBUG
-#ifdef __ANDROID_DEBUG
+#ifdef FEATHER_ANDROID_LOG
 #include <android/log.h>
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "FeatherLib", __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "FeatherLib", __VA_ARGS__)
