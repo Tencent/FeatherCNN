@@ -564,7 +564,9 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	for(int kt = 0; kt < KBlocks - 1; ++kt)
 	{
 		//k_len = (kt == KBlocks - 1) ? (K - kt * kc) : kc;
+#ifdef __aarch64__
 #pragma omp parallel for num_threads(num_threads) schedule(static)
+#endif
       	for(int nt = 0; nt < NBlocks; ++nt)
       	{
 #ifdef _OPENMP
@@ -591,7 +593,9 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	{
 		int kt = KBlocks - 1;
 		k_len = (K - kt * kc);
+#ifdef __aarch64__
 #pragma omp parallel for num_threads(num_threads) schedule(static)
+#endif
       	for(int nt = 0; nt < NBlocks; ++nt)
       	{
 #ifdef _OPENMP
@@ -609,11 +613,11 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 			else
 				n_len = nc;
 //			memset(packB, 0, sizeof(float) * kc * nc);
+
 			pack_B_neon(k_len, n_len, packB, pB, N);
 			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_Nx8_local);
 		}
 	}
-	//free(packB);
 }
 
 template void packed_sgemm_activation<false, false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);

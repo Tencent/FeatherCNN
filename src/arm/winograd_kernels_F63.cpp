@@ -342,7 +342,7 @@ inline void input_transform(
     r2 = vsubq_f32(t1, t2);
 }
 
-void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, int num_threads)
+void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, float* ext, int num_threads)
 {
     //Constants in transformation matrices.
     const float32x4_t f5 = vdupq_n_f32(5.0f);
@@ -357,27 +357,30 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     const float32x4_t vZero = vdupq_n_f32(0.0f);
 
     const int nBlocks = nRowBlocks * nColBlocks;
-    const int nBlocksAligned = nBlocks & 0xFFFFFFFC;
     const int rem = nBlocks & 0x3;
-    memset(VT, 0, sizeof(float) * 64 * nBlocks * inChannels);
+    int nBlocksAligned = nBlocks & 0xFFFFFFFC;
+    
+    //memset(VT, 0, sizeof(float) * 64 * nBlocksAligned * inChannels);
     int hdiff = nColBlocks * 6 + 2 - inputh;
     int wdiff = nRowBlocks * 6 + 2 - inputw;
     //diff ranges from 0 to 5
     //printf("diff %d, %d\n", hdiff, wdiff);
     //print_floats(input, inChannels* inputh , inputw);
+    //float ext[64];
 
 #ifdef FEATHER_USE_GCD
     dispatch_apply(inChannels, dispatch_get_global_queue(0, 0), ^(size_t ic)
 #else
 #ifdef _OPENMP
-    #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+#ifdef __aarch64__
+#pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+#endif
 #endif
     for (int ic = 0; ic < inChannels; ++ic)
 #endif
     {
         for (int j = 0; j < nColBlocks; ++j)
         {
-            float ext[64];
             float32x4_t d0, d1, d2, d3, d4, d5, d6, d7;
             float32x4_t l0, l1, l2, l3, l4, l5, l6, l7;
             float32x4_t r0, r1, r2, r3, r4, r5, r6, r7;
@@ -415,6 +418,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
 
                     //printf("step hxw %dx%d\n", step_h, step_w);
                     //print_floats(ext, 8, 8);
+#if 1
                     l0 = vld1q_f32(ext);
                     r0 = vld1q_f32(ext + 4);
                     l1 = vld1q_f32(ext + 8);
@@ -431,9 +435,11 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                     r6 = vld1q_f32(ext + 52);
                     l7 = vld1q_f32(ext + 56);
                     r7 = vld1q_f32(ext + 60);
+#endif
                 }
                 else
                 {
+#if 1
                     l0 = vld1q_f32(p0);
                     r0 = vld1q_f32(p0 + 4);
                     p0 += 6;
@@ -458,6 +464,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                     l7 = vld1q_f32(p7);
                     r7 = vld1q_f32(p7 + 4);
                     p7 += 6;
+#endif
                 }
 
                 input_transform(l0, l1, l2, l3, l4, l5, l6, l7, //Target
@@ -480,6 +487,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                 //printf("outp offset %d\n", outp - VT);
                 if (bid < nBlocksAligned)
                 {
+#if 1
                     vst1q_f32(outp, l0);
                     vst1q_f32(outp + 16, l4);
                     vst1q_f32(outp + 32, l1);
@@ -499,7 +507,9 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                     vst1q_f32(outp + 208, r6);
                     vst1q_f32(outp + 224, r3);
                     vst1q_f32(outp + 240, r7);
+#endif
                 }
+#if 1
                 else
                 {
                     vst1q_f32(outp, l0);
@@ -523,8 +533,10 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
                     vst1q_f32(outp + rem * 60, r7);
 
                 }
+#endif
             }
         }
+
 #ifdef FEATHER_USE_GCD
     });
 #else
@@ -727,7 +739,6 @@ static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, c
         u2 = vld1q_f32(up + 8);
         u3 = vld1q_f32(up + 12);
         up += 16;
-#ifdef __aarch64__
         vc00 = vfmaq_f32(vc00, u0, v0);
         vc01 = vfmaq_f32(vc01, u0, v1);
         vc02 = vfmaq_f32(vc02, u0, v2);
@@ -747,27 +758,6 @@ static inline void TensorGEMMInnerKernel4x4x4(float* &WTp, const int &wstride, c
         vc31 = vfmaq_f32(vc31, u3, v1);
         vc32 = vfmaq_f32(vc32, u3, v2);
         vc33 = vfmaq_f32(vc33, u3, v3);
-#else
-        vc00 = vmlaq_f32(vc00, u0, v0);
-        vc01 = vmlaq_f32(vc01, u0, v1);
-        vc02 = vmlaq_f32(vc02, u0, v2);
-        vc03 = vmlaq_f32(vc03, u0, v3);
-
-        vc10 = vmlaq_f32(vc10, u1, v0);
-        vc11 = vmlaq_f32(vc11, u1, v1);
-        vc12 = vmlaq_f32(vc12, u1, v2);
-        vc13 = vmlaq_f32(vc13, u1, v3);
-
-        vc20 = vmlaq_f32(vc20, u2, v0);
-        vc21 = vmlaq_f32(vc21, u2, v1);
-        vc22 = vmlaq_f32(vc22, u2, v2);
-        vc23 = vmlaq_f32(vc23, u2, v3);
-
-        vc30 = vmlaq_f32(vc30, u3, v0);
-        vc31 = vmlaq_f32(vc31, u3, v1);
-        vc32 = vmlaq_f32(vc32, u3, v2);
-        vc33 = vmlaq_f32(vc33, u3, v3);
-#endif
     }
     float *wp = WTp;
     vst1q_f32(wp, vc00);
@@ -832,7 +822,6 @@ static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, c
         u2 = vld1q_f32(up + 8);
         u3 = vld1q_f32(up + 12);
         up += 16;
-#ifdef __aarch64__
         vc00 = vfmaq_f32(vc00, u0, v0);
         vc01 = vfmaq_f32(vc01, u0, v1);
         vc02 = vfmaq_f32(vc02, u0, v2);
@@ -848,23 +837,6 @@ static inline void TensorGEMMInnerKernel4x3x4(float* &WTp, const int &wstride, c
         vc30 = vfmaq_f32(vc30, u3, v0);
         vc31 = vfmaq_f32(vc31, u3, v1);
         vc32 = vfmaq_f32(vc32, u3, v2);
-#else
-        vc00 = vmlaq_f32(vc00, u0, v0);
-        vc01 = vmlaq_f32(vc01, u0, v1);
-        vc02 = vmlaq_f32(vc02, u0, v2);
-
-        vc10 = vmlaq_f32(vc10, u1, v0);
-        vc11 = vmlaq_f32(vc11, u1, v1);
-        vc12 = vmlaq_f32(vc12, u1, v2);
-
-        vc20 = vmlaq_f32(vc20, u2, v0);
-        vc21 = vmlaq_f32(vc21, u2, v1);
-        vc22 = vmlaq_f32(vc22, u2, v2);
-
-        vc30 = vmlaq_f32(vc30, u3, v0);
-        vc31 = vmlaq_f32(vc31, u3, v1);
-        vc32 = vmlaq_f32(vc32, u3, v2);
-#endif
     }
     float *wp = WTp;
     vst1q_f32(wp, vc00);
@@ -919,7 +891,6 @@ static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, c
         u2 = vld1q_f32(up + 8);
         u3 = vld1q_f32(up + 12);
         up += 16;
-#ifdef __aarch64__
         vc00 = vfmaq_f32(vc00, u0, v0);
         vc01 = vfmaq_f32(vc01, u0, v1);
         vc10 = vfmaq_f32(vc10, u1, v0);
@@ -928,16 +899,6 @@ static inline void TensorGEMMInnerKernel4x2x4(float* &WTp, const int &wstride, c
         vc21 = vfmaq_f32(vc21, u2, v1);
         vc30 = vfmaq_f32(vc30, u3, v0);
         vc31 = vfmaq_f32(vc31, u3, v1);
-#else
-        vc00 = vmlaq_f32(vc00, u0, v0);
-        vc01 = vmlaq_f32(vc01, u0, v1);
-        vc10 = vmlaq_f32(vc10, u1, v0);
-        vc11 = vmlaq_f32(vc11, u1, v1);
-        vc20 = vmlaq_f32(vc20, u2, v0);
-        vc21 = vmlaq_f32(vc21, u2, v1);
-        vc30 = vmlaq_f32(vc30, u3, v0);
-        vc31 = vmlaq_f32(vc31, u3, v1);
-#endif
     }
     float *wp = WTp;
     vst1q_f32(wp, vc00);
@@ -984,17 +945,10 @@ static inline void TensorGEMMInnerKernel4x1x4(float* &WTp, const int &wstride, c
         u2 = vld1q_f32(up + 8);
         u3 = vld1q_f32(up + 12);
         up += 16;
-#ifdef __aarch64__
         vc00 = vfmaq_f32(vc00, u0, v0);
         vc10 = vfmaq_f32(vc10, u1, v0);
         vc20 = vfmaq_f32(vc20, u2, v0);
         vc30 = vfmaq_f32(vc30, u3, v0);
-#else
-        vc00 = vmlaq_f32(vc00, u0, v0);
-        vc10 = vmlaq_f32(vc10, u1, v0);
-        vc20 = vmlaq_f32(vc20, u2, v0);
-        vc30 = vmlaq_f32(vc30, u3, v0);
-#endif
     }
     float *wp = WTp;
     vst1q_f32(wp, vc00);
@@ -1038,7 +992,6 @@ static inline void winograd_f6k3_output_transform_inplace(
     m5 = m7 + m1_sub_m2;
     // Finised with M[0-7] as **inputs** here.
 
-#ifdef __aarch64__
     const float32x4_t const_16 = vdupq_n_f32(16.0f);
     m1 = vfmaq_f32(m1_sub_m2, const_16, m5_sub_m6);
     m4 = vfmaq_f32(m1_add_m2, const_16, m3_add_m4);
@@ -1061,30 +1014,6 @@ static inline void winograd_f6k3_output_transform_inplace(
     const float32x4_t const_4 = vdupq_n_f32(4.0f);
     m2 = vfmaq_f32(m2, m3_add_m4, const_4);
     m3 = vfmaq_f32(m3, m5_sub_m6, const_4);
-#else
-    const float32x4_t const_16 = vdupq_n_f32(16.0f);
-    m1 = vmlaq_f32(m1_sub_m2, const_16, m5_sub_m6);
-    m4 = vmlaq_f32(m1_add_m2, const_16, m3_add_m4);
-
-    const float32x4_t const_8 = vdupq_n_f32(8.0f);
-    m2 = vmlaq_f32(m1_add_m2, const_8, m5_add_m6);
-    m3 = vmlaq_f32(m1_sub_m2, const_8, m3_sub_m4);
-
-    const float32x4_t const_32 = vdupq_n_f32(32.0f);
-    m0 = vmlaq_f32(m0, const_32, m5_add_m6);
-    m0 += m3_add_m4;
-
-    m5 = vmlaq_f32(m5, const_32, m3_sub_m4);
-    m5 += m5_sub_m6;
-
-    const float32x4_t const_2 = vdupq_n_f32(2.0f);
-    m1 = vmlaq_f32(m1, m3_sub_m4, const_2);
-    m4 = vmlaq_f32(m4, m5_add_m6, const_2);
-
-    const float32x4_t const_4 = vdupq_n_f32(4.0f);
-    m2 = vmlaq_f32(m2, m3_add_m4, const_4);
-    m3 = vmlaq_f32(m3, m5_sub_m6, const_4);
-#endif
 
     const float32x4_t const_0 = vdupq_n_f32(0.0f);
     m6 = const_0;
@@ -1093,7 +1022,7 @@ static inline void winograd_f6k3_output_transform_inplace(
 
 
 template<bool HAS_RELU, bool HAS_BIAS>
-void winogradOutputTransform(float *output, int outputh, int outputw, int ldout, float *WT, int outChannels, int nRowBlocks, int nColBlocks, float* biasArr, int num_threads)
+void winogradOutputTransform(float *output, int outputh, int outputw, int ldout, float *WT, int outChannels, int nRowBlocks, int nColBlocks, float* biasArr, float* ext, int num_threads)
 {
     const float32x4_t vZero = vdupq_n_f32(0.f);
     int nBlocks = nRowBlocks * nColBlocks;
@@ -1111,7 +1040,7 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
             for (int i = 0; i < nRowBlocks; ++i)
             {
                 float32x4_t vBias = vdupq_n_f32(biasArr[oc]);
-                float ext[48];
+                //float ext[48];
                 const int offset = nRowBlocks * nColBlocks * 64 * oc;
                 float *wp;
                 float32x4_t s0, s1, s2, s3;
@@ -1274,6 +1203,8 @@ size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 
 void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
+	float* ext = pack_array;
+	pack_array += 64;
     int nBlocks = nRowBlocks * nColBlocks;
     int depth = 16;
     //float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t));
@@ -1281,7 +1212,7 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     Timer tmr;
     tmr.startBench();
 #endif
-    winogradInputFrameTransformSeq(VT, inChannels, input, inputh, inputw, frameStride, ldin, nRowBlocks, nColBlocks, num_threads);
+    winogradInputFrameTransformSeq(VT, inChannels, input, inputh, inputw, frameStride, ldin, nRowBlocks, nColBlocks, ext,  num_threads);
 #ifdef WINOGRAD_BENCH
     tmr.endBench("Input Transform:");
     tmr.startBench();
@@ -1308,16 +1239,16 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
     switch (outType)
     {
         case None:
-            winogradOutputTransform<false, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            winogradOutputTransform<false, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
         case ReLU:
-            winogradOutputTransform<true, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            winogradOutputTransform<true, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
         case Bias:
-            winogradOutputTransform<false, true>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            winogradOutputTransform<false, true>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
         case BiasReLU:
-            winogradOutputTransform<true, true>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, num_threads);
+            winogradOutputTransform<true, true>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
     }
 #endif
