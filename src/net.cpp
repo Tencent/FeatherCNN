@@ -19,6 +19,8 @@
 #include "layers/input_layer.h"
 #include "mempool.h"
 
+#include "arm/helper.h"
+
 #include <stdio.h>
 #include <cstring>
 //#define LAYER_TIMING
@@ -43,7 +45,7 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
 {
     if (blob_map.find(std::string(name)) == blob_map.end())
     {
-        fprintf(stderr, "Cannot find blob %s\n", name.c_str());
+        LOGE("Cannot find blob %s\n", name.c_str());
         return -1;
     }
     const Blob<float> *p_blob = blob_map[name];
@@ -64,9 +66,9 @@ int Net::PrintBlobData(std::string blob_name)
 
     for (int i = 0; i < len; ++i)
     {
-        printf("%f\t", arr[i]);
+        LOGD("%f\t", arr[i]);
     }
-    printf("\n");
+    LOGD("\n");
     free(arr);
 	
     return 0;
@@ -76,7 +78,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 {
     if (blob_map.find(std::string(name)) == blob_map.end())
     {
-        fprintf(stderr, "Cannot find blob %s\n", name.c_str());
+        LOGE("Cannot find blob %s\n", name.c_str());
         return -1;
     }
     const Blob<float> *p_blob = blob_map[name];
@@ -91,13 +93,14 @@ int Net::Forward(float *input)
     {
         input_layer->CopyInput(input_layer->input_name(i), input);
     }
+    
     for (int i = 1; i < layers.size(); ++i)
     {
 #ifdef LAYER_TIMING
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-//        printf("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
+        //LOGD("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
         layers[i]->Forward();
 #if 0
         for (size_t j = 0; j < layers[i]->top_blob_size(); j++)
@@ -108,7 +111,7 @@ int Net::Forward(float *input)
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        printf("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+        LOGD("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
 
     }
@@ -119,7 +122,7 @@ void Net::TraverseNet()
 {
     for (int i = 0; i < layers.size(); ++i)
     {
-        printf("Layer %s %s %s\n", layers[i]->name().c_str(),
+        LOGD("Layer %s %s %s\n", layers[i]->name().c_str(),
                layers[i]->bottom(0).c_str(),
                layers[i]->top(0).c_str());
     }
@@ -131,7 +134,7 @@ void Net::InitFromPath(const char *model_path)
     fp = fopen(model_path, "rb");
     if (fp == NULL)
     {
-        fprintf(stderr, "Cannot open feather model!\n");
+        LOGE("Cannot open feather model!\n");
         exit(-1);
     }
     this->InitFromFile(fp);
@@ -148,7 +151,7 @@ void Net::InitFromFile(FILE* fp)
 {
     if (fp == NULL)
     {
-        fprintf(stderr, "Cannot open feather model!\n");
+        LOGE("Cannot open feather model!\n");
         exit(-1);
     }
     fseek(fp, 0, SEEK_END);
@@ -158,10 +161,10 @@ void Net::InitFromFile(FILE* fp)
     size_t read_size = fread(net_buffer, sizeof(uint8_t), file_size, fp);
     if (read_size != file_size)
     {
-        fprintf(stderr, "Reading model failed! file_size %ld read size %ld\n", file_size, read_size);
+        LOGE("Reading model failed! file_size %ld read size %ld\n", file_size, read_size);
         exit(-1);
     }
-    printf("Finished loading from file\n");
+    LOGD("Finished loading from file\n");
     this->InitFromBuffer(net_buffer);
     free(net_buffer);
 }
@@ -171,7 +174,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
     const NetParameter *net_param = feather::GetNetParameter(net_buffer);
     size_t layer_num = VectorLength(net_param->layer());
     //Find input layer.
-    //printf("Loading %d layers\n", layer_num);
+    //LOGD("Loading %d layers\n", layer_num);
     for (int i = 0; i < layer_num; ++i)
     {
         if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)
@@ -184,7 +187,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
     {
         const LayerParameter *layer_param = net_param->layer()->Get(i);
         Layer *new_layer = LayerRegistry::CreateLayer(layer_param, rt_param);
-        //printf("setup layer %s\n", layer_param->name()->c_str());
+        //LOGD("setup layer %s\n", layer_param->name()->c_str());
         layers.push_back(new_layer);
     }
     //Generate top blobs, will check the dependency.
@@ -197,13 +200,13 @@ bool Net::InitFromBuffer(const void *net_buffer)
             for (int b = 0; b < layers[i]->bottom_size(); ++b)
             {
                 std::string blob_name = layers[i]->bottom(b);
-                //printf("blob name %s\n", blob_name.c_str());
+                //LOGD("blob name %s\n", blob_name.c_str());
                 //TODO handle error: when blob_name has not been inserted into map.
                 if (blob_map.find(blob_name) != blob_map.end())
                     layers[i]->SetupBottomBlob(blob_map[blob_name], blob_name);
                 else
                 {
-                    fprintf(stderr, "Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
+                    LOGE("Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
                     exit(-1);
                 }
             }
@@ -230,7 +233,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                 //Update the respective bottoms in other layers.
                 std::string new_bottom = layers[i]->top(0);
                 std::string old_bottom = next_layer->top(0);
-                //printf("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+                //LOGD("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
                 for (int k = i + 1; k < layers.size(); ++k)
                 {
                     if (k == j)
@@ -242,10 +245,10 @@ bool Net::InitFromBuffer(const void *net_buffer)
                             layers[k]->ReplaceBottomBlob(old_bottom, new_bottom, layers[i]->top_blob(0));
                     }
                 }
-                //printf("Erasing layer %d %s\n", j, next_layer->name().c_str());
+                //LOGD("Erasing layer %d %s\n", j, next_layer->name().c_str());
                 layers.erase(layers.begin() + j);
                 next_layer = layers[j];
-                //printf("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
+                //LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
             }
         }
     }
