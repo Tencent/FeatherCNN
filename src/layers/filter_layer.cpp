@@ -61,6 +61,21 @@ int FilterLayer::GenerateTopBlobs()
     return 0;
 }
 
+int FilterLayer::ForwardReshape()
+{
+    assert(_bottom.size() == 1);
+    assert(_top.size() == 1);
+
+    const Blob<float>* bottom_blob = _bottom_blobs[_bottom[0]];
+    size_t num = bottom_blob->num();
+    size_t channels = num_output;
+    size_t height = bottom_blob->height();
+    size_t width = bottom_blob->width();
+
+    _top_blobs[_top[0]]->ReshapeWithRealloc(num, channels, height, width);
+    return this->Forward();
+}
+
 int FilterLayer::Init()
 {
     select_weights = _weight_blobs[0]->data();

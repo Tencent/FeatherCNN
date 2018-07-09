@@ -75,6 +75,46 @@ class ConvWinogradLayer : public ConvLayer
 
         }
 
+        virtual int ForwardReshape()
+        {
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            input_height    = bottom_blob->height();
+            input_width     = bottom_blob->width();
+
+            output_width  = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
+            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
+
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
+
+            //Global memory reallocations
+            padding_right -= ext_pad_w;
+            padding_bottom -= ext_pad_h;
+            size_t inputw = input_width + padding_left + padding_right;
+            size_t inputh = input_height + padding_top + padding_bottom;
+
+            ext_pad_w = inputw % 2;
+            ext_pad_h = inputh % 2;
+            padding_right += ext_pad_w;
+            padding_bottom += ext_pad_h;
+            inputw += ext_pad_w;
+            inputh += ext_pad_h;
+
+            size_t winograd_mem_size = 0;
+            winograd_mem_size += 16 * (inputw / 2 - 1) * (inputh / 2 - 1) * input_channels;  //VT
+            winograd_mem_size += 16 * (inputw / 2 - 1) * (inputh / 2 - 1) * output_channels; //WT
+            winograd_mem_size += inputw * inputh * input_channels;                           //Padded Input
+            if (ext_pad_w || ext_pad_h)
+            {
+                int outputw = inputw - kernel_width + 1;
+                int outputh = inputh - kernel_height + 1;
+                winograd_mem_size += outputw * outputh * output_channels;
+            }
+            MEMPOOL_CHECK_RETURN(common_mempool->Alloc(winograd_mem_size * sizeof(float)));
+            output = _top_blobs[_top[0]]->data();
+            input = _bottom_blobs[_bottom[0]]->data();
+            return this->Forward();
+        }
+
         int Fuse(Layer *next_layer)
         {
             if (next_layer->type().compare("ReLU") == 0)

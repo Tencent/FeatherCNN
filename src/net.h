@@ -32,9 +32,11 @@ class Net
         bool InitFromBuffer(const void *net_buffer);
 
         int  Forward(float* input);
+        int  Forward(float* input, int height, int width);
+
         void TraverseNet();
         int GetBlobDataSize(size_t* data_size, std::string blob_name);
-	int PrintBlobData(std::string blob_name);
+	    int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);//Don't forget to free this memory.
         std::map<std::string, const Blob<float> *> blob_map;
     private:

@@ -16,7 +16,7 @@
 
 #include "../feather_simple_generated.h"
 #include "../layer.h"
-
+#include "./arm/helper.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -64,7 +64,7 @@ class ConvLayer : public Layer
         {
             //Conv layer has and only has one bottom blob.
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
-	    printf("bottom name %s ptr 0x%lx\n", _bottom[0].c_str(), bottom_blob);
+	        printf("bottom name %s ptr 0x%lx\n", _bottom[0].c_str(), bottom_blob);
             input_width = bottom_blob->width();
             input_height = bottom_blob->height();
             input_channels = bottom_blob->channels();
@@ -90,35 +90,23 @@ class ConvLayer : public Layer
             return 0;
         }
 
-        void simple_conv(
-            const float *input,
-            size_t input_channels,
-            size_t input_width,
-            size_t input_height,
-            float *output,
-            size_t output_channels,
-            size_t output_width,
-            size_t output_height,
-            float *kernel_data,
-            size_t kernel_width,
-            size_t kernel_height,
-            float *bias_data,
-            bool bias_term,
-            size_t stride_width,
-            size_t stride_height,
-            size_t padding_left,
-            size_t padding_right,
-            size_t padding_top,
-            size_t padding_bottom)
+        virtual int ForwardReshape()
         {
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            input_height    = bottom_blob->height();
+            input_width     = bottom_blob->width();
+
+            output_width  = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
+            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
+
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
+            LOGI("output (c %d h %d w %d)", output_channels, output_height, output_width);
+
+            return this->Forward();
         }
 
         virtual int Forward()
         {
-            const float *input = _bottom_blobs[_bottom[0]]->data();
-            float *output = _top_blobs[_top[0]]->data();
-            // conv(input, output);
-
             return -1;
         }
 

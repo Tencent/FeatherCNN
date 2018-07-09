@@ -15,6 +15,8 @@
 #include "feather_simple_generated.h"
 #include "blob.h"
 
+#include "arm/helper.h"
+
 #include "common.h"
 
 namespace feather
@@ -27,11 +29,35 @@ void Blob<Dtype>::Alloc()
 }
 
 template<class Dtype>
+void Blob<Dtype>::ReshapeWithRealloc(const Blob<Dtype> *p_blob)
+{
+    int num      = p_blob->num();
+    int channels = p_blob->channels();
+    int height   = p_blob->height();
+    int width    = p_blob->width();
+
+    ReshapeWithRealloc(num, channels, height, width);
+}
+
+template<class Dtype>
+void Blob<Dtype>::ReshapeWithRealloc(int num, int channels, int height, int width)
+{
+    // LOGI("Reallc: (%d %d %d %d) to (%d %d %d %d)", _num, _channels, _height, _width, num, channels, height, width);
+    int elem_size = num * channels * height * width;
+    Realloc(elem_size);
+    this->_num      = num;
+    this->_channels = channels;
+    this->_height   = height;
+    this->_width    = width;
+}
+
+template<class Dtype>
 void Blob<Dtype>::Realloc(size_t elem_size)
 {
     if(elem_size > this->data_size())
     {
         _mm_free(_data);
+        _data = NULL;
         _data = (Dtype*) _mm_malloc(elem_size * sizeof(Dtype), 32);
     }
 }

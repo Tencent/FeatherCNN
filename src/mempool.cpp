@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 #include "common.h"
-
+#include "arm/helper.h"
 template<typename PTR_TYPE>
 CommonMemPool<PTR_TYPE>::~CommonMemPool()
 {
@@ -64,6 +64,21 @@ bool CommonMemPool<PTR_TYPE>::Alloc()
         }
     }
     return (common_ptr_map.size() == common_size_map.size()) ? true : false;
+}
+
+template<typename PTR_TYPE>
+bool CommonMemPool<PTR_TYPE>::Alloc(size_t size_byte)
+{
+    if(size_byte > common_size)
+    {
+        free(common_memory);
+        common_memory = NULL;
+        common_size = size_byte;
+        common_memory = (PTR_TYPE *) _mm_malloc(common_size, 128);
+        if(common_memory == NULL)
+            return false;
+    }
+    return true;
 }
 
 template<typename PTR_TYPE>

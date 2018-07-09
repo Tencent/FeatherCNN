@@ -64,9 +64,9 @@ class EltwiseLayer : public Layer
 
         int GenerateTopBlobs()
         {
-            printf("bottom num %ld\n", _bottom.size());
-            printf("bottom name %s %s\n", _bottom[0].c_str(), _bottom[1].c_str());
-            printf("bottom data size %ld %ld\n", _bottom_blobs[_bottom[0]]->data_size(), _bottom_blobs[_bottom[1]]->data_size());
+            // printf("bottom num %ld\n", _bottom.size());
+            // printf("bottom name %s %s\n", _bottom[0].c_str(), _bottom[1].c_str());
+            // printf("bottom data size %ld %ld\n", _bottom_blobs[_bottom[0]]->data_size(), _bottom_blobs[_bottom[1]]->data_size());
             assert(_bottom.size() == 2);
             assert(_bottom_blobs.size() == 2);
             assert(_bottom_blobs[_bottom[0]]->data_size() == _bottom_blobs[_bottom[1]]->data_size());

@@ -141,101 +141,34 @@ class PoolingLayer : public Layer
                     }
                 }
             }
+            return 0;
+        }
 
-
-            /*
-            #if 0
-             f(0)
-            #else
-                if(this->method == PoolingParameter_::PoolMethod_MAX_)
-            #endif
-                {
-                  float f_minimal = std::numeric_limits<float>::max();
-                  f_minimal = -f_minimal;
-                  //printf("minimal float %f\n", f_minimal);
-                  //Init output
-                  for(int i = 0; i < output_channels * output_height * output_width; ++i)
-                  {
-                    output[i] = f_minimal;
-                  }
-                  const size_t img_size = input_height * input_width;
-            #pragma omp parallel for num_threads(num_threads) collapse(3)
-                  for (size_t i = 0; i < output_channels; ++i)
-                  {
-                    for (size_t j = 0; j < output_height; ++j)
-                    {
-                      for(size_t u = 0; u < kernel_height; ++u)
-                      {
-                        int row = j * stride_height + u - pad_height;
-                        if(row < 0 || row >= input_height)
-                          continue;
-                        for (size_t k = 0; k < output_width; ++k)
-                        {
-                          float* out_ptr = output + i * output_height * output_width + j * output_width + k;
-                          float max = *out_ptr;
-                          for(size_t v = 0; v < kernel_width; ++v)
-                          {
-                            int col = k * stride_height + v - pad_width;
-                            if(col < 0 || col >= input_width)
-                              continue;
-                            const float* in_ptr = input + i * img_size + row * input_width + col;
-                            float data = *in_ptr;
-                            max = (max > data) ? max : data;
-                          }
-                          *out_ptr = max;
-                        }
-                      }
-                    }
-                  }
-                }
+        int ForwardReshape()
+        {
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            input_height = bottom_blob->height();
+            input_width = bottom_blob->width();
+            input_channels = bottom_blob->channels();
+            //printf("layer %s\n", _name.c_str());
+            //printf("input %lu %lu %lu\n", input_channels, input_height, input_width);
+            if (global_pooling)
+            {
+                kernel_height = input_height;
+                kernel_width = input_width;
+                output_height = 1;
+                output_width = 1;
+                output_channels = input_channels;
+            }
             else
             {
-                for (size_t i = 0; i < output_channels; ++i)
-                {
-                  for (size_t j = 0; j < output_height; ++j)
-                  {
-                    for (size_t k = 0; k < output_width; ++k)
-                    {
-            #if 0
-                      float total = 0.0;
-                      for (size_t m = 0; m != kernel_height; ++m)
-                      {
-                        for (size_t n = 0; n != kernel_width; ++n)
-                        {
-                          size_t pos = i * input_height* input_width + (j + m)* input_width + k + n;
-                          total += input[pos];
-                        }
-                      }
-                      *p++ = total / (kernel_height * kernel_width);
-            #else
-                      size_t border_h = input_height - j * stride_height + pad_height;
-                      size_t border_w = input_width - k * stride_width + pad_width;
-                      size_t kernel_h = (kernel_height < border_h) ? kernel_height : border_h;
-                      size_t kernel_w = (kernel_width < border_w) ? kernel_width : border_w;
-                      //printf("pool shape %ld %ld %ld %ld %ld %ld %d %d\n", kernel_h, kernel_w, output_height, output_width, border_h, border_w, j, k);
-                      int row = j * stride_height - pad_height;
-                      int col = k * stride_width - pad_width;
-                      if(row < 0)
-                      {
-                        kernel_h = kernel_height + row;
-                        row = 0;
-                      }
-
-                      if(col < 0)
-                      {
-                        kernel_w = kernel_width + col;
-                        col = 0;
-                      }
-                      size_t pos = i * input_height * input_width + row * input_width + col;
-                      _pool_inner_kernel(p, input + pos, input_width, kernel_h, kernel_w);
-                      ++p;
-            #endif
-                    }
-                  }
-                }
+                //General pooling.
+                output_channels = input_channels;
+                output_height = static_cast<int>(ceil(static_cast<float>(input_height + 2 * pad_height - kernel_height) / stride_height)) + 1;
+                output_width = static_cast<int>(ceil(static_cast<float>(input_width + 2 * pad_width - kernel_width) / stride_width)) + 1;
             }
-            */
-            return 0;
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
+            return Forward();
         }
 
         int GenerateTopBlobs()

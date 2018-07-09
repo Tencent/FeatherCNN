@@ -144,6 +144,29 @@ class ConvIm2colLayer : public ConvLayer
             return 0;
         }
 
+        virtual int ForwardReshape()
+        {
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            input_height    = bottom_blob->height();
+            input_width     = bottom_blob->width();
+
+            output_width  = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
+            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
+            
+#ifdef USE_LEGACY_SGEMM
+            int M = (int)output_channels;
+            int eM = M + (8 - M % 8) % 8;
+            _top_blobs[_top[0]]->Realloc(eM * output_height * output_width);
+#endif
+            //Global memory allocations
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
+            input = _bottom_blobs[_bottom[0]]->data();
+            output = _top_blobs[_top[0]]->data();
+            MEMPOOL_CHECK_RETURN(common_mempool->Alloc(sizeof(float) * (input_channels * kernel_height * kernel_width) * (output_width * output_height)))
+
+            return this->Forward();
+        }
+
         int GenerateTopBlobs()
         {
             //Conv layer has and only has one bottom blob.
@@ -172,10 +195,10 @@ class ConvIm2colLayer : public ConvLayer
             _top_blobs[_top[0]] = new Blob<float>(1, output_channels, output_height, output_width);
             _top_blobs[_top[0]]->Alloc();
             int M = output_channels;
-//#ifdef USE_LEGACY_SGEMM
+#ifdef USE_LEGACY_SGEMM
             int eM = M + (8 - M % 8) % 8;
             _top_blobs[_top[0]]->Realloc(eM * output_height * output_width);
-//#endif
+#endif
             return 0;
         }
 

@@ -37,6 +37,7 @@ class CommonMemPool
         bool Free(size_t id);
 
         bool Alloc();
+        bool Alloc(size_t size_byte);
         bool FreeAll();
         void PrintStats();
 

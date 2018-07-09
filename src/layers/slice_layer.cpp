@@ -159,6 +159,52 @@ int SliceLayer::GenerateTopBlobs()
     return 0;
 }
 
+int SliceLayer::ForwardReshape()
+{
+    assert(_bottom.size() == 1);
+    assert(_top.size() - 1 == slice_point.size());
+
+    const Blob<float>* bottom_blob = _bottom_blobs[_bottom[0]];
+    size_t num = bottom_blob->num();
+    size_t channels = bottom_blob->channels();
+    size_t height = bottom_blob->height();
+    size_t width = bottom_blob->width();
+
+    //Create sliced top blobs.
+    switch (axis)
+    {
+        case 0:
+            for (int i = 0; i < _top.size() - 1; ++i)
+            {
+                _top_blobs[_top[i]]->ReshapeWithRealloc(slice_point[i] - ((i == 0) ? 0 : slice_point[i - 1]), channels, height, width);
+            }
+            _top_blobs[_top[_top.size() - 1]]->ReshapeWithRealloc(slice_point[_top.size() - 2], channels, height, width);
+            break;
+        case 1:
+            for (int i = 0; i < _top.size() - 1; ++i)
+            {
+                _top_blobs[_top[i]]->ReshapeWithRealloc(num, slice_point[i] - ((i == 0) ? 0 : slice_point[i - 1]), height, width);
+            }
+            _top_blobs[_top[_top.size() - 1]]->ReshapeWithRealloc(num, slice_point[_top.size() - 2], height, width);
+            break;
+        case 2:
+            for (int i = 0; i < _top.size() - 1; ++i)
+            {
+                _top_blobs[_top[i]]->ReshapeWithRealloc(num, channels, slice_point[i] - ((i == 0) ? 0 : slice_point[i - 1]), width);
+            }
+            _top_blobs[_top[_top.size() - 1]]->ReshapeWithRealloc(num, channels, height - slice_point[_top.size() - 2], width);
+            break;
+        case 3:
+            for (int i = 0; i < _top.size() - 1; ++i)
+            {
+                _top_blobs[_top[i]]->ReshapeWithRealloc(num, channels, height, slice_point[i] - ((i == 0) ? 0 : slice_point[i - 1]));
+            }
+            _top_blobs[_top[_top.size() - 1]]->ReshapeWithRealloc(num, channels, height, width - slice_point[_top.size() - 2]);
+            break;
+    }
+    return this->Forward();
+}
+
 int SliceLayer::Init()
 {
     printf("axis %d slice_point num %lu\n", axis, slice_point.size());

@@ -45,6 +45,10 @@ class Blob
 
         void Alloc();
 
+        void ReshapeWithRealloc(const Blob<Dtype> *p_blob);
+
+        void ReshapeWithRealloc(int num, int channels, int height, int width);
+
         void Realloc(size_t elem_size);
 
         void CopyData(const Dtype* data)
