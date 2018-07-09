@@ -54,9 +54,6 @@ class BatchNormLayer : Layer
         float* scale_bias_data;
         bool fuse_relu;
 
-        float* input;
-        float* output;
-
     private:
         int SetKernel();
         void (*bn_kernel)(const size_t channels, const size_t stride, const float* alpha, const float* beta, const float* bias_data, const float* scale_data, const float* input, float* output, const size_t num_threads);

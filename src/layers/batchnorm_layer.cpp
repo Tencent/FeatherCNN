@@ -21,6 +21,8 @@ namespace feather
 {
 int BatchNormLayer::Forward()
 {
+    const float* input = _bottom_blobs[_bottom[0]]->data();
+    float* output = _top_blobs[_top[0]]->data();
     size_t stride = input_width * input_height;
     bn_kernel(input_channels, stride, alpha, beta, scale_bias_data, scale_data, input, output, num_threads);
     return 0;
@@ -82,8 +84,7 @@ int BatchNormLayer::Init()
             scale_bias_data = NULL;
     }
     SetKernel();
-    input = _bottom_blobs[_bottom[0]]->data();
-    output = _top_blobs[_top[0]]->data();
+    
     return 0;
 }
 
