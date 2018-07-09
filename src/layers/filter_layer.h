@@ -31,6 +31,7 @@ class FilterLayer : public Layer
 
         int GenerateTopBlobs();
         int Forward();
+        int ForwardReshape();
         int Init();
 
     private:

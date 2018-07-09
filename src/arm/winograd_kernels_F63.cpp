@@ -580,11 +580,15 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 
         /*I have no idea which packing method is faster, seeems that they are not the major bottleneck after loop swapping*/
 #ifdef _OPENMP
+#ifdef __aarch64__
         #pragma omp parallel num_threads(num_threads)
+#endif
 #endif
         {
 #ifdef _OPENMP
+#ifdef __aarch64__
             #pragma omp for collapse(2)
+#endif
 #endif
             for (int i = start_block_id; i < end_block_id_aligned + 4; i += 4)
             {
@@ -637,7 +641,9 @@ void TensorGEMM(float *WT, const float *VT, const float *UT, const int depth, co
 
 #else
 #ifdef _OPENMP
+#ifdef __aarch64__
             #pragma omp for collapse(3)
+#endif
 #endif
             for (int oc = 0; oc < outChannels; oc += 4)
             {
@@ -1031,7 +1037,9 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
 #ifdef FEATHER_USE_GCD
     dispatch_apply(outChannels, dispatch_get_global_queue(0, 0), ^(size_t oc)
 #else
+#ifdef __aarch64__
     #pragma omp parallel for num_threads(num_threads) schedule(static) collapse(3)
+#endif
     for (int oc = 0; oc < outChannels; ++oc)
 #endif
     {

@@ -14,6 +14,7 @@
 
 #include "concat_layer.h"
 #include "arm/generic_kernels.h"
+#include "arm/helper.h"
 
 namespace feather
 {
@@ -42,8 +43,28 @@ int ConcatLayer::GenerateTopBlobs()
     printf("Output shape %d %d %d\n", channels, height, width);
     _top_blobs[_top[0]] = new Blob<float>(num, channels, height, width);
     _top_blobs[_top[0]]->Alloc();
-    //exit(0);
     return 0;
+}
+
+int ConcatLayer::ForwardReshape()
+{
+    auto first_blob = _bottom_blobs[_bottom[0]];
+    size_t num = 1;
+    size_t channels = first_blob->channels();
+    size_t width = first_blob->width();
+    size_t height = first_blob->height();
+
+    for (int i = 1; i < _bottom.size(); ++i)
+    {
+        auto p_blob = _bottom_blobs[bottom(i)];
+        assert(num == p_blob->num());
+        assert(width == p_blob->width());
+        assert(height == p_blob->height());
+        channels += p_blob->channels();
+    }
+    LOGI("Output shape %d %d %d\n", channels, height, width);
+    _top_blobs[_top[0]]->ReshapeWithRealloc(num, channels, width, height);
+    return this->Forward();
 }
 
 int ConcatLayer::Init()

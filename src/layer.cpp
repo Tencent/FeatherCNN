@@ -115,6 +115,17 @@ int Layer::Forward()
 {
     return false;
 }
+int Layer::ForwardReshape()
+{
+    //Default Reshape Assertation: 
+    //There should be a single top blob as well as bottom blob.
+    //The default behaviour is that the top blob is identical to the bottom blob
+    //Use default reallocation.
+    _top_blobs[top(0)]->ReshapeWithRealloc(_bottom_blobs[bottom(0)]);
+    
+    this->Forward();
+    return true;
+}
 std::string Layer::name()
 {
     return _name;

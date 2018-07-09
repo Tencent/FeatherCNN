@@ -28,6 +28,7 @@ class ConcatLayer : public Layer
 
         }
         int Forward();
+        int ForwardReshape();
         int Init();
         int GenerateTopBlobs();
     private:

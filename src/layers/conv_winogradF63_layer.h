@@ -56,6 +56,44 @@ class ConvWinogradF63Layer : public ConvLayer
             return 0;
         }
 
+        virtual int ForwardReshape()
+        {
+            // LOGI("Winograd F63 output before reshape (c %d h %d w %d)", output_channels, output_height, output_width);
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            
+            size_t input_height_old = input_height;
+            size_t input_width_old = input_width;
+            input_height    = bottom_blob->height();
+            input_width     = bottom_blob->width();
+
+            output_width  = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
+            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
+            if((input_height > input_height_old) || (input_width > input_width_old))
+            {//Global memory allocations
+            size_t inputw = input_width + padding_left + padding_right;
+            size_t inputh = input_height + padding_top + padding_bottom;
+            int nRowBlocks = (inputw + 3) / 6;
+            int nColBlocks = (inputh + 3) / 6;
+            int nBlocks = nRowBlocks * nColBlocks;
+            size_t packArraySize = getPackArraySize_F6x6_3x3(input_channels, num_threads);
+            size_t winograd_mem_size = 0;
+            winograd_mem_size += 64 * nBlocks * input_channels;  //VT
+            winograd_mem_size += 64 * nBlocks * output_channels; //WT
+            winograd_mem_size += packArraySize; //WT
+            winograd_mem_size += inputw * inputh * input_channels;                           //Padded Input
+	        winograd_mem_size += 64;
+
+            MEMPOOL_CHECK_RETURN(common_mempool->Alloc(winograd_mem_size * sizeof(float)));
+            }
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
+
+            //We have to update the input and output ptrs to avoid pointer reallocation.
+            output = _top_blobs[_top[0]]->data();
+            input = _bottom_blobs[_bottom[0]]->data();
+            // LOGI("output (c %d h %d w %d)", output_channels, output_height, output_width);
+            return this->Forward();
+        }
+
         int Fuse(Layer *next_layer)
         {
             if (next_layer->type().compare("ReLU") == 0)
@@ -83,7 +121,7 @@ class ConvWinogradF63Layer : public ConvLayer
             winograd_mem_size += 64 * nBlocks * output_channels; //WT
             winograd_mem_size += packArraySize; //WT
             winograd_mem_size += inputw * inputh * input_channels;                           //Padded Input
-	    winograd_mem_size += 64;
+	        winograd_mem_size += 64;
 
             MEMPOOL_CHECK_RETURN(common_mempool->Request(winograd_mem_size * sizeof(float)));
             MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&UT, 64 * input_channels * output_channels * sizeof(float)));

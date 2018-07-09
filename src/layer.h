@@ -45,6 +45,9 @@ class Layer
         virtual int Init();
 
         virtual int Forward();
+        
+        virtual int ForwardReshape();
+
         std::string name();
         std::string type();
         std::string bottom(size_t i);

@@ -61,6 +61,19 @@ class InnerProductLayer : public Layer
             return 0;
         }
 
+        int ForwardReshape()
+        {
+            //InnerProduct layer has and only has one bottom blob.
+            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            input_width = bottom_blob->width();
+            input_height = bottom_blob->height();
+            input_channels = bottom_blob->channels();
+            input_size = bottom_blob->data_size();
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, 1, 1);
+            output_size = _top_blobs[_top[0]]->data_size();
+            return this->Forward();   
+        }
+
         int Init()
         {
             float* buffer = NULL;

@@ -39,7 +39,9 @@ class SliceLayer : public Layer
         }
 
         int GenerateTopBlobs();
+        int GetTopBlobShape();
         int Forward();
+        int ForwardReshape();
         int Init();
 
     private:

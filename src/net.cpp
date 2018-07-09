@@ -118,6 +118,28 @@ int Net::Forward(float *input)
     return 0;
 }
 
+int Net::Forward(float* input, int height, int width)
+{
+    InputLayer *input_layer = (InputLayer *)layers[0];
+    input_layer->Reshape(input_layer->input_name(0), height, width);
+    input_layer->CopyInput(input_layer->input_name(0), input);
+    for (int i = 1; i < layers.size(); ++i)
+    {
+#ifdef LAYER_TIMING
+        timespec tpstart, tpend;
+        clock_gettime(CLOCK_MONOTONIC, &tpstart);
+#endif
+// LOGI("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
+        layers[i]->ForwardReshape();
+#ifdef LAYER_TIMING
+        clock_gettime(CLOCK_MONOTONIC, &tpend);
+        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        LOGI("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+#endif
+    }
+    return 0;
+}
+
 void Net::TraverseNet()
 {
     for (int i = 0; i < layers.size(); ++i)
@@ -137,6 +159,7 @@ void Net::InitFromPath(const char *model_path)
         LOGE("Cannot open feather model!\n");
         exit(-1);
     }
+    fseek ( fp , 0 , SEEK_SET );
     this->InitFromFile(fp);
     fclose(fp);
 }
@@ -144,6 +167,7 @@ void Net::InitFromPath(const char *model_path)
 
 void Net::InitFromStringPath(std::string model_path)
 {
+    LOGI("Init model path %s", model_path.c_str());
 	InitFromPath(model_path.c_str());
 }
 
