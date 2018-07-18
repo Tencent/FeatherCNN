@@ -39,13 +39,17 @@ class Blob
 
         ~Blob()
         {
+            Free();
+        }
+        
+        void Free()
+        {
             if (this->_data)
             {
                 free(this->_data);
                 this->_data = NULL;
             }
         }
-
         void Alloc();
 
         void ReshapeWithRealloc(const Blob<Dtype> *p_blob);
@@ -68,6 +72,7 @@ class Blob
         }
         void Copy(const Blob<Dtype>* p_blob)
         {
+            this->Free();
             CopyShape(p_blob);
             this->Alloc();
             assert(p_blob->data_size() == this->data_size());
