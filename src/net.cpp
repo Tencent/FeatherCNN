@@ -37,6 +37,10 @@ Net::Net(size_t num_threads)
 
 Net::~Net()
 {
+    for(int i = 0; i < layers.size(); ++i)
+    {
+        delete layers[i];
+    }
     delete rt_param->common_mempool();
     delete rt_param;
 }

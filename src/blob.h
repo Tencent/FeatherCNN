@@ -40,7 +40,10 @@ class Blob
         ~Blob()
         {
             if (this->_data)
+            {
                 free(this->_data);
+                this->_data = NULL;
+            }
         }
 
         void Alloc();
