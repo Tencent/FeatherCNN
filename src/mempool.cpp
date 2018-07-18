@@ -193,8 +193,8 @@ PrivateMemPool<PTR_TYPE>::~PrivateMemPool()
 {
     if (private_map.size())
     {
-        fprintf(stderr, "Warning: private memories are not freed before memory pool deconstruction. Proceed with free.\n");
-        PrintStats();
+        //fprintf(stderr, "Warning: private memories are not freed before memory pool deconstruction. Proceed with free.\n");
+        //PrintStats();
         FreeAll();
     }
 }
