@@ -27,6 +27,15 @@ void Blob<Dtype>::Alloc()
     size_t dim_byte = _num * _channels * _height * _width * sizeof(Dtype);
     _data = (Dtype*) _mm_malloc(dim_byte, 16);
 }
+template<class Dtype>
+void Blob<Dtype>::Free()
+{
+	if (this->_data)
+	{
+		free(this->_data);
+		this->_data = NULL;
+	}
+}
 
 template<class Dtype>
 void Blob<Dtype>::ReshapeWithRealloc(const Blob<Dtype> *p_blob)
