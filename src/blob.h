@@ -42,14 +42,7 @@ class Blob
             Free();
         }
         
-        void Free()
-        {
-            if (this->_data)
-            {
-                free(this->_data);
-                this->_data = NULL;
-            }
-        }
+        void Free();
         void Alloc();
 
         void ReshapeWithRealloc(const Blob<Dtype> *p_blob);
