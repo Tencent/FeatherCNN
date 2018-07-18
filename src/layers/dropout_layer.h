@@ -25,6 +25,7 @@ class DropoutLayer : public Layer
         DropoutLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
             : Layer(layer_param, rt_param)
         {
+            _inplace = true;
         }
 
         int GenerateTopBlobs()

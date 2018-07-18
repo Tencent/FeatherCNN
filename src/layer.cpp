@@ -45,6 +45,16 @@ Layer::Layer(const void* layer_param_in, const RuntimeParameter<float>* rt_param
     }
 }
 
+Layer::~Layer()
+{
+    if(!_inplace){
+        for (int i = 0; i < _top_blobs.size(); ++i)
+        {
+            delete _top_blobs[top(i)];
+        }
+    }
+}
+
 int Layer::SetupBottomBlob(const Blob<float>* p_blob, std::string name)
 {
     if (std::find(_bottom.begin(), _bottom.end(), name) == _bottom.end())
