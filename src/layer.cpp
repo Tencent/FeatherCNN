@@ -20,6 +20,7 @@ namespace feather
 {
 Layer::Layer(const void* layer_param_in, const RuntimeParameter<float>* rt_param)
     : _fusible(false),
+      _inplace(false),
       num_threads(rt_param->num_threads()),
       common_mempool(rt_param->common_mempool())
 {
@@ -50,7 +51,7 @@ Layer::~Layer()
     if(!_inplace){
         for (int i = 0; i < _top_blobs.size(); ++i)
         {
-	    printf("Free blob %s\n", this->top(i).c_str());
+	        printf("Free blob %s\n", this->top(i).c_str());
             delete _top_blobs[top(i)];
         }
     }
