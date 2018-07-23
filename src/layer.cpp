@@ -51,13 +51,11 @@ Layer::~Layer()
     if(!_inplace){
         for (int i = 0; i < _top_blobs.size(); ++i)
         {
-	        printf("Free blob %s\n", this->top(i).c_str());
             delete _top_blobs[top(i)];
         }
     }
     for (int i = 0; i < _weight_blobs.size(); ++i)
     {
-	    printf("Free weight blob %d\n", i);
 	    delete _weight_blobs[i];
     }
 }

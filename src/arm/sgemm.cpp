@@ -16,6 +16,495 @@ int align_ceil(int num, int align)
 	return num + (align - (num % align)) % align;
 }
 
+void inner_kernel_4x12(int K, float *packA, float *packB, float *c, int ldc)
+{
+	float *aptr = packA;
+	float *bptr = packB;
+	float *cptr = c;
+	float32x4_t va;
+	float32x4_t vb0, vb1, vb2;
+	float32x4_t vc0, vc1, vc2, vc3, vc4, vc5, vc6, vc7, vc8, vc9, vcA, vcB;
+
+	vc0 = vld1q_f32(cptr); 
+	vc1 = vld1q_f32(cptr + 4);
+	vc2 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc3 = vld1q_f32(cptr);
+	vc4 = vld1q_f32(cptr + 4);
+	vc5 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc6 = vld1q_f32(cptr);
+	vc7 = vld1q_f32(cptr + 4);
+	vc8 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc9 = vld1q_f32(cptr);
+	vcA = vld1q_f32(cptr + 4);
+	vcB = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vb0 = vld1q_f32(bptr);
+	vb1 = vld1q_f32(bptr + 4);
+	vb2 = vld1q_f32(bptr + 8);
+
+	for(int p = 0; p < (K-1); ++p){
+		va = vld1q_dup_f32(aptr);
+		vc0 = vfmaq_f32(vc0, vb0, va);
+		vc1 = vfmaq_f32(vc1, vb1, va);
+		vc2 = vfmaq_f32(vc2, vb2, va);
+		va = vld1q_dup_f32(aptr + 1);
+		vc3 = vfmaq_f32(vc3, vb0, va);
+		vc4 = vfmaq_f32(vc4, vb1, va);
+		vc5 = vfmaq_f32(vc5, vb2, va);
+
+		va = vld1q_dup_f32(aptr + 2);
+
+		vc6 = vfmaq_f32(vc6, vb0, va);
+		vc7 = vfmaq_f32(vc7, vb1, va);
+		vc8 = vfmaq_f32(vc8, vb2, va);
+
+		va = vld1q_dup_f32(aptr + 3);
+		vc9 = vfmaq_f32(vc9, vb0, va);
+		vcA = vfmaq_f32(vcA, vb1, va);
+		vcB = vfmaq_f32(vcB, vb2, va);
+
+		bptr += 12;
+		vb0 = vld1q_f32(bptr);
+		vb1 = vld1q_f32(bptr + 4);
+		vb2 = vld1q_f32(bptr + 8);
+		
+		aptr += 4;
+	}
+	cptr = c;
+	va  = vld1q_dup_f32(aptr);
+	vc0 = vfmaq_f32(vc0, vb0, va);
+	vc1 = vfmaq_f32(vc1, vb1, va);
+	vc2 = vfmaq_f32(vc2, vb2, va);
+	vst1q_f32(cptr, vc0);
+	vst1q_f32(cptr + 4, vc1);
+	vst1q_f32(cptr + 8, vc2);
+	cptr += ldc;
+
+	va = vld1q_dup_f32(aptr + 1);
+	vc3 = vfmaq_f32(vc3, vb0, va);
+	vc4 = vfmaq_f32(vc4, vb1, va);
+	vc5 = vfmaq_f32(vc5, vb2, va);
+	vst1q_f32(cptr, vc3);
+	vst1q_f32(cptr + 4, vc4);
+	vst1q_f32(cptr + 8, vc5);
+	cptr += ldc;
+ 
+	va  = vld1q_dup_f32(aptr + 2);
+	vc6 = vfmaq_f32(vc6, vb0, va);
+	vc7 = vfmaq_f32(vc7, vb1, va);
+	vc8 = vfmaq_f32(vc8, vb2, va);
+	vst1q_f32(cptr, vc6);
+	vst1q_f32(cptr + 4, vc7);
+	vst1q_f32(cptr + 8, vc8);
+	cptr += ldc;
+
+	va = vld1q_dup_f32(aptr + 3);
+	vc9 = vfmaq_f32(vc9, vb0, va);
+	vcA = vfmaq_f32(vcA, vb1, va);
+	vcB = vfmaq_f32(vcB, vb2, va);
+	vst1q_f32(cptr, vc9);
+	vst1q_f32(cptr + 4, vcA);
+	vst1q_f32(cptr + 8, vcB);
+	cptr += ldc;
+}
+void inner_kernel_8x12(int K, float *packA, float *packB, float *c, int ldc)
+{
+	float *aptr = packA;
+	float *bptr = packB;
+	float *cptr = c;
+	float32x4_t va, va1;
+	float32x4_t vb0, vb1, vb2;
+	float32x4_t vc0, vc1, vc2, vc3, vc4, vc5, vc6, vc7, vc8, vc9, vcA, vcB;
+	float32x4_t vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7, vd8, vd9, vdA, vdB;
+	vc0 = vld1q_f32(cptr); 
+	vc1 = vld1q_f32(cptr + 4);
+	vc2 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc3 = vld1q_f32(cptr);
+	vc4 = vld1q_f32(cptr + 4);
+	vc5 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc6 = vld1q_f32(cptr);
+	vc7 = vld1q_f32(cptr + 4);
+	vc8 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vc9 = vld1q_f32(cptr);
+	vcA = vld1q_f32(cptr + 4);
+	vcB = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vd0 = vld1q_f32(cptr); 
+	vd1 = vld1q_f32(cptr + 4);
+	vd2 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vd3 = vld1q_f32(cptr);
+	vd4 = vld1q_f32(cptr + 4);
+	vd5 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vd6 = vld1q_f32(cptr);
+	vd7 = vld1q_f32(cptr + 4);
+	vd8 = vld1q_f32(cptr + 8);
+	cptr += ldc;
+
+	vd9 = vld1q_f32(cptr);
+	vdA = vld1q_f32(cptr + 4);
+	vdB = vld1q_f32(cptr + 8);
+
+	vb0 = vld1q_f32(bptr);
+	vb1 = vld1q_f32(bptr + 4);
+	vb2 = vld1q_f32(bptr + 8);
+
+	for(int p = 0; p < (K-1); ++p){
+		va = vld1q_dup_f32(aptr);
+		va1 = vld1q_dup_f32(aptr + 1);
+		vc0 = vfmaq_f32(vc0, vb0, va);
+		vc1 = vfmaq_f32(vc1, vb1, va);
+		vc2 = vfmaq_f32(vc2, vb2, va);
+		vc3 = vfmaq_f32(vc3, vb0, va1);
+		vc4 = vfmaq_f32(vc4, vb1, va1);
+		vc5 = vfmaq_f32(vc5, vb2, va1);
+
+		va = vld1q_dup_f32(aptr + 2);
+		va1 = vld1q_dup_f32(aptr + 3);
+
+		vc6 = vfmaq_f32(vc6, vb0, va);
+		vc7 = vfmaq_f32(vc7, vb1, va);
+		vc8 = vfmaq_f32(vc8, vb2, va);
+		vc9 = vfmaq_f32(vc9, vb0, va1);
+		vcA = vfmaq_f32(vcA, vb1, va1);
+		vcB = vfmaq_f32(vcB, vb2, va1);
+		
+		va = vld1q_dup_f32(aptr + 4);
+		va1 = vld1q_dup_f32(aptr + 5);
+		vd0 = vfmaq_f32(vd0, vb0, va);
+		vd1 = vfmaq_f32(vd1, vb1, va);
+		vd2 = vfmaq_f32(vd2, vb2, va);
+		vd3 = vfmaq_f32(vd3, vb0, va1);
+		vd4 = vfmaq_f32(vd4, vb1, va1);
+		vd5 = vfmaq_f32(vd5, vb2, va1);
+
+		va = vld1q_dup_f32(aptr + 6);
+		va1 = vld1q_dup_f32(aptr + 7);
+
+		vd6 = vfmaq_f32(vd6, vb0, va);
+		vd7 = vfmaq_f32(vd7, vb1, va);
+		vd8 = vfmaq_f32(vd8, vb2, va);
+		vd9 = vfmaq_f32(vd9, vb0, va1);
+		vdA = vfmaq_f32(vdA, vb1, va1);
+		vdB = vfmaq_f32(vdB, vb2, va1);
+
+		bptr += 12;
+		vb0 = vld1q_f32(bptr);
+		vb1 = vld1q_f32(bptr + 4);
+		vb2 = vld1q_f32(bptr + 8);
+		
+		aptr += 8;
+	}
+	cptr = c;
+	va  = vld1q_dup_f32(aptr);
+	va1 = vld1q_dup_f32(aptr + 1);
+	vc0 = vfmaq_f32(vc0, vb0, va);
+	vc1 = vfmaq_f32(vc1, vb1, va);
+	vc2 = vfmaq_f32(vc2, vb2, va);
+	vst1q_f32(cptr, vc0);
+	vst1q_f32(cptr + 4, vc1);
+	vst1q_f32(cptr + 8, vc2);
+	cptr += ldc;
+
+	vc3 = vfmaq_f32(vc3, vb0, va1);
+	vc4 = vfmaq_f32(vc4, vb1, va1);
+	vc5 = vfmaq_f32(vc5, vb2, va1);
+	vst1q_f32(cptr, vc3);
+	vst1q_f32(cptr + 4, vc4);
+	vst1q_f32(cptr + 8, vc5);
+	cptr += ldc;
+ 
+	va  = vld1q_dup_f32(aptr + 2);
+	va1 = vld1q_dup_f32(aptr + 3);
+	vc6 = vfmaq_f32(vc6, vb0, va);
+	vc7 = vfmaq_f32(vc7, vb1, va);
+	vc8 = vfmaq_f32(vc8, vb2, va);
+	vst1q_f32(cptr, vc6);
+	vst1q_f32(cptr + 4, vc7);
+	vst1q_f32(cptr + 8, vc8);
+	cptr += ldc;
+
+	vc9 = vfmaq_f32(vc9, vb0, va1);
+	vcA = vfmaq_f32(vcA, vb1, va1);
+	vcB = vfmaq_f32(vcB, vb2, va1);
+	vst1q_f32(cptr, vc9);
+	vst1q_f32(cptr + 4, vcA);
+	vst1q_f32(cptr + 8, vcB);
+	cptr += ldc;
+
+	va  = vld1q_dup_f32(aptr + 4);
+	va1 = vld1q_dup_f32(aptr + 5);
+	vd0 = vfmaq_f32(vd0, vb0, va);
+	vd1 = vfmaq_f32(vd1, vb1, va);
+	vd2 = vfmaq_f32(vd2, vb2, va);
+	vst1q_f32(cptr, vd0);
+	vst1q_f32(cptr + 4, vd1);
+	vst1q_f32(cptr + 8, vd2);
+	cptr += ldc;
+
+	vd3 = vfmaq_f32(vd3, vb0, va1);
+	vd4 = vfmaq_f32(vd4, vb1, va1);
+	vd5 = vfmaq_f32(vd5, vb2, va1);
+	vst1q_f32(cptr, vd3);
+	vst1q_f32(cptr + 4, vd4);
+	vst1q_f32(cptr + 8, vd5);
+	cptr += ldc;
+ 
+	va  = vld1q_dup_f32(aptr + 6);
+	va1 = vld1q_dup_f32(aptr + 7);
+	vd6 = vfmaq_f32(vd6, vb0, va);
+	vd7 = vfmaq_f32(vd7, vb1, va);
+	vd8 = vfmaq_f32(vd8, vb2, va);
+	vst1q_f32(cptr, vd6);
+	vst1q_f32(cptr + 4, vd7);
+	vst1q_f32(cptr + 8, vd8);
+	cptr += ldc;
+
+	vd9 = vfmaq_f32(vd9, vb0, va1);
+	vdA = vfmaq_f32(vdA, vb1, va1);
+	vdB = vfmaq_f32(vdB, vb2, va1);
+	vst1q_f32(cptr, vd9);
+	vst1q_f32(cptr + 4, vdA);
+	vst1q_f32(cptr + 8, vdB);
+}
+
+template<int N>
+void inner_kernel_Nx12_template(int K, float *packA, float *packB, float *c, int ldc)
+{
+	float *aptr = packA;
+	float *bptr = packB;
+	float *cptr = c;
+	float32x4_t va, va1;
+	float32x4_t vb0, vb1, vb2;
+	float32x4_t vc0, vc1, vc2, vc3, vc4, vc5, vc6, vc7, vc8, vc9, vcA, vcB;
+	float32x4_t vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7, vd8, vd9, vdA, vdB;
+	{
+		vc0 = vld1q_f32(cptr);
+		vc1 = vld1q_f32(cptr + 4);
+		vc2 = vld1q_f32(cptr + 8);
+	}
+	if (N > 1)
+	{
+		cptr += ldc;
+		vc3 = vld1q_f32(cptr);
+		vc4 = vld1q_f32(cptr + 4);
+		vc5 = vld1q_f32(cptr + 8);
+	}
+	if (N > 2)
+	{
+		cptr += ldc;
+		vc6 = vld1q_f32(cptr);
+		vc7 = vld1q_f32(cptr + 4);
+		vc8 = vld1q_f32(cptr + 8);
+	}
+	if (N > 3)
+	{
+		cptr += ldc;
+		vc9 = vld1q_f32(cptr);
+		vcA = vld1q_f32(cptr + 4);
+		vcB = vld1q_f32(cptr + 8);
+	}
+	if (N > 4)
+	{
+		vd0 = vld1q_f32(cptr);
+		vd1 = vld1q_f32(cptr + 4);
+		vd2 = vld1q_f32(cptr + 8);
+	}
+	if (N > 5)
+	{
+		cptr += ldc;
+		vd3 = vld1q_f32(cptr);
+		vd4 = vld1q_f32(cptr + 4);
+		vd5 = vld1q_f32(cptr + 8);
+	}
+	if (N > 6)
+	{
+		cptr += ldc;
+		vd6 = vld1q_f32(cptr);
+		vd7 = vld1q_f32(cptr + 4);
+		vd8 = vld1q_f32(cptr + 8);
+	}
+	if (N > 7)
+	{
+		cptr += ldc;
+		vd9 = vld1q_f32(cptr);
+		vdA = vld1q_f32(cptr + 4);
+		vdB = vld1q_f32(cptr + 8);
+	}
+	vb0 = vld1q_f32(bptr);
+	vb1 = vld1q_f32(bptr + 4);
+	vb2 = vld1q_f32(bptr + 8);
+
+	for(int p = 0; p < (K-1); ++p){
+		{
+			va  = vld1q_dup_f32(aptr);
+			vc0 = vfmaq_f32(vc0, vb0, va);
+			vc1 = vfmaq_f32(vc1, vb1, va);
+			vc2 = vfmaq_f32(vc2, vb2, va);
+		}
+		if(N > 1)
+		{
+			va1 = vld1q_dup_f32(aptr + 1);
+			vc3 = vfmaq_f32(vc3, vb0, va1);
+			vc4 = vfmaq_f32(vc4, vb1, va1);
+			vc5 = vfmaq_f32(vc5, vb2, va1);
+		}
+		if(N > 2)
+		{
+			va  = vld1q_dup_f32(aptr + 2);
+			vc6 = vfmaq_f32(vc6, vb0, va);
+			vc7 = vfmaq_f32(vc7, vb1, va);
+			vc8 = vfmaq_f32(vc8, vb2, va);
+		}
+		if(N > 3)
+		{
+			va1 = vld1q_dup_f32(aptr + 3);
+			vc9 = vfmaq_f32(vc9, vb0, va1);
+			vcA = vfmaq_f32(vcA, vb1, va1);
+			vcB = vfmaq_f32(vcB, vb2, va1);
+
+		}
+		if(N > 4)
+		{
+			va  = vld1q_dup_f32(aptr + 4);
+			vd0 = vfmaq_f32(vd0, vb0, va);
+			vd1 = vfmaq_f32(vd1, vb1, va);
+			vd2 = vfmaq_f32(vd2, vb2, va);
+		}
+		if(N > 5)
+		{
+			va1 = vld1q_dup_f32(aptr + 5);
+			vd3 = vfmaq_f32(vd3, vb0, va1);
+			vd4 = vfmaq_f32(vd4, vb1, va1);
+			vd5 = vfmaq_f32(vd5, vb2, va1);
+		}
+		if(N > 6)
+		{
+			va  = vld1q_dup_f32(aptr + 6);
+			vd6 = vfmaq_f32(vd6, vb0, va);
+			vd7 = vfmaq_f32(vd7, vb1, va);
+			vd8 = vfmaq_f32(vd8, vb2, va);
+		}
+		if(N > 7)
+		{
+			va1 = vld1q_dup_f32(aptr + 7);
+			vd9 = vfmaq_f32(vd9, vb0, va1);
+			vdA = vfmaq_f32(vdA, vb1, va1);
+			vdB = vfmaq_f32(vdB, vb2, va1);
+		}
+		
+		bptr += 12;
+		vb0 = vld1q_f32(bptr);
+		vb1 = vld1q_f32(bptr + 4);
+		vb2 = vld1q_f32(bptr + 8);
+		
+		aptr += N;
+	}
+
+	cptr = c;
+	{
+		va = vld1q_dup_f32(aptr);
+		vc0 = vfmaq_f32(vc0, vb0, va);
+		vc1 = vfmaq_f32(vc1, vb1, va);
+		vc2 = vfmaq_f32(vc2, vb2, va);
+		vst1q_f32(cptr, vc0);
+		vst1q_f32(cptr + 4, vc1);
+		vst1q_f32(cptr + 8, vc2);
+	}
+	if (N > 1)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 1);
+		vc3 = vfmaq_f32(vc3, vb0, va);
+		vc4 = vfmaq_f32(vc4, vb1, va);
+		vc5 = vfmaq_f32(vc5, vb2, va);
+		vst1q_f32(cptr, vc3);
+		vst1q_f32(cptr + 4, vc4);
+		vst1q_f32(cptr + 8, vc5);
+	}
+	if (N > 2)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 2);
+		vc6 = vfmaq_f32(vc6, vb0, va);
+		vc7 = vfmaq_f32(vc7, vb1, va);
+		vc8 = vfmaq_f32(vc8, vb2, va);
+		vst1q_f32(cptr, vc6);
+		vst1q_f32(cptr + 4, vc7);
+		vst1q_f32(cptr + 8, vc8);
+	}
+	if (N > 3)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 3);
+		vc9 = vfmaq_f32(vc9, vb0, va);
+		vcA = vfmaq_f32(vcA, vb1, va);
+		vcB = vfmaq_f32(vcB, vb2, va);
+		vst1q_f32(cptr, vc9);
+		vst1q_f32(cptr + 4, vcA);
+		vst1q_f32(cptr + 8, vcB);
+	}
+	if (N > 4)
+	{
+		va = vld1q_dup_f32(aptr + 4);
+		vd0 = vfmaq_f32(vd0, vb0, va);
+		vd1 = vfmaq_f32(vd1, vb1, va);
+		vd2 = vfmaq_f32(vd2, vb2, va);
+		vst1q_f32(cptr, vd0);
+		vst1q_f32(cptr + 4, vd1);
+		vst1q_f32(cptr + 8, vd2);
+	}
+	if (N > 5)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 5);
+		vd3 = vfmaq_f32(vd3, vb0, va);
+		vd4 = vfmaq_f32(vd4, vb1, va);
+		vd5 = vfmaq_f32(vd5, vb2, va);
+		vst1q_f32(cptr, vd3);
+		vst1q_f32(cptr + 4, vd4);
+		vst1q_f32(cptr + 8, vd5);
+	}
+	if (N > 6)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 6);
+		vd6 = vfmaq_f32(vd6, vb0, va);
+		vd7 = vfmaq_f32(vd7, vb1, va);
+		vd8 = vfmaq_f32(vd8, vb2, va);
+		vst1q_f32(cptr, vd6);
+		vst1q_f32(cptr + 4, vd7);
+		vst1q_f32(cptr + 8, vd8);
+	}
+	if (N > 7)
+	{
+		cptr += ldc;
+		va = vld1q_dup_f32(aptr + 7);
+		vd9 = vfmaq_f32(vd9, vb0, va);
+		vdA = vfmaq_f32(vdA, vb1, va);
+		vdB = vfmaq_f32(vdB, vb2, va);
+		vst1q_f32(cptr, vd9);
+		vst1q_f32(cptr + 4, vdA);
+		vst1q_f32(cptr + 8, vdB);
+	}
+}
 
 void inner_kernel_8x8(int K, float *packA, float *packB, float *c, int ldc)
 {
@@ -293,7 +782,7 @@ void inner_kernel_Nx8_template(int K, float *packA, float *packB, float *c, int 
 }
 
 
-InnerKernel get_kernel(int k)
+InnerKernel get_kernel_Nx8(int k)
 {
 	switch(k)
 	{
@@ -316,11 +805,39 @@ InnerKernel get_kernel(int k)
 	}
 }
 
-template<bool fuseBias, bool fuseRelu>
-inline void compute_block_activation(int M, int nc, int kc, float* packA, float* packB, float* loadC, float *C, int ldc, float* bias, int bias_len, InnerKernel inner_kernel_Nx8_local)
+InnerKernel get_kernel_Nx12(int k)
 {
+	switch(k)
+	{
+		case 1:
+			return inner_kernel_Nx12_template<1>;
+		case 2:
+			return inner_kernel_Nx12_template<2>;
+		case 3:
+			return inner_kernel_Nx12_template<3>;
+		case 4:
+			return inner_kernel_Nx12_template<4>;
+		case 5:
+			return inner_kernel_Nx12_template<5>;
+		case 6:
+			return inner_kernel_Nx12_template<6>;
+		case 7:
+			return inner_kernel_Nx12_template<7>;
+		default:
+			return inner_kernel_Nx12_template<8>;
+	}
+}
+
+template<bool fuseBias, bool fuseRelu>
+inline void compute_block_activation(int M, int nc, int kc, float* packA, float* packB, float* loadC, float *C, int ldc, float* bias, int bias_len, InnerKernel inner_kernel_local)
+{
+#ifdef SQUARE_TILE
 	const int COL_BATCH = 8;
 	const int ROW_BATCH = 8;
+#else
+	const int COL_BATCH = 12;
+	const int ROW_BATCH = 4;
+#endif
 	//M is already aligned. 
 	const int nc_ceil = align_ceil(nc, COL_BATCH);
 	const int nc_floor = nc - nc % 8;
@@ -352,7 +869,11 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 		for(int j = 0; j < nc_ceil; j+=COL_BATCH)
 		{
 			float* pC = loadC + j;
+#ifdef SQUARE_TILE
 			inner_kernel_8x8(kc, pA, pB, pC, nc_ceil);
+#else
+			inner_kernel_4x12(kc, pA, pB, pC, nc_ceil);
+#endif
 			pB += step;
 		}
 		//Write Results
@@ -421,7 +942,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			float* pC = loadC + j;
 			float* pA = packA + i * kc;
 			float* pB = packB + j * kc;
-			inner_kernel_Nx8_local(kc, pA, pB, pC, nc_ceil);
+			inner_kernel_local(kc, pA, pB, pC, nc_ceil);
 		}
 		//Write Results
 		for(int m = 0; m < m_len; ++m)
@@ -504,6 +1025,7 @@ void packed_sgemm_init(int M, int K, int kc, float* packA, float* A, int lda)
 
 
 template void packed_sgemm_init<8>(int M, int K, int kc, float* packedA, float* A, int lda);
+template void packed_sgemm_init<4>(int M, int K, int kc, float* packedA, float* A, int lda);
 
 void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 {
@@ -540,9 +1062,16 @@ void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 template<bool fuseBias, bool fuseRelu>
 void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads, float* pack_array)
 {
+#ifdef SQUARE_TILE
 	const int ROW_BATCH = 8;
 	const int COL_BATCH = 8;
-	InnerKernel inner_kernel_Nx8_local = get_kernel(M % ROW_BATCH);
+	InnerKernel inner_kernel_local = get_kernel_Nx8(M % ROW_BATCH);
+#else
+	const int ROW_BATCH = 4;
+	const int COL_BATCH = 12;
+	InnerKernel inner_kernel_local = get_kernel_Nx12(M % ROW_BATCH);
+#endif
+	
 	for(int i = 0; i < M; ++i){
 		memset(c + ldc * i, 0, sizeof(float) * N);
 	}
@@ -587,7 +1116,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 			//I'm going to pack B in here.
 //			memset(packB, 0, sizeof(float) * kc * nc);
 			pack_B_neon(k_len, n_len, packB, pB, N);
-			compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_Nx8_local);
+			compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_local);
 		}
 	}
 	{
@@ -615,7 +1144,7 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 //			memset(packB, 0, sizeof(float) * kc * nc);
 
 			pack_B_neon(k_len, n_len, packB, pB, N);
-			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_Nx8_local);
+			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M, inner_kernel_local);
 		}
 	}
 }

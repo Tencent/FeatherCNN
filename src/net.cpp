@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <cstring>
-//#define LAYER_TIMING
+// #define LAYER_TIMING
 
 namespace feather
 {
