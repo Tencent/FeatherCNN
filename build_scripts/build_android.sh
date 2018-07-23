@@ -12,7 +12,7 @@ popd
 mkdir -p armeabi-v7a
 pushd armeabi-v7a
 cmake -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI="armeabi-v7a" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=android-16 -DFEATHER_ARM=1 ../..
-make -j4
+make VERBOSE=1
 make install
 popd
 

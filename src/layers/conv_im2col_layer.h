@@ -307,7 +307,7 @@ class ConvIm2colLayer : public ConvLayer
 	    pack_array_size = (kc + 8) * nc * num_threads;
             MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&packed_kernel, sizeof(float) * (M * K)))
             MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&pack_array, sizeof(float) * pack_array_size))
-	    packed_sgemm_init<8>(M, K, kc, packed_kernel, kernel_data, K);
+	    packed_sgemm_init<4>(M, K, kc, packed_kernel, kernel_data, K);
 	    
             //MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&pack_array, sizeof(float) * (kc + 8) * nc) * this->num_threads);
 	    if(bias_term && fuse_relu)
