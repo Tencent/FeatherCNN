@@ -66,8 +66,10 @@ if(ANDROID)
     #set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
     #add_definitions("-DFEATHER_ANDROID_LOG")
-	add_definitions("-D_NDK_MATH_NO_SOFTFP=1")
-
+    add_definitions("-D_NDK_MATH_NO_SOFTFP=1")
+    if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
+    add_definitions("-mfpu=neon-vfpv4")
+    endif()
 elseif(IOS)
     # disable shared library on xcode ios
     add_definitions(-isysroot ${IOS_SDK_PATH} -arch ${IOS_ARCH})
