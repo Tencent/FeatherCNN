@@ -9,6 +9,8 @@
 #include <omp.h>
 #endif
 
+// #define SQUARE_TILE
+
 typedef void (*InnerKernel)(int K, float *packA, float *packB, float *c, int ldc);
 
 int align_ceil(int num, int align)
@@ -815,16 +817,18 @@ InnerKernel get_kernel_Nx12(int k)
 			return inner_kernel_Nx12_template<2>;
 		case 3:
 			return inner_kernel_Nx12_template<3>;
-		case 4:
-			return inner_kernel_Nx12_template<4>;
-		case 5:
-			return inner_kernel_Nx12_template<5>;
-		case 6:
-			return inner_kernel_Nx12_template<6>;
-		case 7:
-			return inner_kernel_Nx12_template<7>;
 		default:
-			return inner_kernel_Nx12_template<8>;
+			return inner_kernel_Nx12_template<4>;
+		// case 4:
+		// 	return inner_kernel_Nx12_template<4>;
+		// case 5:
+		// 	return inner_kernel_Nx12_template<5>;
+		// case 6:
+		// 	return inner_kernel_Nx12_template<6>;
+		// case 7:
+		// 	return inner_kernel_Nx12_template<7>;
+		// default:
+		// 	return inner_kernel_Nx12_template<8>;
 	}
 }
 
@@ -1030,7 +1034,11 @@ template void packed_sgemm_init<4>(int M, int K, int kc, float* packedA, float* 
 void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 {
 	//const int COL_BATCH = 16;
+	#ifdef SQUARE_TILE
 	const int COL_BATCH = 8;
+	#else
+	const int COL_BATCH = 12;
+	#endif
 	int nc_floor = nc - nc % COL_BATCH;
 	for(int k = 0; k < kc; ++k)
 	{
@@ -1041,9 +1049,16 @@ void pack_B_neon(int kc, int nc, float* packB, float* B, int ldb)
 		for(int j = 0; j < nc_floor; j += COL_BATCH)
 		{
 //			float* pPack = packB + (j / COL_BATCH) * kc * COL_BATCH + k * COL_BATCH;
+#ifdef SQUARE_TILE
 			vst1q_f32(pPack,     vld1q_f32(pB));
 			vst1q_f32(pPack + 4, vld1q_f32(pB + 4));
 			pB += 8;
+#else
+			vst1q_f32(pPack,     vld1q_f32(pB));
+			vst1q_f32(pPack + 4, vld1q_f32(pB + 4));
+			vst1q_f32(pPack + 8, vld1q_f32(pB + 8));
+			pB += 12;
+#endif
 			pPack += step;
 		}
 		if(nc_floor < nc)
