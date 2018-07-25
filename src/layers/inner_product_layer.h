@@ -27,7 +27,7 @@ class InnerProductLayer : public Layer
 {
     public:
         InnerProductLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : Layer(layer_param, rt_param)
+            : fuse_relu(false), Layer(layer_param, rt_param)
         {
             //From proto
             const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
@@ -42,6 +42,7 @@ class InnerProductLayer : public Layer
                 assert(this->_weight_blobs.size() == 2);
                 bias_data = this->_weight_blobs[1]->data();
             }
+            _fusible = true;
         }
 
         int Forward()
@@ -49,15 +50,15 @@ class InnerProductLayer : public Layer
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
 
-            if (output_size % 8 == 0 && input_size % 8 == 0)
-                fully_connected_transpose_inference_neon8((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
-            else
-                fully_connected_inference_direct((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
+            // if (output_size % 8 == 0 && input_size % 8 == 0)
+            //     fully_connected_transpose_inference_neon8((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
+            // else
+            //     fully_connected_inference_direct((int)input_size, (int)output_size, input, kernel_data, output, num_threads);
 
-            if (bias_term)
-                for (int i = 0; i < output_size; i++)
-                    output[i] += bias_data[i];
-
+            // if (bias_term)
+            //     for (int i = 0; i < output_size; i++)
+            //         output[i] += bias_data[i];
+            sgemv_kernel((int)input_size, (int)output_size, input, kernel_data, output, num_threads, bias_data);
             return 0;
         }
 
@@ -73,7 +74,18 @@ class InnerProductLayer : public Layer
             output_size = _top_blobs[_top[0]]->data_size();
             return this->Forward();   
         }
-
+    int Fuse(Layer *next_layer)
+    {
+        if (next_layer->type().compare("ReLU") == 0)
+        {
+            fuse_relu = true;
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
         int Init()
         {
             float* buffer = NULL;
@@ -88,6 +100,29 @@ class InnerProductLayer : public Layer
                 //Naive implementation doesn't require preprocess
             }
             MEMPOOL_CHECK_RETURN(private_mempool.Free(&buffer));
+
+            if (output_size % 8 == 0 && input_size % 8 == 0)
+            {
+                if (bias_term && fuse_relu)
+                    sgemv_kernel = fully_connected_transpose_inference_neon8<true, true>;
+                else if (bias_term && !fuse_relu)
+                    sgemv_kernel = fully_connected_transpose_inference_neon8<true, false>;
+                else if (!bias_term && fuse_relu)
+                    sgemv_kernel = fully_connected_transpose_inference_neon8<false, true>;
+                else if (!bias_term && !fuse_relu)
+                    sgemv_kernel = fully_connected_transpose_inference_neon8<false, false>;
+            }
+            else
+            {
+                if (bias_term && fuse_relu)
+                    sgemv_kernel = fully_connected_inference_direct<true, true>;
+                else if (bias_term && !fuse_relu)
+                    sgemv_kernel = fully_connected_inference_direct<true, false>;
+                else if (!bias_term && fuse_relu)
+                    sgemv_kernel = fully_connected_inference_direct<false, true>;
+                else if (!bias_term && !fuse_relu)
+                    sgemv_kernel = fully_connected_inference_direct<false, false>;
+            }
             return 0;
         }
 
@@ -120,5 +155,8 @@ class InnerProductLayer : public Layer
 
         float *kernel_data;
         float *bias_data;
+
+        bool fuse_relu;
+        void (*sgemv_kernel)(const int, const int, const float *, const float *, float *, const int, float*);
 };
 };

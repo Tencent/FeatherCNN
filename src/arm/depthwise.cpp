@@ -28,7 +28,6 @@
  * For global depthwise convolution
  */
 
-#if 1
 template <bool fuseBias, bool fuseRelu>
 void globalDwConv(float *output, const float *input, int input_channels, int inw, int inh, float *kernel, int group, int nThreads, float *bias_arr)
 {
@@ -1331,16 +1330,7 @@ void dwConv_template(float *output, float *input, int input_channels, int inw, i
             }
         }
     }
-    LOGE("!!!!!!!!!!!");
 }
-#else
-//template <bool fuseBias, bool fuseRelu>
-void dwConv_template(float *output, float *input, int inw, int inh, int stridew, int strideh, float *kernel, int kw, int kh, int group, int nThreads, float *bias_arr)
-{
-    LOGI("Hello group %d", group);
-    LOGE("!!!!!!!!!!!");
-}
-#endif
 
 template void dwConv_template<false, false>(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
 template void dwConv_template<false,  true>(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
