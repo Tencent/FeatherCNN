@@ -60,7 +60,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     ConvLayer *conv_layer = NULL;
     if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 1024)
     {
-        printf("Winograd F63\n");
+        //printf("Winograd F63\n");
 #if 0
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
 #else
@@ -69,23 +69,23 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     }
     else if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 4)
     {
-        printf("Winograd F23\n");
+        //printf("Winograd F23\n");
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
     }
     else if (kernel_width > 1 && kernel_height > 1 && group == 1)
     // else if (0)
     {
-        printf("SGECONV\n");
+        //printf("SGECONV\n");
         conv_layer = (ConvLayer*) new ConvSgeconvLayer(layer_param, rt_param);
     }
     else if (group == 1)
     {
-	    printf("Im2col\n");
+	   // printf("Im2col\n");
         conv_layer = (ConvLayer*) new ConvIm2colLayer(layer_param, rt_param);
     }
     else//Should be depthwise convolution layer.
     {
-	    printf("Depthwise\n");
+	   // printf("Depthwise\n");
         conv_layer = new ConvDepthwiseLayer(layer_param, rt_param);
     }
     return (Layer *) conv_layer;
