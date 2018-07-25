@@ -16,5 +16,5 @@
 
 #include <stdio.h>
 
-void globalDwConv(float* output, const float* input, int input_channels, int inw, int inh, float* kernel, int group, int nThreads);
-void dwConv(float* output, float* input, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads);
+template<bool fuseBias, bool fuseRelu>
+void dwConv_template(float* output, float* input, int input_channels, int inw, int inh, int stridew, int strideh, float* kernel, int kw, int kh, int group, int nThreads, float* bias_arr);

@@ -26,71 +26,65 @@ namespace feather
 {
 class ConvDepthwiseLayer : public ConvLayer
 {
-    public:
-        ConvDepthwiseLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : ConvLayer(layer_param, rt_param)
-        {
-            //From proto
-        }
+  public:
+    ConvDepthwiseLayer(const LayerParameter *layer_param, const RuntimeParameter<float> *rt_param)
+        : fuse_relu(false), ConvLayer(layer_param, rt_param)
+    {
+        _fusible = true;
+    }
 
-        int Init()
+    int Init()
+    {
+        int inputw = input_width + padding_left + padding_right;
+        int inputh = input_height + padding_top + padding_bottom;
+        MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&padded_input, inputw * inputh * input_channels * sizeof(float)));
+        if (bias_term && fuse_relu)
+            dwConv = dwConv_template<true, true>;
+        else if (bias_term && !fuse_relu)
+            dwConv = dwConv_template<true, false>;
+        else if (!bias_term && fuse_relu)
+            dwConv = dwConv_template<false, true>;
+        else if (!bias_term && !fuse_relu)
+            dwConv = dwConv_template<false, false>;
+
+        return 0;
+    }
+
+    int Fuse(Layer *next_layer)
+    {
+        if (next_layer->type().compare("ReLU") == 0)
         {
-            int inputw = input_width + padding_left + padding_right;
-            int inputh = input_height + padding_top + padding_bottom;
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&padded_input, inputw * inputh * input_channels * sizeof(float)));
+            fuse_relu = true;
+            return 1;
+        }
+        else
+        {
             return 0;
         }
+    }
 
-        int Forward()
+    int Forward()
+    {
+        const float *input = _bottom_blobs[_bottom[0]]->data();
+        float *output = _top_blobs[_top[0]]->data();
+        int inputw = input_width + padding_left + padding_right;
+        int inputh = input_height + padding_top + padding_bottom;
+
+        if (padding_left > 0 || padding_right > 0 || padding_top > 0 || padding_bottom > 0)
         {
-            const float *input = _bottom_blobs[_bottom[0]]->data();
-            float *output = _top_blobs[_top[0]]->data();
-            int inputw = input_width + padding_left + padding_right;
-            int inputh = input_height + padding_top + padding_bottom;
-/*
-	    printf("group %d %d %d %d %d %d %d %d\n", group, input_channels, input_height, input_width, padding_top, padding_bottom, padding_left, padding_right);
-	    printf("stride %d %d %d %d\n",  stride_width, stride_height, kernel_width, kernel_height);
-
-	    printf("====INPUT=========\n");
-	    for(int i=0;i<input_channels*input_height*input_width;i++)	printf("%f ", input[i]);
-	    printf("====INPUT=========\n");
-
-	    printf("====KERNEL=========\n");
-	    for(int i=0;i<input_channels*input_height*input_width;i++)	printf("%f ", kernel_data[i]);
-	    printf("====KERNEL=========\n");
-            
-
-	    printf("====BIAS=========\n");
-	    for(int i=0;i<input_channels;i++)	printf("%f ", bias_data[i]);
-	    printf("====BIAS=========\n");
-*/
-	   
-	    if(padding_left==0 && padding_right==0 && padding_top==0 && padding_bottom==0)	;
-	    else 
-	    	pad_input(padded_input, input, input_channels, input_width, input_height, padding_left, padding_top, padding_right, padding_bottom);
-	    
-	    if(inputw==kernel_width && inputh==kernel_height)
-            	globalDwConv(output, input, input_channels, inputw, inputh, kernel_data, group, num_threads);
-	    else 	
-            	dwConv(output, padded_input, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads);
-
-            if (bias_term)
-            {
-                size_t out_stride = output_width * output_height;
-                for (int i = 0; i < output_channels; ++i)
-                {
-                    float bias = bias_data[i];
-                    for (int j = 0; j < out_stride; ++j)
-                    {
-                        output[out_stride * i + j] = output[out_stride * i + j] + bias;
-                    }
-                }
-            }
-            return 0;
+            pad_input(padded_input, input, input_channels, input_width, input_height, padding_left,
+                      padding_top, padding_right, padding_bottom);
+            dwConv(output, padded_input, input_channels, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads, bias_data);
         }
+        else
+            dwConv(output, const_cast<float*>(input), input_channels, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads, bias_data);
+        return 0;
+    }
 
-    private:
-        float* padded_input;
+  private:
+    float *padded_input;
+    bool fuse_relu;
 
+    void (*dwConv)(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
 };
-};
+}; // namespace feather
