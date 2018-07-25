@@ -6,20 +6,20 @@
 
 ## Introduction
 
-FeatherCNN, developed by Tencent TEG AI Platform, is a high performance lightweight CNN inference library. FeatherCNN is currently targeting at ARM CPUs, and is capable to extend to other devices in the future.
+FeatherCNN, developed by Tencent TEG AI Platform, is a high-performance lightweight CNN inference library. FeatherCNN is currently targeting at ARM CPUs, and is capable to extend to other devices in the future.
 
 Comparing with other libraries, FeatherCNN is 
 
-- **Highly Performant** FeatherCNN delievers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embeded devices (Linux) as well as ARM-based servers (Linux). 
+- **Highly Performant** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
 
-- **Easily Deployable** FeatherCNN packs everything in a single code base to get rid of third party dependencies. Hence, it facilatites deployment on mobile platforms. FeatherCNN's own model format is fully compatible to Caffe models. We are working to provide compatibility with other pre-trained models.
+- **Easily Deployable** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms. FeatherCNN's own model format is fully compatible with Caffe models. We are working to provide compatibility with other pre-trained models.
 
 - **Featherweight** The compiled FeatherCNN library is in small size of several hundred KBs. 
 
 Please kindly open an issue in this repo for bug reports and enhancement suggests. We are grateful to user responses and will actively polish this library.
 
 ## Quick guide on Ubuntu host and ARM-Linux targets.
-If you are using Ubuntu and want to test on an ARM-Linux devices, here's an quick guide.
+If you are using Ubuntu and want to test on an ARM-Linux devices, here's a quick guide.
 #### Host side compilation
 - Install compilers
 ```
@@ -56,20 +56,22 @@ An example:
 
 [**Android Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-Guide)
 
+[**Android ADB Guide**](https://github.com/Tencent/FeatherCNN/wiki/Android-ADB-Guide)
+
 ## Usage
 
 ### Model Format Conversion
 
-FeatherCNN accepts Caffemodels. It merges the structure file (.prototxt) and the weight file (.caffemodel) into a single binary model (.feathermodel).The convert tool requires protobuf, but you don't need them for the library. 
+FeatherCNN accepts Caffemodels. It merges the structure file (.prototxt) and the weight file (.caffemodel) into a single binary model (.feathermodel). The convert tool requires protobuf, but you don't need them for the library. 
 
 [**Model Convert Guide**](https://github.com/Tencent/FeatherCNN/wikis/Model-Convert-Guide).
 
 ### Runtime Interfaces
 
 The basic user interfaces are listed in feather/net.h. Currently we are using raw pointers to reference data.
-We may provide more convienent interfaces in the near future.
+We may provide more convenient interfaces in the near future.
 
-Before inference, FeatherCNN reqiures two steps to initialize the network.
+Before inference, FeatherCNN requires two steps to initialize the network.
 ```cpp
 feather::Net forward_net(num_threads);
 forward_net.InitFromPath(FILE_PATH_TO_FEATHERMODEL);
@@ -82,6 +84,11 @@ forward_net.Forward(PTR_TO_YOUR_INPUT_DATA);
 The output can be extracted from the net by the name of blobs. The blob names are kept consistent with caffe prototxt.
 ```cpp
 forward_net.ExtractBlob(PTR_TO_YOUR_OUTPUT_BUFFER, BLOB_NAME);
+```
+BTW, you can also get the blob's data size by calling
+```cpp
+size_t data_size = 0;
+forward_net.GetBlobDataSize(&data_size, BLOB_NAME);
 ```
 
 ## Performance Benchmarks
