@@ -14,9 +14,6 @@
 
 #pragma once
 
-#if __ARM_NEON
-#include <arm_neon.h>
-
 #ifdef FEATHER_ANDROID_LOG
 #include <android/log.h>
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "FeatherLib", __VA_ARGS__)
@@ -29,6 +26,8 @@
 #define LOGE(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
+#if __ARM_NEON
+#include <arm_neon.h>
 
 void print_vec2(float32x4_t* vp);
 void print_vec3(float32x4_t* vp);
