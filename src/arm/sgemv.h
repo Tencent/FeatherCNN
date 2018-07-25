@@ -16,7 +16,7 @@
 #include <stdlib.h>
 
 void matrixTranspose(float* array, size_t m, size_t n, float *buffer);
-void fully_connected_inference_direct(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads);
-void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads);
-void fully_connected_inference_direct_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads);
-void fully_connected_transpose_inference_neon8_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads);
+template <bool fuseBias, bool fuseRelu>
+void fully_connected_inference_direct(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);
+template <bool fuseBias, bool fuseRelu>
+void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);
