@@ -98,7 +98,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 42 (last added: layer_wise_reduce)
+// SolverParameter next available ID: 43 (last added: weights)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -186,7 +186,11 @@ message SolverParameter {
   optional float clip_gradients = 35 [default = -1];
 
   optional int32 snapshot = 14 [default = 0]; // The snapshot interval
-  optional string snapshot_prefix = 15; // The prefix for the snapshot.
+  // The prefix for the snapshot.
+  // If not set then is replaced by prototxt file path without extention.
+  // If is set to directory then is augmented by prototxt file name
+  // without extention.
+  optional string snapshot_prefix = 15;
   // whether to snapshot diff in the results or not. Snapshotting diff will help
   // debugging but the final protocol buffer size will be much larger.
   optional bool snapshot_diff = 16 [default = false];
@@ -241,6 +245,16 @@ message SolverParameter {
 
   // Overlap compute and communication for data parallel training
   optional bool layer_wise_reduce = 41 [default = true];
+
+  // Path to caffemodel file(s) with pretrained weights to initialize finetuning.
+  // Tha same as command line --weights parameter for caffe train command.
+  // If command line --weights parameter if specified, it has higher priority
+  // and owerwrites this one(s).
+  // If --snapshot command line parameter is specified, this one(s) are ignored.
+  // If several model files are expected, they can be listed in a one 
+  // weights parameter separated by ',' (like in a command string) or
+  // in repeated weights parameters separately.
+  repeated string weights = 42;
 }
 
 // A message that stores the solver snapshots
@@ -308,7 +322,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 147 (last added: recurrent_param)
+// LayerParameter next available layer-specific ID: 148 (last added: swish_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -401,10 +415,18 @@ message LayerParameter {
   optional SoftmaxParameter softmax_param = 125;
   optional SPPParameter spp_param = 132;
   optional SliceParameter slice_param = 126;
+  optional SwishParameter swish_param = 147;
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
+  optional FilterParamter filter_param = 149;
+
+  optional SmoothL1LossParameter smooth_l1_loss_param = 155;
+}
+
+message SmoothL1LossParameter {
+  optional float sigma = 1;  
 }
 
 // Message that stores parameters used to apply transformation
@@ -477,6 +499,12 @@ message AccuracyParameter {
 
   // If specified, ignore instances with the given label.
   optional int32 ignore_label = 3;
+}
+
+message FilterParamter {
+  optional int32 axis = 1 [default = 1];
+  optional int32 num_output = 2;
+  
 }
 
 message ArgMaxParameter {
@@ -796,8 +824,10 @@ message ImageDataParameter {
   // It will also resize images if new_height or new_width are not zero.
   optional uint32 new_height = 9 [default = 0];
   optional uint32 new_width = 10 [default = 0];
+  optional uint32 new_dim = 13 [default = 0];
   // Specify if the images are color or gray
   optional bool is_color = 11 [default = true];
+  optional bool bicubic = 14 [default = false];
   // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
   // simple scaling and subtracting the data mean, if provided. Note that the
   // mean subtraction is always carried out before scaling.
@@ -810,6 +840,19 @@ message ImageDataParameter {
   // data.
   optional bool mirror = 6 [default = false];
   optional string root_folder = 12 [default = ""];
+  //add by wyt
+  optional bool is_aug = 100 [default = false];
+  optional float max_shift = 15 [default = 0];
+  optional float max_rot_angle = 16 [default = 0];
+  optional float max_scale = 17 [default = 1];
+
+  //for keypoints
+  optional uint32 num_keypoints = 22 [default = 0];
+  optional float num_attribute = 23 [default = 0];
+  optional string mean_face_file = 24 [default =""];
+  optional uint32 mean_height = 25 [default = 0];
+  optional uint32 mean_width = 26 [default = 0];
+  optional bool flip_on = 27 [default = true];
 }
 
 message InfogainLossParameter {
@@ -1140,6 +1183,15 @@ message SoftmaxParameter {
   // from the end (e.g., -1 for the last axis).
   // Any other axes will be evaluated as independent softmaxes.
   optional int32 axis = 2 [default = 1];
+}
+
+// Message that stores parameters used by SwishLayer
+message SwishParameter {
+  // Beta parameter for the Swish activation function
+  // Described in:
+  // Prajit Ramachandran, Barret Zoph, Quoc V. Le. (2017). Searching for
+  // Activation Functions. https://arxiv.org/abs/1710.05941v2
+  optional float beta = 1 [default = 1];
 }
 
 message TanHParameter {

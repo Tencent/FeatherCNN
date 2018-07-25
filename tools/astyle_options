@@ -1,0 +1,1 @@
+astyle --style=allman --indent=spaces=4 --indent-classes --unpad-paren --pad-oper --pad-header --convert-tabs --indent-switches --indent-cases

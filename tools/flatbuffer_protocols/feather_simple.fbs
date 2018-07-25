@@ -31,10 +31,10 @@ enum PoolMethod : int {
 namespace feather.ReductionParameter_;
 
 enum ReductionOp : int {
-  SUM = 1,
-  ASUM = 2,
-  SUMSQ = 3,
-  MEAN = 4,
+  SUM = 0,
+  ASUM = 1,
+  SUMSQ = 2,
+  MEAN = 3,
 }
 
 namespace feather;
@@ -237,7 +237,7 @@ table PowerParameter {
 }
 
 table PReLUParameter {
-  channel_shared:bool;
+  slope_size:uint;
 }
 
 table RecurrentParameter {
@@ -296,6 +296,5 @@ table BlobProto {
   height:int;
   width:int;
 }
-
 
 root_type NetParameter;
