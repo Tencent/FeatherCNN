@@ -204,19 +204,33 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         }
 
         std::vector<float> blob_data_vec;
-        printf("Layer num %d\n", net_param.layer_size());
-        printf("Legacy layer num %d\n", net_param.layers_size());
-
+        printf("Layer num %d\n", net_param_prototxt.layer_size());
+        printf("Legacy layer num %d\n", net_param_prototxt.layers_size());
+	size_t layer_num = 0;
+	if(net_param.layer_size() > 0 && net_param.layers_size() == 0)
+	{
+		layer_num = net_param.layer_size();
+	}
+	else if(net_param.layer_size() == 0 && net_param.layers_size() > 0)
+	{
+		fprintf(stderr, "Error, this is an legacy caffe model, please upgrade your prototxt and models with official tools.\n Aborting...\n");
+		exit(-1);
+	}
+	else
+	{
+		fprintf(stderr, "Conflicted layer params. Aborting...\n");
+		exit(-1);
+	}
 
         std::map<std::string, int> caffe_model_layer_map;
-        for (int i = 0; i != net_param.layer_size(); ++i)
+        for (int i = 0; i < layer_num; ++i)
         {
             std::string layer_name = net_param.layer(i).name();
             caffe_model_layer_map[layer_name] = i;
         }
 
         std::map<std::string, std::string> inplace_blob_map;
-        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
+        for (int i = 0; i != layer_num; ++i)
         {
             auto caffe_layer = net_param_prototxt.layer(i);
             std::string layer_name = caffe_layer.name();
