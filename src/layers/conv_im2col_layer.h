@@ -27,7 +27,7 @@
 #include <stdio.h>
 
 
-//#define USE_LEGACY_SGEMM
+#define USE_LEGACY_SGEMM
 
 namespace feather
 {
