@@ -13,7 +13,7 @@
 //specific language governing permissions and limitations under the License.
 
 #include "layer.h"
-#include "feather_simple_generated.h"//For LayerParameter
+#include "feather_generated.h"//For LayerParameter
 
 
 namespace feather

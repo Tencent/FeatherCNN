@@ -295,6 +295,7 @@ table BlobShape {
 
 table BlobProto {
   data:[float];
+  data_fp16:[ushort];
   num:int;
   channels:int;
   height:int;

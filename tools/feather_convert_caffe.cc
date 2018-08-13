@@ -1,5 +1,8 @@
 #include "caffe.pb.h"
-#include "../src/feather_simple_generated.h"
+#ifdef FP16_STORAGE
+#include "fp16/fp16.h"
+#endif
+#include "feather_generated.h"
 
 #include <iostream>
 #include <fstream>
@@ -175,7 +178,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     for (int j = 0; j < caffe_layer.input_param().shape(0).dim_size(); ++j)
                     {
                         int64_t dim = caffe_layer.input_param().shape(0).dim(j);
-                        printf("Input dim %ld\n", dim);
+                        printf("Input dim %lld\n", dim);
                         input_dim_vec.push_back(dim);
                     }
                 }
@@ -203,7 +206,11 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             prototxt_name_map.push_back(net_param_prototxt.layer(i).name());
         }
 
+#ifdef FP16_STORAGE
+        std::vector<uint16_t> blob_data_vec;
+#else
         std::vector<float> blob_data_vec;
+#endif
         printf("Layer num %d\n", net_param.layer_size());
         printf("Legacy layer num %d\n", net_param.layers_size());
 
@@ -303,10 +310,20 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 auto caffe_blob = caffe_model_layer.blobs(j);
                 for (int k = 0; k != caffe_blob.data_size(); ++k)
                 {
+#ifdef FP16_STORAGE
+                    uint16_t data = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+		    if(caffe_blob.data_size() == 1536 && k <= 200)
+			    printf("%f\n", caffe_blob.data(k));
+#else
                     float data = caffe_blob.data(k);
+#endif
                     blob_data_vec.push_back(data);
                 }
+#ifdef FP16_STORAGE
+                auto blob_data_fbvec = fbb.CreateVector<uint16_t>(blob_data_vec);
+#else
                 auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
+#endif
                 int dim_len = caffe_blob.shape().dim_size();
                 long data_size = 1;
                 feather::BlobProtoBuilder blob_builder(fbb);
@@ -317,7 +334,11 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     printf("%ld ", dim);
                 }
                 printf("data size %ld\n", data_size);
+#ifdef FP16_STORAGE
+                blob_builder.add_data_fp16(blob_data_fbvec);
+#else
                 blob_builder.add_data(blob_data_fbvec);
+#endif
 
                 if (dim_len == 0)
                 {
@@ -425,7 +446,20 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				fprintf(stderr, "Bad kernel_h/w configuration.\n");
 		}
 
-                if (caffe_conv_param.stride_size() == 1)
+		if (caffe_conv_param.has_stride_h())
+		{
+			if(caffe_conv_param.has_stride_w())
+			{
+				conv_param_builder.add_stride_h(caffe_conv_param.stride_h());
+				conv_param_builder.add_stride_w(caffe_conv_param.stride_w());
+			}
+			else
+			{
+				fprintf(stderr, "Conv param has stride h but no stride w\n");
+				exit(-1);
+			}
+		}
+		else if (caffe_conv_param.stride_size() == 1)
                 {
                     printf("+ stride %d\n", caffe_conv_param.stride(0));
                     conv_param_builder.add_stride_h(caffe_conv_param.stride(0));

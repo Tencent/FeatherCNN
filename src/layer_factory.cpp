@@ -12,7 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "feather_simple_generated.h"
+#include "feather_generated.h"
 
 #include "layer_factory.h"
 
@@ -58,7 +58,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
     size_t input_channels = layer_param->blobs()->Get(0)->channels();
     size_t output_channels = layer_param->blobs()->Get(0)->num();
     ConvLayer *conv_layer = NULL;
-    if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 1024)
+    if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 0 && output_channels < 1024 && output_channels % 4 == 0)
     {
         //printf("Winograd F63\n");
 #if 0
