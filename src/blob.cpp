@@ -82,11 +82,11 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     this->_width = proto->width();
     size_t data_length;
     data_length = VectorLength(proto->data());
-    printf("data length %d & %d\n", data_length, proto->data_fp16()->Length());
+    //printf("data length %d & %d\n", data_length, proto->data_fp16()->Length());
     if(data_length == 0)
     {
 	    data_length = VectorLength(proto->data_fp16());
-	    printf("LOADING FROM FP16 DATA LEN %zu\n", data_length);
+	    //printf("LOADING FROM FP16 DATA LEN %zu\n", data_length);
 	    use_fp16_data = true;
     }
     else
@@ -106,10 +106,6 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
 	{
 		if(use_fp16_data){
 			this->_data[i] = fp16_ieee_to_fp32_value(proto->data_fp16()->Get(i));
-			if(data_length == 1536 && i <= 200)
-			{
-				printf("%f\n", this->_data[i]);
-			}
 		}
 		else
 			this->_data[i] = proto->data()->Get(i);
