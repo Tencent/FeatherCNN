@@ -312,8 +312,6 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 {
 #ifdef FP16_STORAGE
                     uint16_t data = fp16_ieee_from_fp32_value(caffe_blob.data(k));
-		    if(caffe_blob.data_size() == 1536 && k <= 200)
-			    printf("%f\n", caffe_blob.data(k));
 #else
                     float data = caffe_blob.data(k);
 #endif
