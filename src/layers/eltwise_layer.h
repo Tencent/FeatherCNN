@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "../feather_simple_generated.h"
+#include "../feather_generated.h"
 #include "../layer.h"
 #include "arm/generic_kernels.h"
 

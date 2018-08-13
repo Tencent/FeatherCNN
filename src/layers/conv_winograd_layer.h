@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "../feather_simple_generated.h"
+#include "../feather_generated.h"
 #include "conv_layer.h"
 #include "blob.h"
 
