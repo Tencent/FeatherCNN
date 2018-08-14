@@ -82,7 +82,7 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     this->_width = proto->width();
     size_t data_length;
     data_length = VectorLength(proto->data());
-    //printf("data length %d & %d\n", data_length, proto->data_fp16()->Length());
+    //printf("data length %d & %d\n", data_length, VectorLength(proto->data_fp16()));
     if(data_length == 0)
     {
 	    data_length = VectorLength(proto->data_fp16());

@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -207,7 +208,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         }
 
 #ifdef FP16_STORAGE
-        std::vector<uint16_t> blob_data_vec;
+        std::vector<uint16_t> blob_data_vec_fp16;
+        std::vector<float> blob_data_vec;
 #else
         std::vector<float> blob_data_vec;
 #endif
@@ -308,20 +310,48 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             for (int j = 0; j != caffe_model_layer.blobs_size(); ++j)
             {
                 auto caffe_blob = caffe_model_layer.blobs(j);
+                float diff_sum = 0.f;
+
+#ifdef FP16_STORAGE
+                bool is_fp16_blob = true;
                 for (int k = 0; k != caffe_blob.data_size(); ++k)
                 {
-#ifdef FP16_STORAGE
                     uint16_t data = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+                    float diff = caffe_blob.data(k) - fp16_ieee_to_fp32_value(data);
+                    diff_sum += fabs(diff);
+                    //if(diff >= 0.01)
+                    //    printf("diff=%f fp32 %f vs fp16 %f\n", diff, caffe_blob.data(k), fp16_ieee_to_fp32_value(data));
+                }
+                const float fp16_loss_threshold = 10.0f;
+                if (fabs(diff_sum) - fp16_loss_threshold > 0||isnan(diff_sum))
+                {
+                    is_fp16_blob = false;
+                }
+                printf("diff_sum %f, %f, is_fp_16_blob %d\n", diff_sum, fabs(diff_sum), is_fp16_blob);
+                for (int k = 0; k != caffe_blob.data_size(); ++k)
+                {
+                    if(is_fp16_blob)
+                    {
+                        uint16_t data_fp16 = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+                        blob_data_vec_fp16.push_back(data_fp16);
+                    }
+                    else
+                    {
+                        float data = caffe_blob.data(k);
+                        blob_data_vec.push_back(data);
+                    }
+                }
+                auto blob_data_fbvec_fp16 = fbb.CreateVector<uint16_t>(blob_data_vec_fp16);
+                auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
 #else
+                for (int k = 0; k != caffe_blob.data_size(); ++k)
+                {
                     float data = caffe_blob.data(k);
-#endif
                     blob_data_vec.push_back(data);
                 }
-#ifdef FP16_STORAGE
-                auto blob_data_fbvec = fbb.CreateVector<uint16_t>(blob_data_vec);
-#else
                 auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
 #endif
+
                 int dim_len = caffe_blob.shape().dim_size();
                 long data_size = 1;
                 feather::BlobProtoBuilder blob_builder(fbb);
@@ -333,7 +363,17 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 }
                 printf("data size %ld\n", data_size);
 #ifdef FP16_STORAGE
-                blob_builder.add_data_fp16(blob_data_fbvec);
+                if(is_fp16_blob)
+                {
+                    printf("STORE FP16 BLOB LEN %d\n", blob_data_vec_fp16.size());
+                    blob_builder.add_data_fp16(blob_data_fbvec_fp16);
+                }
+                else
+                {
+                    printf("STORE FP32 BLOB LEN %d\n", blob_data_vec.size());
+                    blob_builder.add_data(blob_data_fbvec);
+                }
+
 #else
                 blob_builder.add_data(blob_data_fbvec);
 #endif
@@ -399,6 +439,9 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     }
                 }
                 blob_vec.push_back(blob_builder.Finish());
+#ifdef FP16_STORAGE
+                blob_data_vec_fp16.clear();
+#endif
                 blob_data_vec.clear();
             }
             auto blobs_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::BlobProto> >(blob_vec);
