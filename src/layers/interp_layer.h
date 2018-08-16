@@ -16,6 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
+#include "arm/helper.h"
 
 namespace feather
 {
@@ -25,16 +26,28 @@ class InterpLayer : public Layer
         InterpLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
             : Layer(layer_param, rt_param)
         {
-	    	height = layer_param->interp_param()->height();
-	    	width = layer_param->interp_param()->width();
+	    	height_out_ = layer_param->interp_param()->height();
+	    	width_out_ = layer_param->interp_param()->width();
+			pad_beg_ = layer_param->interp_param()->pad_beg();
+			pad_end_ = layer_param->interp_param()->pad_end();
+
+			LOGI("Interp layer only supports height & width formula.");
         }
         int Forward();
+		int GenerateTopBlobs();
     private:
-	int height;
-	int width;
-	int zoom_factor;
-	int shrink_factor;
-	int pad_beg;
-	int pad_end;
+	int num_;
+	int channels_;
+	int height_in_;
+	int width_in_;
+	int height_in_eff_;
+	int width_in_eff_;
+	int height_out_;
+	int width_out_;
+	int pad_beg_;
+	int pad_end_;
+
+	LayerParameter *layer_param_;
+	
 };
 };
