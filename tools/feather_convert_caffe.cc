@@ -459,6 +459,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             flatbuffers::Offset<feather::PReLUParameter> prelu_param;
             flatbuffers::Offset<feather::DropoutParameter> dropout_param;
             flatbuffers::Offset<feather::FilterParameter> filter_param;
+            flatbuffers::Offset<feather::FlattenParameter> flatten_param;
+            flatbuffers::Offset<feather::InterpParameter> interp_param;
 
             if (layer_type.compare("Convolution") == 0 || (layer_type.compare("DepthwiseConvolution") == 0))
             {
@@ -642,16 +644,24 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 pooling_param_builder.add_global_pooling(caffe_pooling_param.global_pooling());
                 pooling_param = pooling_param_builder.Finish();
             }
+	    else if (layer_type.compare("Interp") == 0)
+	    {
+		auto caffe_interp_param = caffe_layer.interp_param();
+		int height = caffe_interp_param.height();	
+		int width = caffe_interp_param.width();	
+		int zoom_factor = caffe_interp_param.zoom_factor();	
+		int shrink_factor = caffe_interp_param.shrink_factor();	
+		int pad_beg = caffe_interp_param.pad_beg();
+		int pad_end = caffe_interp_param.pad_end();
+		interp_param = feather::CreateInterpParameter(fbb, height, width, zoom_factor, shrink_factor, pad_beg, pad_end);
+		
+	    }
             else if (layer_type.compare("InnerProduct") == 0)
             {
                 auto caffe_inner_product_param = caffe_layer.inner_product_param();
                 feather::InnerProductParameterBuilder inner_product_param_builder(fbb);
                 inner_product_param_builder.add_bias_term(caffe_inner_product_param.bias_term());
                 inner_product_param = inner_product_param_builder.Finish();
-            }
-            else if (layer_type.compare("BatchNorm") == 0)
-            {
-                //Do nothing
             }
             else if (layer_type.compare("Softmax") == 0)
             {
@@ -698,9 +708,12 @@ defalut:
                 printf("Loaded coeff size %ld\n", coeff_vec.size());
                 eltwise_param = feather::CreateEltwiseParameterDirect(fbb, feather_op, &coeff_vec);
             }
-            else if (layer_type.compare("ReLU") == 0)
+            else if (layer_type.compare("Flatten") == 0)
             {
-                //Do nothing
+		auto caffe_flatten_param = caffe_layer.flatten_param();
+		int axis = caffe_flatten_param.axis();
+		int end_axis = caffe_flatten_param.end_axis();
+		flatten_param = feather::CreateFlattenParameter(fbb, axis, end_axis);
             }
             else if (layer_type.compare("Filter") == 0)
             {
@@ -708,14 +721,6 @@ defalut:
                 size_t num_output = caffe_filter_param.num_output();
                 printf("Filter param: num_output %ld\n", num_output);
 		filter_param = feather::CreateFilterParameter(fbb, num_output);
-            }
-            else if (layer_type.compare("PReLU") == 0)
-            {
-
-            }
-            else if (layer_type.compare("Dropout") == 0)
-            {
-
             }
 
             auto layer_name_fbb = fbb.CreateString(layer_name);
@@ -734,12 +739,16 @@ defalut:
                 layer_builder.add_filter_param(filter_param);
             else if (layer_type.compare("Pooling") == 0)
                 layer_builder.add_pooling_param(pooling_param);
+            else if (layer_type.compare("Interp") == 0)
+		layer_builder.add_interp_param(interp_param);
             else if (layer_type.compare("InnerProduct") == 0)
                 layer_builder.add_inner_product_param(inner_product_param);
             else if (layer_type.compare("Scale") == 0)
                 layer_builder.add_scale_param(scale_param);
             else if (layer_type.compare("Eltwise") == 0)
                 layer_builder.add_eltwise_param(eltwise_param);
+            else if (layer_type.compare("Flatten") == 0)
+		    layer_builder.add_flatten_param(flatten_param);
             layer_vec.push_back(layer_builder.Finish());
         }
         auto layer_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::LayerParameter>>(layer_vec);

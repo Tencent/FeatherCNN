@@ -72,6 +72,7 @@ table LayerParameter {
   exp_param:feather.ExpParameter;
   flatten_param:feather.FlattenParameter;
   image_data_param:feather.ImageDataParameter;
+  interp_param:feather.InterpParameter;
   inner_product_param:feather.InnerProductParameter;
   log_param:feather.LogParameter;
   lrn_param:feather.LRNParameter;
@@ -197,6 +198,15 @@ table ImageDataParameter {
   crop_size:uint;
   mirror:bool;
   root_folder:string;
+}
+
+table InterpParameter {
+  height:int=0;
+  width:int=0;
+  zoom_factor:int=1;
+  shrink_factor:int=1;
+  pad_beg:int=0;
+  pad_end:int=0;	
 }
 
 table InnerProductParameter {
