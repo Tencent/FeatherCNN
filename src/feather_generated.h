@@ -44,6 +44,8 @@ struct FilterParameter;
 
 struct ImageDataParameter;
 
+struct InterpParameter;
+
 struct InnerProductParameter;
 
 struct LogParameter;
@@ -431,21 +433,22 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_EXP_PARAM = 38,
     VT_FLATTEN_PARAM = 40,
     VT_IMAGE_DATA_PARAM = 42,
-    VT_INNER_PRODUCT_PARAM = 44,
-    VT_LOG_PARAM = 46,
-    VT_LRN_PARAM = 48,
-    VT_POOLING_PARAM = 50,
-    VT_POWER_PARAM = 52,
-    VT_PRELU_PARAM = 54,
-    VT_REDUCTION_PARAM = 56,
-    VT_RELU_PARAM = 58,
-    VT_RESHAPE_PARAM = 60,
-    VT_SCALE_PARAM = 62,
-    VT_SIGMOID_PARAM = 64,
-    VT_SOFTMAX_PARAM = 66,
-    VT_SLICE_PARAM = 68,
-    VT_TANH_PARAM = 70,
-    VT_FILTER_PARAM = 72
+    VT_INTERP_PARAM = 44,
+    VT_INNER_PRODUCT_PARAM = 46,
+    VT_LOG_PARAM = 48,
+    VT_LRN_PARAM = 50,
+    VT_POOLING_PARAM = 52,
+    VT_POWER_PARAM = 54,
+    VT_PRELU_PARAM = 56,
+    VT_REDUCTION_PARAM = 58,
+    VT_RELU_PARAM = 60,
+    VT_RESHAPE_PARAM = 62,
+    VT_SCALE_PARAM = 64,
+    VT_SIGMOID_PARAM = 66,
+    VT_SOFTMAX_PARAM = 68,
+    VT_SLICE_PARAM = 70,
+    VT_TANH_PARAM = 72,
+    VT_FILTER_PARAM = 74
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
@@ -506,6 +509,9 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   const ImageDataParameter *image_data_param() const {
     return GetPointer<const ImageDataParameter *>(VT_IMAGE_DATA_PARAM);
+  }
+  const InterpParameter *interp_param() const {
+    return GetPointer<const InterpParameter *>(VT_INTERP_PARAM);
   }
   const InnerProductParameter *inner_product_param() const {
     return GetPointer<const InnerProductParameter *>(VT_INNER_PRODUCT_PARAM);
@@ -597,6 +603,8 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyTable(flatten_param()) &&
            VerifyOffset(verifier, VT_IMAGE_DATA_PARAM) &&
            verifier.VerifyTable(image_data_param()) &&
+           VerifyOffset(verifier, VT_INTERP_PARAM) &&
+           verifier.VerifyTable(interp_param()) &&
            VerifyOffset(verifier, VT_INNER_PRODUCT_PARAM) &&
            verifier.VerifyTable(inner_product_param()) &&
            VerifyOffset(verifier, VT_LOG_PARAM) &&
@@ -694,6 +702,9 @@ struct LayerParameterBuilder {
   void add_image_data_param(flatbuffers::Offset<ImageDataParameter> image_data_param) {
     fbb_.AddOffset(LayerParameter::VT_IMAGE_DATA_PARAM, image_data_param);
   }
+  void add_interp_param(flatbuffers::Offset<InterpParameter> interp_param) {
+    fbb_.AddOffset(LayerParameter::VT_INTERP_PARAM, interp_param);
+  }
   void add_inner_product_param(flatbuffers::Offset<InnerProductParameter> inner_product_param) {
     fbb_.AddOffset(LayerParameter::VT_INNER_PRODUCT_PARAM, inner_product_param);
   }
@@ -773,6 +784,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
     flatbuffers::Offset<ExpParameter> exp_param = 0,
     flatbuffers::Offset<FlattenParameter> flatten_param = 0,
     flatbuffers::Offset<ImageDataParameter> image_data_param = 0,
+    flatbuffers::Offset<InterpParameter> interp_param = 0,
     flatbuffers::Offset<InnerProductParameter> inner_product_param = 0,
     flatbuffers::Offset<LogParameter> log_param = 0,
     flatbuffers::Offset<LRNParameter> lrn_param = 0,
@@ -804,6 +816,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
   builder_.add_lrn_param(lrn_param);
   builder_.add_log_param(log_param);
   builder_.add_inner_product_param(inner_product_param);
+  builder_.add_interp_param(interp_param);
   builder_.add_image_data_param(image_data_param);
   builder_.add_flatten_param(flatten_param);
   builder_.add_exp_param(exp_param);
@@ -849,6 +862,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
     flatbuffers::Offset<ExpParameter> exp_param = 0,
     flatbuffers::Offset<FlattenParameter> flatten_param = 0,
     flatbuffers::Offset<ImageDataParameter> image_data_param = 0,
+    flatbuffers::Offset<InterpParameter> interp_param = 0,
     flatbuffers::Offset<InnerProductParameter> inner_product_param = 0,
     flatbuffers::Offset<LogParameter> log_param = 0,
     flatbuffers::Offset<LRNParameter> lrn_param = 0,
@@ -886,6 +900,7 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
       exp_param,
       flatten_param,
       image_data_param,
+      interp_param,
       inner_product_param,
       log_param,
       lrn_param,
@@ -2095,6 +2110,96 @@ inline flatbuffers::Offset<ImageDataParameter> CreateImageDataParameterDirect(
       crop_size,
       mirror,
       root_folder ? _fbb.CreateString(root_folder) : 0);
+}
+
+struct InterpParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  enum {
+    VT_HEIGHT = 4,
+    VT_WIDTH = 6,
+    VT_ZOOM_FACTOR = 8,
+    VT_SHRINK_FACTOR = 10,
+    VT_PAD_BEG = 12,
+    VT_PAD_END = 14
+  };
+  int32_t height() const {
+    return GetField<int32_t>(VT_HEIGHT, 0);
+  }
+  int32_t width() const {
+    return GetField<int32_t>(VT_WIDTH, 0);
+  }
+  int32_t zoom_factor() const {
+    return GetField<int32_t>(VT_ZOOM_FACTOR, 1);
+  }
+  int32_t shrink_factor() const {
+    return GetField<int32_t>(VT_SHRINK_FACTOR, 1);
+  }
+  int32_t pad_beg() const {
+    return GetField<int32_t>(VT_PAD_BEG, 0);
+  }
+  int32_t pad_end() const {
+    return GetField<int32_t>(VT_PAD_END, 0);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<int32_t>(verifier, VT_HEIGHT) &&
+           VerifyField<int32_t>(verifier, VT_WIDTH) &&
+           VerifyField<int32_t>(verifier, VT_ZOOM_FACTOR) &&
+           VerifyField<int32_t>(verifier, VT_SHRINK_FACTOR) &&
+           VerifyField<int32_t>(verifier, VT_PAD_BEG) &&
+           VerifyField<int32_t>(verifier, VT_PAD_END) &&
+           verifier.EndTable();
+  }
+};
+
+struct InterpParameterBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_height(int32_t height) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_HEIGHT, height, 0);
+  }
+  void add_width(int32_t width) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_WIDTH, width, 0);
+  }
+  void add_zoom_factor(int32_t zoom_factor) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_ZOOM_FACTOR, zoom_factor, 1);
+  }
+  void add_shrink_factor(int32_t shrink_factor) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_SHRINK_FACTOR, shrink_factor, 1);
+  }
+  void add_pad_beg(int32_t pad_beg) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_PAD_BEG, pad_beg, 0);
+  }
+  void add_pad_end(int32_t pad_end) {
+    fbb_.AddElement<int32_t>(InterpParameter::VT_PAD_END, pad_end, 0);
+  }
+  explicit InterpParameterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  InterpParameterBuilder &operator=(const InterpParameterBuilder &);
+  flatbuffers::Offset<InterpParameter> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<InterpParameter>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<InterpParameter> CreateInterpParameter(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    int32_t height = 0,
+    int32_t width = 0,
+    int32_t zoom_factor = 1,
+    int32_t shrink_factor = 1,
+    int32_t pad_beg = 0,
+    int32_t pad_end = 0) {
+  InterpParameterBuilder builder_(_fbb);
+  builder_.add_pad_end(pad_end);
+  builder_.add_pad_beg(pad_beg);
+  builder_.add_shrink_factor(shrink_factor);
+  builder_.add_zoom_factor(zoom_factor);
+  builder_.add_width(width);
+  builder_.add_height(height);
+  return builder_.Finish();
 }
 
 struct InnerProductParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
