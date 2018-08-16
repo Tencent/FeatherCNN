@@ -24,6 +24,7 @@
 #include "layers/conv_sgeconv_layer.h"
 #include "layers/conv_winograd_layer.h"
 #include "layers/conv_winogradF63_layer.h"
+#include "layers/flatten_layer.h"
 #include "layers/dropout_layer.h"
 #include "layers/batchnorm_layer.h"
 #include "layers/lrn_layer.h"
@@ -138,13 +139,17 @@ Layer *GetInnerProductLayer(const LayerParameter *layer_param, const RuntimePara
 {
     return (Layer *)new InnerProductLayer(layer_param, rt_param);
 }
-Layer *GetSoftmaxLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
-{
-    return (Layer *)new SoftmaxLayer(layer_param, rt_param);
-}
 Layer *GetFilterLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
     return (Layer *)new FilterLayer(layer_param, rt_param);
+}
+Layer *GetFlattenLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+    return (Layer *)new FlattenLayer(layer_param, rt_param);
+}
+Layer *GetSoftmaxLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+    return (Layer *)new SoftmaxLayer(layer_param, rt_param);
 }
 
 void register_layer_creators()
@@ -162,6 +167,7 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Slice, GetSliceLayer);
     REGISTER_LAYER_CREATOR(Pooling, GetPoolingLayer);
     REGISTER_LAYER_CREATOR(Eltwise, GetEltwiseLayer);
+    REGISTER_LAYER_CREATOR(Flatten, GetFlattenLayer);
     REGISTER_LAYER_CREATOR(InnerProduct, GetInnerProductLayer);
     REGISTER_LAYER_CREATOR(Softmax, GetSoftmaxLayer);
     REGISTER_LAYER_CREATOR(Filter, GetFilterLayer);
