@@ -43,7 +43,7 @@ class InnerProductLayer : public Layer
                 bias_data = this->_weight_blobs[1]->data();
             }
             _fusible = true;
-            printf("input channels %d\n", input_channels);
+            // printf("input channels %d\n", input_channels);
         }
 
         int Forward()
