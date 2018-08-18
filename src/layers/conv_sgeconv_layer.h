@@ -101,6 +101,11 @@ class ConvSgeconvLayer : public ConvLayer
 
     int Forward()
     {
+        LOGI("Forward layer %s", this->name().c_str());
+        LOGI("kernel %dx%d", kernel_height, kernel_width);
+        LOGI("stride %d %d", stride_height, stride_width);
+        LOGI("input %dx%d", input_height, input_width);
+        LOGI("output %dx%d", output_height, output_width);
         const int M = output_channels;
         const int N = conv_param.output_h * conv_param.output_w;
         const int K = input_channels * kernel_width * kernel_height;

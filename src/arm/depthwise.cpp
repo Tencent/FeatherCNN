@@ -1290,8 +1290,8 @@ void dwConv_template(float *output, float *input, int input_channels, int inw, i
     }
     else if (kw == 3 && kh == 3 && stridew == 1 && strideh == 1)
         dwConvs1<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
-    else if (kw == 3 && kh == 3 && stridew == 2 && strideh == 2)
-        dwConvs2<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
+    //else if (kw == 3 && kh == 3 && stridew == 2 && strideh == 2)
+    //    dwConvs2<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
     else
     {
         int outw = (inw - kw) / stridew + 1; //for strided case in odd dimensions, should take the floor value as output dim.
