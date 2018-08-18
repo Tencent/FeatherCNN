@@ -68,6 +68,11 @@ class ConvIm2colLayer : public ConvLayer
 
         int Forward()
         {
+            LOGI("Forward layer %s", this->name().c_str());
+            LOGI("kernel %dx%d", kernel_height, kernel_width);
+            LOGI("stride %d %d", stride_height, stride_width);
+            LOGI("input %dx%d", input_height, input_width);
+            LOGI("output %dx%d", output_height, output_width);
             //MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&pack_array));
 	    //img_buffer = pack_array + pack_array_size;
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));

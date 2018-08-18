@@ -228,7 +228,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
             for (int b = 0; b < layers[i]->bottom_size(); ++b)
             {
                 std::string blob_name = layers[i]->bottom(b);
-                //LOGD("blob name %s\n", blob_name.c_str());
+                LOGI("blob name %s\n", blob_name.c_str());
                 //TODO handle error: when blob_name has not been inserted into map.
                 if (blob_map.find(blob_name) != blob_map.end())
                     layers[i]->SetupBottomBlob(blob_map[blob_name], blob_name);
@@ -261,7 +261,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                 //Update the respective bottoms in other layers.
                 std::string new_bottom = layers[i]->top(0);
                 std::string old_bottom = next_layer->top(0);
-                //LOGD("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+                LOGD("old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
                 for (int k = i + 1; k < layers.size(); ++k)
                 {
                     if (k == j)
@@ -274,7 +274,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                     }
                 }
                 //LOGD("Erasing layer %d %s\n", j, next_layer->name().c_str());
-		delete layers[j];
+		        delete layers[j];
                 layers.erase(layers.begin() + j);
                 next_layer = layers[j];
                 //LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
@@ -284,7 +284,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
 
     //Rebuild blob map
     blob_map.clear();
-    for (int i = 1; i < layers.size(); ++i)
+    for (int i = 0; i < layers.size(); ++i)
     {
         for (int t = 0; t < layers[i]->top_size(); ++t)
         {
