@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <cstring>
-// #define LAYER_TIMING
+#define LAYER_TIMING
 
 namespace feather
 {
@@ -89,7 +89,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
     *data_size = p_blob->data_size();
     return 0;
 }
-
+#include <unistd.h>
 int Net::Forward(float *input)
 {
     InputLayer *input_layer = (InputLayer *)layers[0];
@@ -100,8 +100,10 @@ int Net::Forward(float *input)
     
     for (int i = 1; i < layers.size(); ++i)
     {
+        // sleep(2);
 #ifdef LAYER_TIMING
         timespec tpstart, tpend;
+        LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
         //LOGD("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
@@ -115,9 +117,8 @@ int Net::Forward(float *input)
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        LOGD("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+        LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
-
     }
     return 0;
 }

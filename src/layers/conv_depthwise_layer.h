@@ -65,11 +65,14 @@ class ConvDepthwiseLayer : public ConvLayer
 
     int Forward()
     {
+        #if 1
+        
         const float *input = _bottom_blobs[_bottom[0]]->data();
         float *output = _top_blobs[_top[0]]->data();
+        LOGI("output (%d %d %d %d)", _top_blobs[_top[0]]->num(), _top_blobs[_top[0]]->channels(), _top_blobs[_top[0]]->height(), _top_blobs[_top[0]]->width());
         int inputw = input_width + padding_left + padding_right;
         int inputh = input_height + padding_top + padding_bottom;
-
+        // printf("Depthwise layer %s forward output 0x%x bias_term\n", this->_name.c_str(), output, bias_term);
         if (padding_left > 0 || padding_right > 0 || padding_top > 0 || padding_bottom > 0)
         {
             pad_input(padded_input, input, input_channels, input_width, input_height, padding_left,
@@ -78,6 +81,7 @@ class ConvDepthwiseLayer : public ConvLayer
         }
         else
             dwConv(output, const_cast<float*>(input), input_channels, inputw, inputh, stride_width, stride_height, kernel_data, kernel_width, kernel_height, group, num_threads, bias_data);
+            #endif
         return 0;
     }
 

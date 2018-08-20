@@ -75,6 +75,10 @@ class ConvLayer : public Layer
             }
             output_width = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
             output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
+            if(group > 1 && group == input_channels)
+            {
+                output_channels = group;
+            }
 #if 0
             printf("input channels %d\n", input_channels);
             assert(input_channels == bottom_blob->channels());
