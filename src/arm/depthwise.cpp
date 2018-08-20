@@ -1285,7 +1285,8 @@ void dwConvs2(float *output, float *input, int inw, int inh, int stridew, int st
 template <bool fuseBias, bool fuseRelu>
 void dwConv_template(float *output, float *input, int input_channels, int inw, int inh, int stridew, int strideh, float *kernel, int kw, int kh, int group, int nThreads, float *bias_arr)
 {
-    if ((kw == inw) && (kh == inh)) {
+    if ((kw == inw) && (kh == inh)) 
+    {
         globalDwConv<fuseBias, fuseRelu>(output, input, input_channels, inw, inh, kernel, group, nThreads, bias_arr);
     }
     else if (kw == 3 && kh == 3 && stridew == 1 && strideh == 1)
@@ -1297,7 +1298,8 @@ void dwConv_template(float *output, float *input, int input_channels, int inw, i
         int outw = (inw - kw) / stridew + 1; //for strided case in odd dimensions, should take the floor value as output dim.
         int outh = (inh - kh) / strideh + 1;
 
-#pragma omp parallel for num_threads(nThreads) schedule(static)
+// #pragma omp parallel for num_threads(nThreads) schedule(static)
+        printf("dw param %d kernel %d %d stride %d %d input %d %d %d output %d %d\n", group, kh, kw, strideh, stridew, input_channels, inh, inw, outh, outw);
         for (int g = 0; g < group; ++g)
         {
             float *kp = kernel + kw * kh * g;

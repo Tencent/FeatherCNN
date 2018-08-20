@@ -34,6 +34,7 @@
 #include "layers/slice_layer.h"
 #include "layers/pooling_layer.h"
 #include "layers/eltwise_layer.h"
+#include "layers/interp_layer.h"
 #include "layers/inner_product_layer.h"
 
 #include "layers/softmax_layer.h"
@@ -135,6 +136,11 @@ Layer *GetEltwiseLayer(const LayerParameter *layer_param, const RuntimeParameter
 {
     return (Layer *)new EltwiseLayer(layer_param, rt_param);
 }
+Layer *GetInterpLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
+{
+    return (Layer *)new InterpLayer(layer_param, rt_param);
+}
+
 Layer *GetInnerProductLayer(const LayerParameter *layer_param, const RuntimeParameter<float> * rt_param)
 {
     return (Layer *)new InnerProductLayer(layer_param, rt_param);
@@ -168,6 +174,7 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Pooling, GetPoolingLayer);
     REGISTER_LAYER_CREATOR(Eltwise, GetEltwiseLayer);
     REGISTER_LAYER_CREATOR(Flatten, GetFlattenLayer);
+    REGISTER_LAYER_CREATOR(Interp, GetInterpLayer);
     REGISTER_LAYER_CREATOR(InnerProduct, GetInnerProductLayer);
     REGISTER_LAYER_CREATOR(Softmax, GetSoftmaxLayer);
     REGISTER_LAYER_CREATOR(Filter, GetFilterLayer);
