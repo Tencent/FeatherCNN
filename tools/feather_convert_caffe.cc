@@ -516,8 +516,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 else if (caffe_conv_param.stride_size() == 0)
                 {
                     //defaults to 1
-                    conv_param_builder.add_stride_h(1);
-                    conv_param_builder.add_stride_w(1);
+                    conv_param_builder.add_stride_h(caffe_conv_param.stride_h());
+                    conv_param_builder.add_stride_w(caffe_conv_param.stride_w());
                 }
                 else
                 {
