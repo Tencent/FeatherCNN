@@ -69,7 +69,7 @@ Layer *GetConvolutionLayer(const LayerParameter *layer_param, const RuntimeParam
         conv_layer = (ConvLayer*) new ConvWinogradF63Layer(layer_param, rt_param);
 #endif
     }
-    else if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 4)
+    else if (group == 1 && kernel_height == 3 && kernel_width == 3 && stride_height == 1 && stride_width == 1 && input_channels > 4 && output_channels > 4)
     {
         //printf("Winograd F23\n");
         conv_layer = (ConvLayer*) new ConvWinogradLayer(layer_param, rt_param);
