@@ -59,8 +59,8 @@ void caffe_cpu_interp2(const int channels,
         }
         return;
     }
-    const float rheight = (height2 > 1) ? static_cast<float>(height1 - 1) / (height2 - 1) : 0.f;
-    const float rwidth = (width2 > 1) ? static_cast<float>(width1 - 1) / (width2 - 1) : 0.f;
+    const float rheight = (height2 > 1) ? static_cast<float>(height1) / (height2) : 0.f;
+    const float rwidth = (width2 > 1) ? static_cast<float>(width1) / (width2) : 0.f;
     for (int h2 = 0; h2 < height2; ++h2)
     {
         const float h1r = rheight * h2;
