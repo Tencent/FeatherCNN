@@ -60,7 +60,7 @@ class ConvIm2colLayer : public ConvLayer
 		//kc = 304;
 		//nc = 304;
 		kc = 320;
-		nc = 160;
+		nc = 240;
 		//kc = 400;
 		//nc = 400;
         }
@@ -78,7 +78,7 @@ class ConvIm2colLayer : public ConvLayer
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&img_buffer));
 	    if(group <=0)	group = 1;
 #ifdef USE_LEGACY_SGEMM
-#if 1
+#if 0
 	    if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1 && padding_left == 1 && padding_right == 1 && padding_top == 1 && padding_bottom == 1)
             {
                 if (output_channels % 8 == 0)
@@ -136,7 +136,7 @@ class ConvIm2colLayer : public ConvLayer
 	    const int M = output_channels;
 	    const int N = output_height * output_width;
 	    const int K = input_channels * kernel_width * kernel_height;
-	    if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1 && padding_left == 1 && padding_right == 1 && padding_top == 1 && padding_bottom == 1)
+	    if (kernel_width == 1 && kernel_height == 1 && stride_height == 1 && stride_width == 1 && padding_left == 0 && padding_right == 0 && padding_top == 0 && padding_bottom == 0)
 	    {
 	          packed_sgemm(M, N, K, packed_kernel, input, N, output, N, nc, kc, bias_data, num_threads, pack_array);
 	    }
