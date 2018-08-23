@@ -657,7 +657,7 @@ defalut:
 		int c = reshape_blob_shape.dim(1);
 		int h = reshape_blob_shape.dim(2);
 		int w = reshape_blob_shape.dim(3);
-		printf("dim len %d, %d %d %d %d\n",dim_len, n, c, h, w);
+		printf("dim len %ld, %d %d %d %d\n",dim_len, n, c, h, w);
 
 		std::vector<int64_t> shape_dim;
 		shape_dim.push_back(reshape_blob_shape.dim(0));
