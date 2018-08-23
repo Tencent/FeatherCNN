@@ -51,7 +51,6 @@ CaffeModelWeightsConvert::CaffeModelWeightsConvert(std::string caffe_prototxt_na
 
 bool CaffeModelWeightsConvert::Convert()
 {
-
     if (!ReadNetParam())
     {
         std::cerr << "Read net params fail!" << std::endl;
@@ -230,7 +229,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         }
 
         std::map<std::string, std::string> inplace_blob_map;
-        for (int i = 0; i != layer_num; ++i)
+        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
         {
             auto caffe_layer = net_param_prototxt.layer(i);
             std::string layer_name = caffe_layer.name();
@@ -411,6 +410,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             flatbuffers::Offset<feather::PReLUParameter> prelu_param;
             flatbuffers::Offset<feather::DropoutParameter> dropout_param;
             flatbuffers::Offset<feather::FilterParameter> filter_param;
+            flatbuffers::Offset<feather::ReshapeParameter> reshape_param;
 
             if (layer_type.compare("Convolution") == 0 || (layer_type.compare("DepthwiseConvolution") == 0))
             {
@@ -648,6 +648,31 @@ defalut:
                 printf("Filter param: num_output %ld\n", num_output);
 		filter_param = feather::CreateFilterParameter(fbb, num_output);
             }
+	    else if (layer_type.compare("Reshape") == 0)
+	    {
+		auto caffe_reshape_param = caffe_layer.reshape_param();
+		auto reshape_blob_shape = caffe_reshape_param.shape();
+		size_t dim_len = reshape_blob_shape.dim_size();
+		int n = reshape_blob_shape.dim(0);
+		int c = reshape_blob_shape.dim(1);
+		int h = reshape_blob_shape.dim(2);
+		int w = reshape_blob_shape.dim(3);
+		printf("dim len %d, %d %d %d %d\n",dim_len, n, c, h, w);
+
+		std::vector<int64_t> shape_dim;
+		shape_dim.push_back(reshape_blob_shape.dim(0));
+		shape_dim.push_back(reshape_blob_shape.dim(1));
+		shape_dim.push_back(reshape_blob_shape.dim(2));
+		shape_dim.push_back(reshape_blob_shape.dim(3));
+		
+		auto shape = feather::CreateBlobShapeDirect(fbb, &shape_dim);
+		reshape_param = feather::CreateReshapeParameter(fbb, shape);	
+		if(caffe_reshape_param.has_axis() || caffe_reshape_param.has_num_axes())
+		{
+			fprintf(stderr, "Caffe reshape parameter are not yet supported! Aborting...\n");
+			exit(-1);
+		}
+	    }
             else if (layer_type.compare("PReLU") == 0)
             {
 
@@ -679,6 +704,8 @@ defalut:
                 layer_builder.add_scale_param(scale_param);
             else if (layer_type.compare("Eltwise") == 0)
                 layer_builder.add_eltwise_param(eltwise_param);
+            else if (layer_type.compare("Reshape") == 0)
+                layer_builder.add_reshape_param(reshape_param);
             layer_vec.push_back(layer_builder.Finish());
         }
         auto layer_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::LayerParameter>>(layer_vec);
