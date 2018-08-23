@@ -433,22 +433,22 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_EXP_PARAM = 38,
     VT_FLATTEN_PARAM = 40,
     VT_IMAGE_DATA_PARAM = 42,
-    VT_INTERP_PARAM = 44,
-    VT_INNER_PRODUCT_PARAM = 46,
-    VT_LOG_PARAM = 48,
-    VT_LRN_PARAM = 50,
-    VT_POOLING_PARAM = 52,
-    VT_POWER_PARAM = 54,
-    VT_PRELU_PARAM = 56,
-    VT_REDUCTION_PARAM = 58,
-    VT_RELU_PARAM = 60,
-    VT_RESHAPE_PARAM = 62,
-    VT_SCALE_PARAM = 64,
-    VT_SIGMOID_PARAM = 66,
-    VT_SOFTMAX_PARAM = 68,
-    VT_SLICE_PARAM = 70,
-    VT_TANH_PARAM = 72,
-    VT_FILTER_PARAM = 74
+    VT_INNER_PRODUCT_PARAM = 44,
+    VT_LOG_PARAM = 46,
+    VT_LRN_PARAM = 48,
+    VT_POOLING_PARAM = 50,
+    VT_POWER_PARAM = 52,
+    VT_PRELU_PARAM = 54,
+    VT_REDUCTION_PARAM = 56,
+    VT_RELU_PARAM = 58,
+    VT_RESHAPE_PARAM = 60,
+    VT_SCALE_PARAM = 62,
+    VT_SIGMOID_PARAM = 64,
+    VT_SOFTMAX_PARAM = 66,
+    VT_SLICE_PARAM = 68,
+    VT_TANH_PARAM = 70,
+    VT_FILTER_PARAM = 72,
+    VT_INTERP_PARAM = 74
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
@@ -510,9 +510,6 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const ImageDataParameter *image_data_param() const {
     return GetPointer<const ImageDataParameter *>(VT_IMAGE_DATA_PARAM);
   }
-  const InterpParameter *interp_param() const {
-    return GetPointer<const InterpParameter *>(VT_INTERP_PARAM);
-  }
   const InnerProductParameter *inner_product_param() const {
     return GetPointer<const InnerProductParameter *>(VT_INNER_PRODUCT_PARAM);
   }
@@ -557,6 +554,9 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   const FilterParameter *filter_param() const {
     return GetPointer<const FilterParameter *>(VT_FILTER_PARAM);
+  }
+  const InterpParameter *interp_param() const {
+    return GetPointer<const InterpParameter *>(VT_INTERP_PARAM);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -603,8 +603,6 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyTable(flatten_param()) &&
            VerifyOffset(verifier, VT_IMAGE_DATA_PARAM) &&
            verifier.VerifyTable(image_data_param()) &&
-           VerifyOffset(verifier, VT_INTERP_PARAM) &&
-           verifier.VerifyTable(interp_param()) &&
            VerifyOffset(verifier, VT_INNER_PRODUCT_PARAM) &&
            verifier.VerifyTable(inner_product_param()) &&
            VerifyOffset(verifier, VT_LOG_PARAM) &&
@@ -635,6 +633,8 @@ struct LayerParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyTable(tanh_param()) &&
            VerifyOffset(verifier, VT_FILTER_PARAM) &&
            verifier.VerifyTable(filter_param()) &&
+           VerifyOffset(verifier, VT_INTERP_PARAM) &&
+           verifier.VerifyTable(interp_param()) &&
            verifier.EndTable();
   }
 };
@@ -702,9 +702,6 @@ struct LayerParameterBuilder {
   void add_image_data_param(flatbuffers::Offset<ImageDataParameter> image_data_param) {
     fbb_.AddOffset(LayerParameter::VT_IMAGE_DATA_PARAM, image_data_param);
   }
-  void add_interp_param(flatbuffers::Offset<InterpParameter> interp_param) {
-    fbb_.AddOffset(LayerParameter::VT_INTERP_PARAM, interp_param);
-  }
   void add_inner_product_param(flatbuffers::Offset<InnerProductParameter> inner_product_param) {
     fbb_.AddOffset(LayerParameter::VT_INNER_PRODUCT_PARAM, inner_product_param);
   }
@@ -750,6 +747,9 @@ struct LayerParameterBuilder {
   void add_filter_param(flatbuffers::Offset<FilterParameter> filter_param) {
     fbb_.AddOffset(LayerParameter::VT_FILTER_PARAM, filter_param);
   }
+  void add_interp_param(flatbuffers::Offset<InterpParameter> interp_param) {
+    fbb_.AddOffset(LayerParameter::VT_INTERP_PARAM, interp_param);
+  }
   explicit LayerParameterBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -784,7 +784,6 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
     flatbuffers::Offset<ExpParameter> exp_param = 0,
     flatbuffers::Offset<FlattenParameter> flatten_param = 0,
     flatbuffers::Offset<ImageDataParameter> image_data_param = 0,
-    flatbuffers::Offset<InterpParameter> interp_param = 0,
     flatbuffers::Offset<InnerProductParameter> inner_product_param = 0,
     flatbuffers::Offset<LogParameter> log_param = 0,
     flatbuffers::Offset<LRNParameter> lrn_param = 0,
@@ -799,8 +798,10 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
     flatbuffers::Offset<SoftmaxParameter> softmax_param = 0,
     flatbuffers::Offset<SliceParameter> slice_param = 0,
     flatbuffers::Offset<TanHParameter> tanh_param = 0,
-    flatbuffers::Offset<FilterParameter> filter_param = 0) {
+    flatbuffers::Offset<FilterParameter> filter_param = 0,
+    flatbuffers::Offset<InterpParameter> interp_param = 0) {
   LayerParameterBuilder builder_(_fbb);
+  builder_.add_interp_param(interp_param);
   builder_.add_filter_param(filter_param);
   builder_.add_tanh_param(tanh_param);
   builder_.add_slice_param(slice_param);
@@ -816,7 +817,6 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameter(
   builder_.add_lrn_param(lrn_param);
   builder_.add_log_param(log_param);
   builder_.add_inner_product_param(inner_product_param);
-  builder_.add_interp_param(interp_param);
   builder_.add_image_data_param(image_data_param);
   builder_.add_flatten_param(flatten_param);
   builder_.add_exp_param(exp_param);
@@ -862,7 +862,6 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
     flatbuffers::Offset<ExpParameter> exp_param = 0,
     flatbuffers::Offset<FlattenParameter> flatten_param = 0,
     flatbuffers::Offset<ImageDataParameter> image_data_param = 0,
-    flatbuffers::Offset<InterpParameter> interp_param = 0,
     flatbuffers::Offset<InnerProductParameter> inner_product_param = 0,
     flatbuffers::Offset<LogParameter> log_param = 0,
     flatbuffers::Offset<LRNParameter> lrn_param = 0,
@@ -877,7 +876,8 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
     flatbuffers::Offset<SoftmaxParameter> softmax_param = 0,
     flatbuffers::Offset<SliceParameter> slice_param = 0,
     flatbuffers::Offset<TanHParameter> tanh_param = 0,
-    flatbuffers::Offset<FilterParameter> filter_param = 0) {
+    flatbuffers::Offset<FilterParameter> filter_param = 0,
+    flatbuffers::Offset<InterpParameter> interp_param = 0) {
   return feather::CreateLayerParameter(
       _fbb,
       name ? _fbb.CreateString(name) : 0,
@@ -900,7 +900,6 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
       exp_param,
       flatten_param,
       image_data_param,
-      interp_param,
       inner_product_param,
       log_param,
       lrn_param,
@@ -915,7 +914,8 @@ inline flatbuffers::Offset<LayerParameter> CreateLayerParameterDirect(
       softmax_param,
       slice_param,
       tanh_param,
-      filter_param);
+      filter_param,
+      interp_param);
 }
 
 struct ArgMaxParameter FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {

@@ -72,7 +72,6 @@ table LayerParameter {
   exp_param:feather.ExpParameter;
   flatten_param:feather.FlattenParameter;
   image_data_param:feather.ImageDataParameter;
-  interp_param:feather.InterpParameter;
   inner_product_param:feather.InnerProductParameter;
   log_param:feather.LogParameter;
   lrn_param:feather.LRNParameter;
@@ -88,6 +87,7 @@ table LayerParameter {
   slice_param:feather.SliceParameter;
   tanh_param:feather.TanHParameter;
   filter_param:feather.FilterParameter;
+  interp_param:feather.InterpParameter;
 }
 
 table ArgMaxParameter {
