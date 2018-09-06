@@ -45,6 +45,17 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
     free(arr);
 }
 
+void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
+{
+    for (char *s = strtok((char *)input.data(), (char *)delim.data()); s; s = strtok(NULL, (char *)delim.data()))
+    {
+        if (s != NULL)
+        {
+            parts.push_back(s);
+        }
+    }
+}
+
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
     printf("++++++Start Loader++++++\n");
@@ -53,41 +64,49 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     //size_t input_size = 224 * 224 * 3 ;
     size_t input_size = 300 * 300 * 3 ;
     float *input = new float[input_size * 20];
-
+    std::ifstream in(data_path.c_str());
+    std::string line;
+    std::string delim = "\t\r\n <>()";
     size_t count = 0;
     double time = 0;
 
-    //TODO judge file size
-    size_t file_size = 0;
-
-    FILE* fp = fopen(data_path.c_str(), "rb+");
-    fread(input, sizeof(float), input_size, fp);
-    fclose(fp);
-    for (int i = 0; i < loop; ++i)
+    while (getline(in, line))
     {
-	    timespec tpstart, tpend;
-	    clock_gettime(CLOCK_MONOTONIC, &tpstart);
-	    forward_net.Forward(input);
-	    clock_gettime(CLOCK_MONOTONIC, &tpend);
-	    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-	    printf("Prediction costs %lfms\n", timedif / 1000.0);
-	    if (i > 0)
-		    time += timedif;
-    }
-    printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
-    //PrintBlobData(&forward_net, "fc6", 0);
+        for (int i = 0; i < 1; ++i)
+        {
+            std::vector<std::string> parts;
+            SplitString(line, delim, parts);
+            printf("input size %ld parts size %ld\n", input_size, parts.size());
+            for (size_t i = 0; i != parts.size(); ++i)
+            {
+                input[i] = atof(parts[i].c_str());
+            }
+            for (int i = 0; i < loop; ++i)
+            {
+                timespec tpstart, tpend;
+                clock_gettime(CLOCK_MONOTONIC, &tpstart);
+                forward_net.Forward(input);
+                clock_gettime(CLOCK_MONOTONIC, &tpend);
+                double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+                printf("Prediction costs %lfms\n", timedif / 1000.0);
+                if (i > 0)
+                    time += timedif;
+            }
+            printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
+            //PrintBlobData(&forward_net, "fc6", 0);
 
-    //PrintBlobData(&forward_net, "data", 100);
-    //printf("------------------------\n");
-    PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
-    printf("------------------------\n");
-    PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
-    //printf("%f, %f\n", input[0], input[1]);
-    //printf("%f, %f\n", input[300], input[301]);
-    //printf("%f, %f\n", input[90000], input[90001]);
-    //printf("%f, %f\n", input[90300], input[90301]);
-    //printf("%f, %f\n", input[180000], input[180001]);
-    //printf("%f, %f\n", input[180300], input[180301]);
+	    PrintBlobData(&forward_net, "data", 0);
+	    //printf("------------------------\n");
+            //PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
+	    printf("%f, %f\n", input[0], input[1]);
+	    printf("%f, %f\n", input[300], input[301]);
+	    printf("%f, %f\n", input[90000], input[90001]);
+	    printf("%f, %f\n", input[90300], input[90301]);
+	    printf("%f, %f\n", input[180000], input[180001]);
+	    printf("%f, %f\n", input[180300], input[180301]);
+        }
+        break;
+    }
     if (input)
     {
         delete [] input;
