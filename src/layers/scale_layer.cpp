@@ -13,7 +13,9 @@
 //specific language governing permissions and limitations under the License.
 
 #include "scale_layer.h"
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
+
+using namespace booster;
 
 namespace feather
 {

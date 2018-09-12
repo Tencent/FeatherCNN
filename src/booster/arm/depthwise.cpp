@@ -12,7 +12,9 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "depthwise.h"
+#include <booster/depthwise.h>
+#include <booster/helper.h>
+
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,7 +25,6 @@
 #else
 #include <omp.h>
 #endif
-#include "arm/helper.h"
 /*
  * For global depthwise convolution
  */

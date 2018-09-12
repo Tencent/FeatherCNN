@@ -13,10 +13,18 @@
 //specific language governing permissions and limitations under the License.
 
 #pragma once
-#include <stdlib.h>
 
-void matrixTranspose(float* array, size_t m, size_t n, float *buffer);
-template <bool fuseBias, bool fuseRelu>
-void fully_connected_inference_direct(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);
-template <bool fuseBias, bool fuseRelu>
-void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);
+/*
+ * Performs single-float matrix multiply C = A * B in row-major fashion,
+ * where C is MxN, A is MxK and B is KxN.
+ * Allocation requirement: C: get_aligned_size(M, N), A: get_aligned_size(M, K)
+ */
+
+int get_aligned_size(int M, int N);
+
+template<int ROW_BATCH>
+void packed_sgemm_init(int M, int K, int kc, float* packA, float* A, int lda);
+
+//void packed_sgemm(int M, int N, int K, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc);
+template<bool fuseBias, bool fuseRelu>
+void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads, float* pack_array);

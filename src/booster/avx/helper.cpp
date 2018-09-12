@@ -12,37 +12,11 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "helper.h"
+#include <booster/helper.h>
 
 #include <stdio.h>
 #include <stdio.h>
-#include <arm_neon.h>
 #include <math.h>
-
-void print_vec2(float32x4_t* vp)
-{
-    float* ep = (float *) vp;
-    printf("input %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
-}
-
-void print_vec3(float32x4_t* vp)
-{
-    float* ep = (float *) vp;
-    printf("transformed %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
-}
-
-void print_vec(float32x4_t* vp, const char* comment)
-{
-    float* ep = (float *) vp;
-    printf("%s %.3f, %.3f, %.3f, %.3f\n", comment, *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
-}
-
-
-void print_vec(float32x4_t* vp)
-{
-    float* ep = (float *) vp;
-    printf("vec %.1f, %.1f, %.1f, %.1f\n", *(ep), *(ep + 1), *(ep + 2), *(ep + 3));
-}
 
 void print_arr(float* vp)
 {
@@ -82,7 +56,7 @@ void diff(float* arr1, float* arr2, int len)
             dif += err;
         }
     }
-    LOGD("The difference is %.2f\n", dif);
+    printf("The difference is %.2f\n", dif);
 }
 void diff(float* arr1, float* arr2, int M, int N)
 {
@@ -95,11 +69,11 @@ void diff(float* arr1, float* arr2, int M, int N)
             if (err > 1.0f)
             {
                 dif += err;
-                LOGD("Error position (%d, %d), value %.2f, %.2f\n", i, j, arr1[i * N + j], arr2[i * N + j]);
+                printf("Error position (%d, %d), value %.2f, %.2f\n", i, j, arr1[i * N + j], arr2[i * N + j]);
             }
         }
     }
-    LOGD("The difference is %.2f\n", dif);
+    printf("The difference is %.2f\n", dif);
 }
 
 #include <time.h>
@@ -113,7 +87,7 @@ void Timer::endBench(const char* comment)
 {
     clock_gettime(CLOCK_MONOTONIC, &stop);
     double elapsedTime = (stop.tv_sec - start.tv_sec) * 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
-    LOGD("%s %lfms\n", comment, elapsedTime);
+    printf("%s %lfms\n", comment, elapsedTime);
 }
 
 void Timer::endBench(const char* comment, double fold)

@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include "arm/helper.h"
+#include "booster/helper.h"
 #include <assert.h>
 #include <stdio.h>
 

@@ -9,12 +9,14 @@ cmake -DCMAKE_TOOLCHAIN_FILE=../../build_scripts/ios.toolchain.cmake -DIOS_SDK_P
 make -j4
 make install
 popd
+
 mkdir -p armv7s
 pushd armv7s
 cmake -DCMAKE_TOOLCHAIN_FILE=../../build_scripts/ios.toolchain.cmake -DIOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path) -DIOS_ARCH=armv7s -DFEATHER_ARM=1 ../..
 make -j4
 make install
 popd
+
 mkdir -p armv7
 pushd armv7
 cmake -DCMAKE_TOOLCHAIN_FILE=../../build_scripts/ios.toolchain.cmake -DIOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path) -DIOS_ARCH=armv7 ../..

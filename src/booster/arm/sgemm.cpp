@@ -1,5 +1,6 @@
-#include "sgemm.h"
-#include "helper.h"
+#include <booster/sgemm.h>
+#include <booster/helper.h>
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -12,8 +12,9 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "winograd_kernels.h"
-#include "helper.h"
+#include <booster/winograd_kernels.h>
+#include <booster/helper.h>
+
 #include <stdlib.h>
 #include <arm_neon.h>
 #include <assert.h>
@@ -1246,10 +1247,10 @@ void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float 
 #else
     switch (outType)
     {
-        case None:
+        case Nothing:
             winogradOutputTransform<false, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
-        case ReLU:
+        case Relu:
             winogradOutputTransform<true, false>(output, inputh - 2, inputw - 2, ldout, WT, outChannels, nRowBlocks, nColBlocks, biasArr, ext, num_threads);
             break;
         case Bias:

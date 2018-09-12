@@ -12,7 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "sgemv.h"
+#include <booster/sgemv.h>
 
 #include <assert.h>
 #include <arm_neon.h>
@@ -36,7 +36,7 @@ void fully_connected_inference_direct(const int input_size, const int output_siz
 }
 
 template <bool fuseBias, bool fuseRelu>
-void fully_connected_transpose_inference_neon8(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr)
+void fully_connected_transpose_inference(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr)
 {
     assert(input_size % 8 == 0);
     assert(output_size % 8 == 0);
@@ -106,10 +106,10 @@ template void fully_connected_inference_direct<false,  true>(const int, const in
 template void fully_connected_inference_direct<true,  false>(const int, const int, const float *, const float *, float *, const int, float*);
 template void fully_connected_inference_direct<true,   true>(const int, const int, const float *, const float *, float *, const int, float*);
 
-template void fully_connected_transpose_inference_neon8<false, false>(const int, const int, const float *, const float *, float *, const int, float*);
-template void fully_connected_transpose_inference_neon8<false,  true>(const int, const int, const float *, const float *, float *, const int, float*);
-template void fully_connected_transpose_inference_neon8<true,  false>(const int, const int, const float *, const float *, float *, const int, float*);
-template void fully_connected_transpose_inference_neon8<true,   true>(const int, const int, const float *, const float *, float *, const int, float*);
+template void fully_connected_transpose_inference<false, false>(const int, const int, const float *, const float *, float *, const int, float*);
+template void fully_connected_transpose_inference<false,  true>(const int, const int, const float *, const float *, float *, const int, float*);
+template void fully_connected_transpose_inference<true,  false>(const int, const int, const float *, const float *, float *, const int, float*);
+template void fully_connected_transpose_inference<true,   true>(const int, const int, const float *, const float *, float *, const int, float*);
 
 #if 0
 void fully_connected_inference_direct_BiasReLU(int input_size, int output_size, float *x, float *y, float *z, float* biasArr, int num_threads)
