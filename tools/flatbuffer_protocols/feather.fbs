@@ -305,11 +305,11 @@ table BlobShape {
 
 table BlobProto {
   data:[float];
-  data_fp16:[ushort];
   num:int;
   channels:int;
   height:int;
   width:int;
+  data_fp16:[ushort];
 }
 
 root_type NetParameter;

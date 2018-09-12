@@ -12,7 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "caffe_interp.h"
+#include <booster/caffe_interp.h>
 
 // Bi-linear interpolation
 // IN : [channels height1 width1] cropped from a bigger [Height1 Width1] image

@@ -13,8 +13,8 @@
 //specific language governing permissions and limitations under the License.
 
 #include "interp_layer.h"
-#include "arm/generic_kernels.h"
-#include "arm/caffe_interp.h"
+#include "booster/generic_kernels.h"
+#include "booster/caffe_interp.h"
 
 
 namespace feather

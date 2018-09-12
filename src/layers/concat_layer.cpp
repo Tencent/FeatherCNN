@@ -13,8 +13,8 @@
 //specific language governing permissions and limitations under the License.
 
 #include "concat_layer.h"
-#include "arm/generic_kernels.h"
-#include "arm/helper.h"
+#include "booster/generic_kernels.h"
+#include "booster/helper.h"
 
 namespace feather
 {

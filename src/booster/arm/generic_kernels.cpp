@@ -12,7 +12,8 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "generic_kernels.h"
+#include <booster/booster.h>//For conv param
+#include <booster/generic_kernels.h>
 
 #include <math.h>
 #include <string.h>
@@ -25,6 +26,8 @@
 #include <omp.h>
 #endif
 
+namespace booster
+{
 void pad_input(float* padded, const float* input, const size_t input_channels, const size_t input_width, const size_t input_height, const size_t padding_left, const size_t padding_top, const size_t padding_right, const size_t padding_bottom)
 {
     int paddedWidth  = (int)(input_width + padding_left + padding_right);
@@ -44,6 +47,59 @@ void pad_input(float* padded, const float* input, const size_t input_channels, c
     }
 }
 
+void im2col(ConvParam *conv_param, float *img_buffer, float *input)
+{
+    const int stride = conv_param->kernel_h * conv_param->kernel_w * conv_param->output_h * conv_param->output_w;
+    float *ret = img_buffer;
+    // #pragma omp parallel for num_threads(num_threads)
+    for (int k = 0; k < conv_param->input_channels; k++)
+    {
+        int retID = stride * k;
+        for (int u = 0; u < conv_param->kernel_h; u++)
+        {
+            for (int v = 0; v < conv_param->kernel_w; v++)
+            {
+                for (int i = 0; i < conv_param->output_h; i++)
+                {
+                    for (int j = 0; j < conv_param->output_w; j++)
+                    {
+                        //calculate each row
+                        int row = u - conv_param->pad_top + i * conv_param->stride_h;
+                        int col = v - conv_param->pad_left + j * conv_param->stride_w;
+                        //printf("row %d, col %d\n", row, col);
+                        if (row < 0 || row >= conv_param->input_h || col < 0 || col >= conv_param->input_w)
+                        {
+                            ret[retID] = 0;
+                        }
+                        else
+                        {
+                            size_t index = k * conv_param->input_w * conv_param->input_h + row * conv_param->input_w + col; //(i+u)*input_width+j+v;
+                            ret[retID] = input[index];
+                        }
+                        retID++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void naive_sgemm(int M, int N, int L, float *A, float *B, float *C)
+{
+    for (int i = 0; i < M; ++i) //loop over rows in C
+    {
+        for (int j = 0; j < N; ++j) //loop over columns in C
+        {
+            float sigma = 0;
+            for (int k = 0; k < L; ++k)
+            {
+                sigma += A[i * L + k] * B[k * N + j];
+            }
+            C[i * N + j] = sigma;
+        }
+    }
+}
 
 /*
  * Elementwise operations
@@ -403,3 +459,4 @@ void reluVecOpenmp(float* arr, int len, int nThreads)
     for (int i = aLen; i < len; i++)
         if (arr[i] < 0)    arr[i] = 0;
 }
+};

@@ -16,7 +16,7 @@
 #include "blob.h"
 #include "fp16/fp16.h"
 
-#include "arm/helper.h"
+#include "booster/helper.h"
 
 #include "common.h"
 

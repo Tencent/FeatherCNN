@@ -14,8 +14,10 @@
 
 #include "batchnorm_layer.h"
 #include "scale_layer.h"//For fuse
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
 #include <math.h>
+
+using namespace booster;
 
 namespace feather
 {

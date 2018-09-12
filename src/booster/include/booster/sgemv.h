@@ -12,22 +12,11 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "relu_layer.h"
-#include "booster/generic_kernels.h"
+#pragma once
+#include <stdlib.h>
 
-namespace feather
-{
-int ReluLayer::Forward()
-{
-    const Blob<float> *p_bottom = _bottom_blobs[_bottom[0]];
-    const float* input = p_bottom->data();
-    const size_t data_size = p_bottom->num() * p_bottom->channels() * p_bottom->height() * p_bottom->width();
-
-    float* output = _top_blobs[_top[0]]->data();
-    for (size_t i = 0; i < data_size; ++i)
-    {
-        output[i] = input[i] > 0 ? input[i] : 0;
-    }
-    return 0;
-}
-};
+void matrixTranspose(float* array, size_t m, size_t n, float *buffer);
+template <bool fuseBias, bool fuseRelu>
+void fully_connected_inference_direct(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);
+template <bool fuseBias, bool fuseRelu>
+void fully_connected_transpose_inference(const int input_size, const int output_size, const float *x, const float *y, float *z, const int num_threads, float* bias_arr);

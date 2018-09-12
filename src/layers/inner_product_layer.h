@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include "arm/sgemv.h"
+#include "booster/sgemv.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -105,13 +105,13 @@ class InnerProductLayer : public Layer
             if (output_size % 8 == 0 && input_size % 8 == 0)
             {
                 if (bias_term && fuse_relu)
-                    sgemv_kernel = fully_connected_transpose_inference_neon8<true, true>;
+                    sgemv_kernel = fully_connected_transpose_inference<true, true>;
                 else if (bias_term && !fuse_relu)
-                    sgemv_kernel = fully_connected_transpose_inference_neon8<true, false>;
+                    sgemv_kernel = fully_connected_transpose_inference<true, false>;
                 else if (!bias_term && fuse_relu)
-                    sgemv_kernel = fully_connected_transpose_inference_neon8<false, true>;
+                    sgemv_kernel = fully_connected_transpose_inference<false, true>;
                 else if (!bias_term && !fuse_relu)
-                    sgemv_kernel = fully_connected_transpose_inference_neon8<false, false>;
+                    sgemv_kernel = fully_connected_transpose_inference<false, false>;
             }
             else
             {

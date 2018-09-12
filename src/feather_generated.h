@@ -3134,17 +3134,14 @@ inline flatbuffers::Offset<BlobShape> CreateBlobShapeDirect(
 struct BlobProto FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_DATA = 4,
-    VT_DATA_FP16 = 6,
-    VT_NUM = 8,
-    VT_CHANNELS = 10,
-    VT_HEIGHT = 12,
-    VT_WIDTH = 14
+    VT_NUM = 6,
+    VT_CHANNELS = 8,
+    VT_HEIGHT = 10,
+    VT_WIDTH = 12,
+    VT_DATA_FP16 = 14
   };
   const flatbuffers::Vector<float> *data() const {
     return GetPointer<const flatbuffers::Vector<float> *>(VT_DATA);
-  }
-  const flatbuffers::Vector<uint16_t> *data_fp16() const {
-    return GetPointer<const flatbuffers::Vector<uint16_t> *>(VT_DATA_FP16);
   }
   int32_t num() const {
     return GetField<int32_t>(VT_NUM, 0);
@@ -3158,16 +3155,19 @@ struct BlobProto FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   int32_t width() const {
     return GetField<int32_t>(VT_WIDTH, 0);
   }
+  const flatbuffers::Vector<uint16_t> *data_fp16() const {
+    return GetPointer<const flatbuffers::Vector<uint16_t> *>(VT_DATA_FP16);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_DATA) &&
            verifier.Verify(data()) &&
-           VerifyOffset(verifier, VT_DATA_FP16) &&
-           verifier.Verify(data_fp16()) &&
            VerifyField<int32_t>(verifier, VT_NUM) &&
            VerifyField<int32_t>(verifier, VT_CHANNELS) &&
            VerifyField<int32_t>(verifier, VT_HEIGHT) &&
            VerifyField<int32_t>(verifier, VT_WIDTH) &&
+           VerifyOffset(verifier, VT_DATA_FP16) &&
+           verifier.Verify(data_fp16()) &&
            verifier.EndTable();
   }
 };
@@ -3177,9 +3177,6 @@ struct BlobProtoBuilder {
   flatbuffers::uoffset_t start_;
   void add_data(flatbuffers::Offset<flatbuffers::Vector<float>> data) {
     fbb_.AddOffset(BlobProto::VT_DATA, data);
-  }
-  void add_data_fp16(flatbuffers::Offset<flatbuffers::Vector<uint16_t>> data_fp16) {
-    fbb_.AddOffset(BlobProto::VT_DATA_FP16, data_fp16);
   }
   void add_num(int32_t num) {
     fbb_.AddElement<int32_t>(BlobProto::VT_NUM, num, 0);
@@ -3192,6 +3189,9 @@ struct BlobProtoBuilder {
   }
   void add_width(int32_t width) {
     fbb_.AddElement<int32_t>(BlobProto::VT_WIDTH, width, 0);
+  }
+  void add_data_fp16(flatbuffers::Offset<flatbuffers::Vector<uint16_t>> data_fp16) {
+    fbb_.AddOffset(BlobProto::VT_DATA_FP16, data_fp16);
   }
   explicit BlobProtoBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -3208,17 +3208,17 @@ struct BlobProtoBuilder {
 inline flatbuffers::Offset<BlobProto> CreateBlobProto(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<float>> data = 0,
-    flatbuffers::Offset<flatbuffers::Vector<uint16_t>> data_fp16 = 0,
     int32_t num = 0,
     int32_t channels = 0,
     int32_t height = 0,
-    int32_t width = 0) {
+    int32_t width = 0,
+    flatbuffers::Offset<flatbuffers::Vector<uint16_t>> data_fp16 = 0) {
   BlobProtoBuilder builder_(_fbb);
+  builder_.add_data_fp16(data_fp16);
   builder_.add_width(width);
   builder_.add_height(height);
   builder_.add_channels(channels);
   builder_.add_num(num);
-  builder_.add_data_fp16(data_fp16);
   builder_.add_data(data);
   return builder_.Finish();
 }
@@ -3226,19 +3226,19 @@ inline flatbuffers::Offset<BlobProto> CreateBlobProto(
 inline flatbuffers::Offset<BlobProto> CreateBlobProtoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<float> *data = nullptr,
-    const std::vector<uint16_t> *data_fp16 = nullptr,
     int32_t num = 0,
     int32_t channels = 0,
     int32_t height = 0,
-    int32_t width = 0) {
+    int32_t width = 0,
+    const std::vector<uint16_t> *data_fp16 = nullptr) {
   return feather::CreateBlobProto(
       _fbb,
       data ? _fbb.CreateVector<float>(*data) : 0,
-      data_fp16 ? _fbb.CreateVector<uint16_t>(*data_fp16) : 0,
       num,
       channels,
       height,
-      width);
+      width,
+      data_fp16 ? _fbb.CreateVector<uint16_t>(*data_fp16) : 0);
 }
 
 inline const feather::NetParameter *GetNetParameter(const void *buf) {

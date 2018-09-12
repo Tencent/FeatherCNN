@@ -17,7 +17,7 @@
 
 enum WinogradOutType
 {
-    None, ReLU, Bias, BiasReLU
+    Nothing, Relu, Bias, BiasReLU
 };
 
 //UT larger than 16 * inChannels * outChannels

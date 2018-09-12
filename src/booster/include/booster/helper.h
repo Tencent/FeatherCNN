@@ -25,6 +25,10 @@
 #define LOGI(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
 #define LOGD(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
 #define LOGE(...) fprintf(stderr, __VA_ARGS__);fprintf(stderr,"\n");
+void print_floats(const float* arr, const int len);
+void print_floats(const float* arr, const int dimX, const int dimY);
+void diff(float* arr1, float* arr2, int len);
+void diff(float* arr1, float* arr2, int M, int N);
 #endif
 
 #if __ARM_NEON
@@ -35,12 +39,6 @@ void print_vec3(float32x4_t* vp);
 void print_vec(float32x4_t* vp, const char* comment);
 void print_vec(float32x4_t* vp);
 void print_arr(float* vp);
-void print_floats(const float* arr, const int len);
-
-void print_floats(const float* arr, const int dimX, const int dimY);
-
-void diff(float* arr1, float* arr2, int len);
-void diff(float* arr1, float* arr2, int M, int N);
 
 //Thanks nihui for this code snippet!
 #ifndef __aarch64__

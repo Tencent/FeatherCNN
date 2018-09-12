@@ -15,8 +15,13 @@
 #pragma once
 
 #include <stdio.h>
+#include <booster/booster.h>
 
+namespace booster
+{
 void pad_input(float* padded, const float* input, const size_t input_channels, const size_t input_width, const size_t input_height, const size_t padding_left, const size_t padding_top, const size_t padding_right, const size_t padding_bottom);
+void im2col(ConvParam *conv_param, float *img_buffer, float *input);
+void naive_sgemm(int M, int N, int L, float *A, float *B, float *C);
 
 template<bool fuse_relu>
 void add_relu(float* dst, const float* A, const float* B, const size_t len, const size_t num_threads);
@@ -41,3 +46,4 @@ void biasReluVec(float* arr, int len, float bias);
 void reluVecOpenmp(float* arr, int len, int nThreads);
 void biasVecOpenmp(float* arr, int len, float bias, int nThreads);
 void biasReluVecOpenmp(float* arr, int len, float bias, int nThreads);
+};

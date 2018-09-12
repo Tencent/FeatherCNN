@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
 
 namespace feather
 {
@@ -41,9 +41,9 @@ class EltwiseLayer : public Layer
             }
 #else
             if (fuse_relu)
-                add_relu<true>(output, input_alpha, input_beta, data_len, num_threads);
+                booster::add_relu<true>(output, input_alpha, input_beta, data_len, num_threads);
             else
-                add_relu<false>(output, input_alpha, input_beta, data_len, num_threads);
+                booster::add_relu<false>(output, input_alpha, input_beta, data_len, num_threads);
 #endif
             return 0;
         }
