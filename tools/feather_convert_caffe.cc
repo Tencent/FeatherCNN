@@ -323,7 +323,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     //    printf("diff=%f fp32 %f vs fp16 %f\n", diff, caffe_blob.data(k), fp16_ieee_to_fp32_value(data));
                 }
                 const float fp16_loss_threshold = 10.0f;
-                if (fabs(diff_sum) - fp16_loss_threshold > 0||isnan(diff_sum))
+                if (fabs(diff_sum) - fp16_loss_threshold > 0||std::isnan(diff_sum))
                 {
                     is_fp16_blob = false;
                 }

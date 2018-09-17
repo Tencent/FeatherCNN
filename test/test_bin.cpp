@@ -61,7 +61,8 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     size_t file_size = 0;
 
     FILE* fp = fopen(data_path.c_str(), "rb+");
-    fread(input, sizeof(float), input_size, fp);
+    size_t bytes = fread(input, sizeof(float), input_size, fp);
+    assert(bytes == input_size * sizeof(float));
     fclose(fp);
     for (int i = 0; i < loop; ++i)
     {
