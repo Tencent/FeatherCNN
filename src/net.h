@@ -34,6 +34,7 @@ class Net
         int  Forward(float* input);
         int  Forward(float* input, int height, int width);
 
+	int RemoveLayer(Layer* layer);
         void TraverseNet();
         int GetBlobDataSize(size_t* data_size, std::string blob_name);
 	    int PrintBlobData(std::string blob_name);

@@ -72,7 +72,8 @@ class ConvLayer : public Layer
             _top_blobs[_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             _top_blobs[_top[0]]->Alloc();
             conv_booster.SelectAlgo(&this->conv_param);
-            // conv_booster.ForceSelectAlgo(booster::NAIVE);
+	    //conv_booster.ForceSelectAlgo(booster::NAIVE);
+	    conv_booster.ForceSelectAlgo(booster::IM2COL);
             return 0;
         }
 
@@ -89,9 +90,13 @@ class ConvLayer : public Layer
         int Forward()
         {
             float* input = _bottom_blobs[_bottom[0]]->data();
+	    printf("input %x\n", input);
+	    _bottom_blobs[_bottom[0]]->PrintBlobInfo();
             float* output = _top_blobs[_top[0]]->data();
+            _top_blobs[_top[0]]->PrintBlobInfo();
             float* buffer = NULL;
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&buffer));
+	    printf("buffer 0x%x\n", buffer);
             conv_booster.Forward(&conv_param, output, input, processed_kernel, buffer, bias_data);
             return 0;
         }
