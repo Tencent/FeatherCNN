@@ -23,7 +23,8 @@
 
 #include <stdio.h>
 #include <cstring>
-// #define LAYER_TIMING
+#define LAYER_TIMING
+#define PRINT_SETUP_LOG
 
 namespace feather
 {
@@ -193,17 +194,57 @@ void Net::InitFromFile(FILE* fp)
         LOGE("Reading model failed! file_size %ld read size %ld\n", file_size, read_size);
         exit(-1);
     }
-    LOGD("Finished loading from file\n");
+    LOGD("Finished loading from file");
     this->InitFromBuffer(net_buffer);
     free(net_buffer);
 }
+
+int Net::RemoveLayer(Layer* target_layer)
+{
+	if(target_layer->bottom_size() != 1 || target_layer->top_size() != 1)
+	{
+		LOGE("Cannot remove target layer %s type %s with mutliple input/outputs!", target_layer->name(), target_layer->type());
+		return -1;
+	}
+
+	std::string new_bottom = target_layer->bottom(0);
+	std::string old_bottom = target_layer->top(0);
+#ifdef PRINT_SETUP_LOG
+                LOGD("Old bottom %s to new bottom %s", old_bottom.c_str(), new_bottom.c_str());
+#endif
+	const Blob<float> * new_bottom_blob = target_layer->bottom_blob(0);
+
+	for(int i = 0; i < layers.size(); ++i)
+	{
+		if(layers[i] == target_layer)
+		{
+			layers.erase(layers.begin() + i);
+			--i;
+			continue;
+		}
+		Layer *next_layer = layers[i];
+		for(int b = 0; b < next_layer->bottom_size(); ++b)
+		{
+			if (next_layer->bottom(b).compare(old_bottom) == 0)
+			{
+				next_layer->ReplaceBottomBlob(old_bottom, new_bottom, new_bottom_blob);
+				break;
+			}
+		}
+	}
+	delete target_layer;
+	return 0;
+}
+
 bool Net::InitFromBuffer(const void *net_buffer)
 {
     //rt_param in the param list just to distinguish.
     const NetParameter *net_param = feather::GetNetParameter(net_buffer);
     size_t layer_num = VectorLength(net_param->layer());
     //Find input layer.
-    //LOGD("Loading %d layers\n", layer_num);
+#ifdef PRINT_SETUP_LOG
+    LOGD("Loading %d layers", layer_num);
+#endif
     for (int i = 0; i < layer_num; ++i)
     {
         if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)
@@ -216,9 +257,15 @@ bool Net::InitFromBuffer(const void *net_buffer)
     {
         const LayerParameter *layer_param = net_param->layer()->Get(i);
         Layer *new_layer = LayerRegistry::CreateLayer(layer_param, rt_param);
-        //LOGD("setup layer %s\n", layer_param->name()->c_str());
+#ifdef PRINT_SETUP_LOG
+        LOGD("Setup layer %s\n", layer_param->name()->c_str());
+#endif
         layers.push_back(new_layer);
     }
+    
+#ifdef PRINT_SETUP_LOG
+        LOGD("Layer setup finish");
+#endif
     //Generate top blobs, will check the dependency.
     for (int i = 0; i < layers.size(); ++i)
     {
@@ -229,8 +276,8 @@ bool Net::InitFromBuffer(const void *net_buffer)
             for (int b = 0; b < layers[i]->bottom_size(); ++b)
             {
                 std::string blob_name = layers[i]->bottom(b);
-#ifdef LAYER_TIMING
-                LOGI("blob name %s\n", blob_name.c_str());
+#ifdef PRINT_SETUP_LOG
+                LOGI("Setting up blob %s", blob_name.c_str());
 #endif
                 //TODO handle error: when blob_name has not been inserted into map.
                 if (blob_map.find(blob_name) != blob_map.end())
@@ -261,10 +308,13 @@ bool Net::InitFromBuffer(const void *net_buffer)
             Layer *next_layer = layers[j];
             while (layers[i]->TryFuse(next_layer) == 1)
             {
+#if 0
                 //Update the respective bottoms in other layers.
                 std::string new_bottom = layers[i]->top(0);
                 std::string old_bottom = next_layer->top(0);
+#ifdef PRINT_SETUP_LOG
                 LOGD("Old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+#endif
                 for (int k = i + 1; k < layers.size(); ++k)
                 {
                     if (k == j)
@@ -276,13 +326,36 @@ bool Net::InitFromBuffer(const void *net_buffer)
                             layers[k]->ReplaceBottomBlob(old_bottom, new_bottom, layers[i]->top_blob(0));
                     }
                 }
-                //LOGD("Erasing layer %d %s\n", j, next_layer->name().c_str());
-		        delete layers[j];
+		delete layers[j];
                 layers.erase(layers.begin() + j);
+#else
+		this->RemoveLayer(layers[j]);
+#endif
+#ifdef PRINT_SETUP_LOG
+                LOGD("Erased layer %d %s\n", j, next_layer->name().c_str());
+#endif
                 next_layer = layers[j];
-                //LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
+#ifdef PRINT_SETUP_LOG
+                LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
+#endif
             }
         }
+    }
+    //Remove Dropout Layers
+    for (int i = 0; i < layers.size() - 1; ++i)
+    {
+	    if(layers[i]->type().compare("Dropout") == 0)
+	    {
+		  
+#ifdef PRINT_SETUP_LOG
+                LOGD("Erase layer %d %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
+#endif
+		this->RemoveLayer(layers[i]);
+#ifdef PRINT_SETUP_LOG
+                LOGD("Layer %d after erasing: %s type %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
+#endif
+		--i;
+	    }
     }
 
     //Rebuild blob map
@@ -293,7 +366,10 @@ bool Net::InitFromBuffer(const void *net_buffer)
         {
             std::string blob_name = layers[i]->top(t);
             blob_map[blob_name] = layers[i]->top_blob(blob_name);
-            //blob_map[blob_name]->PrintBlobInfo();
+#ifdef PRINT_SETUP_LOG
+	    LOGI("Blob %s", blob_name.c_str());
+            blob_map[blob_name]->PrintBlobInfo();
+#endif
         }
         layers[i]->Init();
     }

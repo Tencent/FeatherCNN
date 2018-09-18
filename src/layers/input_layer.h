@@ -48,7 +48,7 @@ class InputLayer : public Layer
                 _top_blobs[input_name] = new Blob<float>(num, channels, height, width);
                 _top_blobs[input_name]->Alloc();
                 //_top_blobs[input_name]->PrintBlobInfo();
-                // LOGI("input_name %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
+                LOGI("input_name %s (n c h w)=(%ld %ld %ld %ld)", input_name.c_str(), num, channels, height, width);
             }
         }
 
@@ -68,6 +68,7 @@ class InputLayer : public Layer
         int CopyInput(std::string name, float *input_data)
         {
             _top_blobs[name]->CopyData(input_data);
+	    printf("_top_blob: %s %x\n", name.c_str(), _top_blobs[name]->data());
             return 0;
         }
 

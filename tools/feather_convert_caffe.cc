@@ -163,6 +163,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         {
             //There should be an input layer
             printf("Input Layer\n");
+            std::vector<flatbuffers::Offset<flatbuffers::String>>   input_top_vec;
             std::vector<flatbuffers::Offset<flatbuffers::String>>   input_name_vec;
             std::vector<int64_t>                                    input_dim_vec;
             for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
@@ -173,31 +174,41 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 
                 if (layer_type.compare("Input") == 0)
                 {
-                    input_name_vec.push_back(fbb.CreateString(layer_name));
+		    for(int ti = 0; ti < caffe_layer.top_size(); ++ti)
+		    {
+			    std::string top_name = caffe_layer.top(ti);
+			    printf("Input top blob name %s\n", top_name.c_str());
+			    input_top_vec.push_back(fbb.CreateString(top_name));
+			    input_name_vec.push_back(fbb.CreateString(top_name));
+		    }
+                    //input_name_vec.push_back(fbb.CreateString(layer_name));
 
                     assert(caffe_layer.input_param().shape_size() == 1);
+		   	 
                     for (int j = 0; j < caffe_layer.input_param().shape(0).dim_size(); ++j)
                     {
                         int64_t dim = caffe_layer.input_param().shape(0).dim(j);
                         printf("Input dim %lld\n", dim);
                         input_dim_vec.push_back(dim);
                     }
+		    auto input_param = feather::CreateInputParameterDirect(fbb,
+				    &input_name_vec,
+				    &input_dim_vec);
+
+		    //build this layer
+		    auto input_top_fbvec = fbb.CreateVector(input_top_vec);
+		    auto input_layer_name = fbb.CreateString("input_layer");
+		    auto input_layer_type = fbb.CreateString("Input");
+		    //auto input_bottom = fbb.CreateString("");
+		    feather::LayerParameterBuilder layer_builder(fbb);
+		    layer_builder.add_name(input_layer_name);
+		    layer_builder.add_type(input_layer_type);
+		    layer_builder.add_input_param(input_param);
+		    layer_builder.add_top(input_top_fbvec);
+		    //layer_builder.add_bottom(input_bottom);
+		    layer_vec.push_back(layer_builder.Finish());
                 }
             }
-            auto input_param = feather::CreateInputParameterDirect(fbb,
-                               &input_name_vec,
-                               &input_dim_vec);
-
-            //build this layer
-            auto input_layer_name = fbb.CreateString("input_layer");
-            auto input_layer_type = fbb.CreateString("Input");
-            //auto input_bottom = fbb.CreateString("");
-            feather::LayerParameterBuilder layer_builder(fbb);
-            layer_builder.add_name(input_layer_name);
-            layer_builder.add_type(input_layer_type);
-            layer_builder.add_input_param(input_param);
-            //layer_builder.add_bottom(input_bottom);
-            layer_vec.push_back(layer_builder.Finish());
         }
 
         std::vector<std::string> prototxt_name_map;

@@ -32,6 +32,9 @@ class DropoutLayer : public Layer
         {
             //Inplace layer, do nothing
             _top_blobs[_top[0]] = const_cast<Blob<float>*>(_bottom_blobs[_bottom[0]]);
+	    printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	    _top_blobs[_top[0]]->PrintBlobInfo();
+	    _bottom_blobs[_bottom[0]]->PrintBlobInfo();
             return 0;
         }
 

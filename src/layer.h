@@ -57,6 +57,7 @@ class Layer
         size_t top_blob_size();
         const Blob<float>* top_blob(std::string name);
         const Blob<float>* top_blob(size_t idx);
+        const Blob<float>* bottom_blob(size_t idx);
         //For fusing
         const size_t weight_blob_num() const;
         const Blob<float>* weight_blob(size_t i) const;
