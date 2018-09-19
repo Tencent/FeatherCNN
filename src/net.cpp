@@ -23,8 +23,8 @@
 
 #include <stdio.h>
 #include <cstring>
-#define LAYER_TIMING
-#define PRINT_SETUP_LOG
+//#define LAYER_TIMING
+//#define PRINT_SETUP_LOG
 
 namespace feather
 {

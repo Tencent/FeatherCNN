@@ -93,9 +93,9 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
                     time += timedif;
             }
             printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
-            PrintBlobData(&forward_net, "prob", 20);
+            PrintBlobData(&forward_net, "prob", 0);
 
-	    //PrintBlobData(&forward_net, "data", 0);
+	    //PrintBlobData(&forward_net, "relu1_2", 0);
 	    //printf("------------------------\n");
             //PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
         }

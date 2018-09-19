@@ -346,8 +346,8 @@ void fully_connected_transpose_inference(const int input_size, const int output_
 
 		if(fuseBias)
 		{
-		vBias = _mm_load_ps(bias_arr + k * 8);
-		vBias = _mm_load_ps(bias_arr + k * 8 + 4);
+			vBias = _mm_load_ps(bias_arr + k * 8);
+			vBias1 = _mm_load_ps(bias_arr + k * 8 + 4);
 		}
 		const float *yPtr = y + k * 8 * input_size;
 		__m128 va0, va1, va2, va3, vb0, vb1, vb2, vb3, vb4, vb5, vb6, vb7;
