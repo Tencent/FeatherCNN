@@ -229,13 +229,14 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
     {
         this->algo = WINOGRADF63;
     }
     else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
     {
-       this->algo = SGECONV;
+       //this->algo = SGECONV;
+       this->algo = IM2COL;
     }
     else if (param->group == 1)
     {

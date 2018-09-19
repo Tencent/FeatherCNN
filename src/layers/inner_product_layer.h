@@ -42,12 +42,15 @@ class InnerProductLayer : public Layer
                 assert(this->_weight_blobs.size() == 2);
                 bias_data = this->_weight_blobs[1]->data();
             }
-            _fusible = true;
+            //_fusible = true;
+            _fusible = false;
             // printf("input channels %d\n", input_channels);
         }
 
         int Forward()
         {
+	    //this->bottom_blob(0)->PrintBlobInfo(); 
+	    //this->top_blob(0)->PrintBlobInfo(); 
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
 
@@ -75,18 +78,18 @@ class InnerProductLayer : public Layer
             output_size = _top_blobs[_top[0]]->data_size();
             return this->Forward();   
         }
-    int Fuse(Layer *next_layer)
-    {
-        if (next_layer->type().compare("ReLU") == 0)
-        {
-            fuse_relu = true;
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
+	int Fuse(Layer *next_layer)
+	{
+		if (next_layer->type().compare("ReLU") == 0)
+		{
+			fuse_relu = true;
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
+	}
         int Init()
         {
             float* buffer = NULL;
