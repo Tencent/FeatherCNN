@@ -213,7 +213,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 
         std::vector<std::string> prototxt_name_map;
 
-        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
+        for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
         {
             prototxt_name_map.push_back(net_param_prototxt.layer(i).name());
         }
@@ -225,6 +225,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         std::vector<float> blob_data_vec;
 #endif
         printf("Layer num %d\n", net_param.layer_size());
+        printf("Layer num %d\n", net_param_prototxt.layer_size());
         printf("Legacy layer num %d\n", net_param.layers_size());
 
 
@@ -236,12 +237,20 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         }
 
         std::map<std::string, std::string> inplace_blob_map;
-        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
+	for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
+	{
+		auto caffe_layer = net_param_prototxt.layer(i);
+		std::string layer_name = caffe_layer.name();
+		std::string layer_type = caffe_layer.type();
+		printf("Layer %d name %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
+	}
+        for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
         {
+		
             auto caffe_layer = net_param_prototxt.layer(i);
             std::string layer_name = caffe_layer.name();
             std::string layer_type = caffe_layer.type();
-
+	    //printf("Processing layer %d %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
             if (layer_type.compare("Input") == 0)
                 continue;
             //if (layer_type.compare("Sigmoid") == 0)

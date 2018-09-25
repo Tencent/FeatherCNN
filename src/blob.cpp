@@ -26,7 +26,7 @@ template<class Dtype>
 void Blob<Dtype>::Alloc()
 {
     size_t dim_byte = _num * _channels * _height * _width * sizeof(Dtype);
-    _data = (Dtype*) _mm_malloc(dim_byte, 16);
+    _data = (Dtype*) _mm_malloc(dim_byte, 32);
 }
 template<class Dtype>
 void Blob<Dtype>::Free()

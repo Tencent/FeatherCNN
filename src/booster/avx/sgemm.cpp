@@ -22,40 +22,40 @@ void inner_kernel_Nx16_template(int K, float *packA, float *packB, float *c, int
 	__m256 vc0, vc1, vc2, vc3, vc4, vc5, vc6, vc7, vc8, vc9, vcA, vcB;
 
 	//N is 1, 2, 3, 4, 5, 6
-	vc0 = _mm256_load_ps(cptr); 
-	vc6 = _mm256_load_ps(cptr + 8);
+	vc0 = _mm256_loadu_ps(cptr); 
+	vc6 = _mm256_loadu_ps(cptr + 8);
 	cptr += ldc;
 	if(N > 1)//N is 2, 3, 4, 5, 6
 	{
-		vc1 = _mm256_load_ps(cptr);
-		vc7 = _mm256_load_ps(cptr + 8);
+		vc1 = _mm256_loadu_ps(cptr);
+		vc7 = _mm256_loadu_ps(cptr + 8);
 		cptr += ldc;
 	}
 	if(N > 2)//N is 3, 4, 5, 6
 	{
-		vc2 = _mm256_load_ps(cptr);
-		vc8 = _mm256_load_ps(cptr + 8);
+		vc2 = _mm256_loadu_ps(cptr);
+		vc8 = _mm256_loadu_ps(cptr + 8);
 		cptr += ldc;
 	}
 	if(N > 3)//N is 4, 5, 6
 	{
-		vc3 = _mm256_load_ps(cptr);
-		vc9 = _mm256_load_ps(cptr + 8);
+		vc3 = _mm256_loadu_ps(cptr);
+		vc9 = _mm256_loadu_ps(cptr + 8);
 		cptr += ldc;
 	}
 	if(N > 4)//N is 5, 6
 	{
-		vc4 = _mm256_load_ps(cptr);
-		vcA = _mm256_load_ps(cptr + 8);
+		vc4 = _mm256_loadu_ps(cptr);
+		vcA = _mm256_loadu_ps(cptr + 8);
 		cptr += ldc;
 	}
 	if(N > 5)//N is 6
 	{
-		vc5 = _mm256_load_ps(cptr);
-		vcB = _mm256_load_ps(cptr + 8);
+		vc5 = _mm256_loadu_ps(cptr);
+		vcB = _mm256_loadu_ps(cptr + 8);
 	}
-	vb0 = _mm256_load_ps(bptr);
-	vb1 = _mm256_load_ps(bptr + 8);
+	vb0 = _mm256_loadu_ps(bptr);
+	vb1 = _mm256_loadu_ps(bptr + 8);
 	for(int p = 0; p < (K-1); ++p){
 		va = _mm256_broadcast_ss(aptr);
 		vc0 = _mm256_fmadd_ps(vb0, va, vc0);
@@ -92,8 +92,8 @@ void inner_kernel_Nx16_template(int K, float *packA, float *packB, float *c, int
 		vcB = _mm256_fmadd_ps(vb1, va, vcB);
 		}
 
-		vb0 = _mm256_load_ps(bptr + 16);
-		vb1 = _mm256_load_ps(bptr + 24);
+		vb0 = _mm256_loadu_ps(bptr + 16);
+		vb1 = _mm256_loadu_ps(bptr + 24);
 		bptr+=16;
 		aptr+=N;
 	}
@@ -101,47 +101,47 @@ void inner_kernel_Nx16_template(int K, float *packA, float *packB, float *c, int
 	va = _mm256_broadcast_ss(aptr);
 	vc0 = _mm256_fmadd_ps(vb0, va, vc0);
 	vc6 = _mm256_fmadd_ps(vb1, va, vc6);
-	_mm256_store_ps(cptr, vc0);
-	_mm256_store_ps(cptr + 8, vc6);
+	_mm256_storeu_ps(cptr, vc0);
+	_mm256_storeu_ps(cptr + 8, vc6);
 	if(N > 1){
 		va = _mm256_broadcast_ss(aptr+1);
 		vc1 = _mm256_fmadd_ps(vb0, va, vc1);
 		vc7 = _mm256_fmadd_ps(vb1, va, vc7);
 		cptr += ldc;
-		_mm256_store_ps(cptr, vc1);
-		_mm256_store_ps(cptr + 8, vc7);
+		_mm256_storeu_ps(cptr, vc1);
+		_mm256_storeu_ps(cptr + 8, vc7);
 	}
 	if(N > 2){
 		va = _mm256_broadcast_ss(aptr+2);
 		vc2 = _mm256_fmadd_ps(vb0, va, vc2);
 		vc8 = _mm256_fmadd_ps(vb1, va, vc8);
 		cptr += ldc;
-		_mm256_store_ps(cptr, vc2);
-		_mm256_store_ps(cptr + 8, vc8);
+		_mm256_storeu_ps(cptr, vc2);
+		_mm256_storeu_ps(cptr + 8, vc8);
 	}
 	if(N > 3){
 		va = _mm256_broadcast_ss(aptr+3);
 		vc3 = _mm256_fmadd_ps(vb0, va, vc3);
 		vc9 = _mm256_fmadd_ps(vb1, va, vc9);
 		cptr += ldc;
-		_mm256_store_ps(cptr, vc3);
-		_mm256_store_ps(cptr + 8, vc9);
+		_mm256_storeu_ps(cptr, vc3);
+		_mm256_storeu_ps(cptr + 8, vc9);
 	}
 	if(N > 4){
 		va = _mm256_broadcast_ss(aptr+4);
 		vc4 = _mm256_fmadd_ps(vb0, va, vc4);
 		vcA = _mm256_fmadd_ps(vb1, va, vcA);
 		cptr += ldc;
-		_mm256_store_ps(cptr, vc4);
-		_mm256_store_ps(cptr + 8, vcA);
+		_mm256_storeu_ps(cptr, vc4);
+		_mm256_storeu_ps(cptr + 8, vcA);
 	}
 	if(N > 5){
 		va = _mm256_broadcast_ss(aptr+5);
 		vc5 = _mm256_fmadd_ps(vb0, va, vc5);
 		vcB = _mm256_fmadd_ps(vb1, va, vcB);
 		cptr += ldc;
-		_mm256_store_ps(cptr, vc5);
-		_mm256_store_ps(cptr + 8, vcB);
+		_mm256_storeu_ps(cptr, vc5);
+		_mm256_storeu_ps(cptr + 8, vcB);
 	}
 }
 
@@ -187,7 +187,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			float* pL = loadC + m * nc_ceil;
 			for(int n = 0; n < nc_floor; n += 8)
 			{
-				_mm256_store_ps(pL + n, _mm256_load_ps(pC + n));
+				_mm256_storeu_ps(pL + n, _mm256_loadu_ps(pC + n));
 			}
 			for(int n = nc - nc % 8; n < nc; ++n)
 			{
@@ -214,7 +214,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			}
 			for(int n = 0; n < nc_floor; n += 8)
 			{
-				__m256 vec = _mm256_load_ps(pL + n);
+				__m256 vec = _mm256_loadu_ps(pL + n);
 				if(fuseBias)
 					vec = _mm256_add_ps(vec, vBias);
 				if(fuseRelu)
@@ -246,7 +246,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			float* pL = loadC + m * nc_ceil;
 			for(int n = 0; n < nc_floor; n += 8)
 			{
-				_mm256_store_ps(pL + n, _mm256_load_ps(pC + n));
+				_mm256_storeu_ps(pL + n, _mm256_loadu_ps(pC + n));
 			}
 			for(int n = nc - nc % 8; n < nc; ++n)
 			{
@@ -273,7 +273,7 @@ inline void compute_block_activation(int M, int nc, int kc, float* packA, float*
 			}
 			for(int n = 0; n < nc_floor; n += 8)
 			{
-				__m256 vec = _mm256_load_ps(pL + n);
+				__m256 vec = _mm256_loadu_ps(pL + n);
 				if(fuseBias)
 					vec = _mm256_add_ps(vec, vBias);
 				if(fuseRelu)
@@ -343,8 +343,8 @@ void pack_B_avx(int kc, int nc, float* packB, float* B, int ldb)
 		for(int j = 0; j < nc_floor; j+=COL_BATCH)
 		{
 			float* pPack = packB + (j / COL_BATCH) * kc * COL_BATCH + k * COL_BATCH;
-			_mm256_store_ps(pPack, _mm256_loadu_ps(pB));
-			_mm256_store_ps(pPack + 8, _mm256_loadu_ps(pB + 8));
+			_mm256_storeu_ps(pPack, _mm256_loadu_ps(pB));
+			_mm256_storeu_ps(pPack + 8, _mm256_loadu_ps(pB + 8));
 			pB += 16;
 		}
 		if(nc_floor < nc)

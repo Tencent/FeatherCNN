@@ -89,10 +89,10 @@ class ConvLayer : public Layer
 
         int Forward()
         {
-            float* input = _bottom_blobs[_bottom[0]]->data();
 	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
-            float* output = _top_blobs[_top[0]]->data();
             //_top_blobs[_top[0]]->PrintBlobInfo();
+            float* input = _bottom_blobs[_bottom[0]]->data();
+            float* output = _top_blobs[_top[0]]->data();
             float* buffer = NULL;
             MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&buffer));
             conv_booster.Forward(&conv_param, output, input, processed_kernel, buffer, bias_data);

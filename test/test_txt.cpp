@@ -93,7 +93,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
                     time += timedif;
             }
             printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
-            PrintBlobData(&forward_net, "prob", 0);
+            //PrintBlobData(&forward_net, "prob", 0);
 
 	    //PrintBlobData(&forward_net, "relu1_2", 0);
 	    //printf("------------------------\n");

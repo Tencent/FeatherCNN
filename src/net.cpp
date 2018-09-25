@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <cstring>
+
 //#define LAYER_TIMING
 //#define PRINT_SETUP_LOG
 
@@ -203,7 +204,7 @@ int Net::RemoveLayer(Layer* target_layer)
 {
 	if(target_layer->bottom_size() != 1 || target_layer->top_size() != 1)
 	{
-		LOGE("Cannot remove target layer %s type %s with mutliple input/outputs!", target_layer->name(), target_layer->type());
+		LOGE("Cannot remove target layer %s type %s with mutliple input/outputs!", target_layer->name().c_str(), target_layer->type().c_str());
 		return -1;
 	}
 
@@ -258,7 +259,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
         const LayerParameter *layer_param = net_param->layer()->Get(i);
         Layer *new_layer = LayerRegistry::CreateLayer(layer_param, rt_param);
 #ifdef PRINT_SETUP_LOG
-        LOGD("Setup layer %s\n", layer_param->name()->c_str());
+        LOGD("Setup layer %d %s\n", i, layer_param->name()->c_str());
 #endif
         layers.push_back(new_layer);
     }
