@@ -61,8 +61,8 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     printf("++++++Start Loader++++++\n");
     feather::Net forward_net(num_threads);
     forward_net.InitFromPath(model_path.c_str());
-    //size_t input_size = 224 * 224 * 3 ;
-    size_t input_size = 300 * 300 * 3 ;
+    size_t input_size = 224 * 224 * 3 ;
+    //size_t input_size = 300 * 300 * 3 ;
     float *input = new float[input_size * 20];
     std::ifstream in(data_path.c_str());
     std::string line;
@@ -93,7 +93,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
                     time += timedif;
             }
             printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
-            //PrintBlobData(&forward_net, "prob", 0);
+            PrintBlobData(&forward_net, "fc6", 0);
 
 	    //PrintBlobData(&forward_net, "relu1_2", 0);
 	    //printf("------------------------\n");
