@@ -7,7 +7,7 @@ int main(int argc, char **argv)
 	if(argc<5)
 	{
 		printf("Usage: %s N C H W OnePercentage\n", argv[0]);
-		printf("Here NCHW are integers, OnePercentage is integers in [0,100]\n");
+		printf("Here NCHW are integers, OnePercentage is an integer in [0,100]\n");
 		exit(0); 
 	}
 
@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 	if(sscanf(argv[1], "%d", &N)!=1 || sscanf(argv[2], "%d", &C)!=1 || sscanf(argv[3], "%d", &H)!=1 || sscanf(argv[4], "%d", &W) !=1 )	
 	{
 		printf("Usage: %s N C H W OnePercentage\n", argv[0]);
-		printf("Here NCHW are integers, OnePercentage is integers in [0,100]\n");
+		printf("Here NCHW are integers, OnePercentage is an integer in [0,100]\n");
 		exit(0); 
 	}
 	
