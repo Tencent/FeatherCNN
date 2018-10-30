@@ -72,7 +72,7 @@ int IM2COL_Init(ConvParam *param, float* processed_kernel, float* kernel)
 {
     const int M = param->output_channels;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    packed_sgemm_init<6>(M, K, 320, processed_kernel, kernel, K);
+    packed_sgemm_init<8>(M, K, 320, processed_kernel, kernel, K);
     return 0;
 }
 
