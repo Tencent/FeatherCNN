@@ -9,7 +9,7 @@ int rand_fill(T* arr, int len)
     srand(time(NULL));
     for(int i = 0; i < len; ++i)
     {
-        arr[i] = (T) (rand() % 1024);
+        arr[i] = (T) (rand() % 16);
     }
     return 0;
 }
