@@ -24,6 +24,7 @@ popd
 #popd
 
 mkdir -p feather
+mkdir -p booster
 pushd feather
 mkdir -p include
 mkdir -p include/feather
@@ -35,4 +36,12 @@ cp ../armeabi-v7a/install/feather/lib/* ./armeabi-v7a/
 #mkdir -p armeabi
 #cp ../armeabi/install/feather/lib/* ./armeabi/
 #popd 
+popd
+pushd booster
+mkdir -p include/booster
+cp -r ../arm64-v8a/install/booster/include/* ./include/
+mkdir -p arm64-v8a
+cp ../arm64-v8a/install/booster/lib/* ./arm64-v8a/
+mkdir -p armeabi-v7a
+cp ../armeabi-v7a/install/booster/lib/* ./armeabi-v7a/
 popd
