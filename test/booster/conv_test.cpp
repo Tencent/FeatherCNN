@@ -3,7 +3,7 @@
 
 #include "utils.h"
 // #define TEST_SGECONV
-int test_kernels(int output_channels, int input_channels, int input_h, int input_w, int kernel_h, int kernel_w, int stride, int pad)
+int test_general_conv_kernels(int output_channels, int input_channels, int input_h, int input_w, int kernel_h, int kernel_w, int stride, int pad)
 {
     booster::ConvParam conv_param;
     // conv_param
@@ -75,13 +75,14 @@ int test_kernels(int output_channels, int input_channels, int input_h, int input
     im2col_booster.Forward(&conv_param, output_data_2, input_data, im2col_processed_kernel, im2col_buffer, bias_data); 
 
 #ifdef TEST_SGECONV
+    printf("Forward sgeconv...\n");
     sgeconv_booster.Forward(&conv_param, output_data_3, input_data, sgeconv_processed_kernel, sgeconv_buffer, bias_data); 
 #endif
 
     //Check results
     diff(output_data_1, output_data_2, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #ifdef TEST_SGECONV
-    diff(output_data_1, output_data_3, conv_param.output_channels , conv_param.output_w * conv_param.output_h);
+    diff(output_data_1, output_data_3, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
     //Cleanup
     free(naive_processed_kernel);
@@ -107,6 +108,7 @@ int main()
     // test_kernels(64, 3, 224, 224, 3, 3, 1, 1);
     // test_kernels(64, 3, 16, 16, 5, 5, 4, 1);
     // test_kernels(4, 4, 4, 4, 5, 5, 4, 0);
-    test_kernels(1, 1, 6, 6, 3, 3, 1, 1);
+    // test_kernels(1, 1, 6, 6, 3, 3, 1, 1);
+    test_general_conv_kernels(64, 32, 224, 224, 5, 5, 4, 1);
     // test_kernels(64, 64, 224, 224, 3, 3, 1, 1);
 }

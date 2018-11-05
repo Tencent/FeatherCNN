@@ -1424,6 +1424,252 @@ void pack_B_im2col_neon_3x3s2(ConvParam *conv_param, int kc, int nc, int nt, flo
 	}
 }
 
+void pack_B_im2col_neon_5x5s4p2(ConvParam *conv_param, int kc, int nc, int nt, float* packB, float *B, int ldb)
+{
+	// conv_param->debug();
+	const int STRIDE = 4;
+	const int kernel_width = 5;
+	const int kernel_height = 5;
+	const int kernel_elem_size = 25;
+	const int COL_BATCH = 12;
+	int nc_floor = nc - nc % COL_BATCH;
+	int right_border_idx = 5 + (conv_param->output_w - 1) * 4 - 1 - conv_param->pad_left;
+	printf("right border idx %d\n", right_border_idx);
+
+	int num_pixels = conv_param->input_h * conv_param->input_w;
+	int output_h = conv_param->output_h;
+	int output_w = conv_param->output_w;
+	float32x4_t vZero = vdupq_n_f32(0.f);
+	for (int j = 0; j < nc_floor; j += COL_BATCH) //nc is the #(output pixels in each image) to be computed
+	{
+		for (int k = 0; k < kc; ++k)
+		{
+			float *pChannel = B + k * num_pixels; //Channel is k.
+			int row_idx = k;
+			for(int kh = 0; kh < conv_param->kernel_h; ++kh)
+			{
+				float *pPack = packB + (j / COL_BATCH) * kc * COL_BATCH * kernel_elem_size + (row_idx * kernel_elem_size + kh * 5) * COL_BATCH;
+				int conv_row_id = (j + nt) / output_w; //conv_row_id should consider kernel elem id.
+				int conv_col_id = (j + nt) % output_w;
+				int img_col_idx = conv_col_id * conv_param->stride_w - conv_param->pad_left;
+				int img_row_idx = conv_row_id * conv_param->stride_h + kh - conv_param->pad_top;
+				int img_col_right = conv_param->input_w - img_col_idx - COL_BATCH * conv_param->stride_w;
+				float *pB = pChannel + img_row_idx * conv_param->input_w + img_col_idx;
+				int pack_len = output_w - conv_col_id;
+				// if(img_col_right <= 0 && pack_len >= COL_BATCH)
+				// 	printf("img right %d\n", img_col_right);
+				if (pack_len >= COL_BATCH)
+				{
+					if (img_row_idx < 0 || img_row_idx >= conv_param->input_h)
+					{
+						vst1q_f32(pPack, vZero);	 // 0  4  8 12, conv1
+						vst1q_f32(pPack + 4, vZero); //16 20 24 28, conv2
+						vst1q_f32(pPack + 8, vZero); //32 36 40 44, conv3
+						//kw = 1
+						vst1q_f32(pPack + 12, vZero); // 1  5  9 13, conv1
+						vst1q_f32(pPack + 16, vZero); //17 21 25 29, conv2
+						vst1q_f32(pPack + 20, vZero); //33 37 41 45, conv3
+						//kw = 2
+						vst1q_f32(pPack + 24, vZero); // 2  6 10 14, conv1
+						vst1q_f32(pPack + 28, vZero); //18 22 26 30, conv2
+						vst1q_f32(pPack + 32, vZero); //34 38 42 46, conv3
+						//kw = 3
+						vst1q_f32(pPack + 36, vZero); // 3  7 11 15, conv1
+						vst1q_f32(pPack + 40, vZero); //19 23 27 31, conv2
+						vst1q_f32(pPack + 44, vZero); //35 39 43 47, conv3
+						//kw = 4
+						vst1q_f32(pPack + 48, vZero); // 4  8 12 16, conv1
+						vst1q_f32(pPack + 52, vZero); //20 24 28 32, conv2
+						vst1q_f32(pPack + 56, vZero); //36 40 44 48, conv3
+					}
+					else if (img_col_idx >= 0 && img_col_right >= 0 && img_col_idx <= conv_param->input_w)
+					{
+						float32x4x4_t vld1, vld2, vld3;
+						vld1 = vld4q_f32(pB);
+						vld2 = vld4q_f32(pB + 16);
+						vld3 = vld4q_f32(pB + 32);
+						//kw = 0
+						vst1q_f32(pPack, vld1.val[0]);	 // 0  4  8 12, conv1
+						vst1q_f32(pPack + 4, vld2.val[0]); //16 20 24 28, conv2
+						vst1q_f32(pPack + 8, vld3.val[0]); //32 36 40 44, conv3
+						//kw = 1
+						vst1q_f32(pPack + 12, vld1.val[1]); // 1  5  9 13, conv1
+						vst1q_f32(pPack + 16, vld2.val[1]); //17 21 25 29, conv2
+						vst1q_f32(pPack + 20, vld3.val[1]); //33 37 41 45, conv3
+						//kw = 2
+						vst1q_f32(pPack + 24, vld1.val[2]); // 2  6 10 14, conv1
+						vst1q_f32(pPack + 28, vld2.val[2]); //18 22 26 30, conv2
+						vst1q_f32(pPack + 32, vld3.val[2]); //34 38 42 46, conv3
+						//kw = 3
+						vst1q_f32(pPack + 36, vld1.val[3]); // 3  7 11 15, conv1
+						vld1 = vld4q_f32(pB + 4);
+						vst1q_f32(pPack + 40, vld2.val[3]); //19 23 27 31, conv2
+						vld2 = vld4q_f32(pB + 20);
+						vst1q_f32(pPack + 44, vld3.val[3]); //35 39 43 47, conv3
+						vld3 = vld4q_f32(pB + 36);
+						//kw = 4
+						vst1q_f32(pPack + 48, vld1.val[0]); // 4  8 12 16, conv1
+						vst1q_f32(pPack + 52, vld2.val[0]); //20 24 28 32, conv2
+						vst1q_f32(pPack + 56, vld3.val[0]); //36 40 44 48, conv3
+					}
+					else if (img_col_idx == -2 && img_col_idx <= conv_param->input_w)
+					{
+						//pB has already been offset by paddings.
+						float32x4x4_t vld1, vld2, vld3;
+						vld1 = vld4q_f32(pB);
+						vld1.val[0] = vsetq_lane_f32(0.0f, vld1.val[0], 0);
+						vld1.val[1] = vsetq_lane_f32(0.0f, vld1.val[1], 0);
+						vld2 = vld4q_f32(pB + 16);
+						vld3 = vld4q_f32(pB + 32);
+						//kw = 0
+						vst1q_f32(pPack, vld1.val[0]);	 // 0  4  8 12, conv1
+						vst1q_f32(pPack + 4, vld2.val[0]); //16 20 24 28, conv2
+						vst1q_f32(pPack + 8, vld3.val[0]); //32 36 40 44, conv3
+						//kw = 1
+						vst1q_f32(pPack + 12, vld1.val[1]); // 1  5  9 13, conv1
+						vst1q_f32(pPack + 16, vld2.val[1]); //17 21 25 29, conv2
+						vst1q_f32(pPack + 20, vld3.val[1]); //33 37 41 45, conv3
+						//kw = 2
+						vst1q_f32(pPack + 24, vld1.val[2]); // 2  6 10 14, conv1
+						vst1q_f32(pPack + 28, vld2.val[2]); //18 22 26 30, conv2
+						vst1q_f32(pPack + 32, vld3.val[2]); //34 38 42 46, conv3
+						//kw = 3
+						vst1q_f32(pPack + 36, vld1.val[3]); // 3  7 11 15, conv1
+						vld1 = vld4q_f32(pB + 4);
+						vst1q_f32(pPack + 40, vld2.val[3]); //19 23 27 31, conv2
+						vld2 = vld4q_f32(pB + 20);
+						vst1q_f32(pPack + 44, vld3.val[3]); //35 39 43 47, conv3
+						vld3 = vld4q_f32(pB + 36);
+						//kw = 4
+						vst1q_f32(pPack + 48, vld1.val[0]); // 4  8 12 16, conv1
+						vst1q_f32(pPack + 52, vld2.val[0]); //20 24 28 32, conv2
+						vst1q_f32(pPack + 56, vld3.val[0]); //36 40 44 48, conv3
+					}
+				}
+				else
+				{
+					#if 1
+					//The two vectorized case, 4 + 8 and 8 + 4
+					if (pack_len == 8 || pack_len == 4)
+					{
+						// printf("pack_len %d\n", pack_len);
+						// float *pB_next = pB = pChannel + (img_row_idx + 1) * conv_param->input_w;//This is totally wrong
+						int conv_row_id = (j + nt + pack_len) / output_w; //conv_row_id should consider kernel elem id.
+						int conv_col_id = (j + nt + pack_len) % output_w;
+						int img_col_idx = conv_col_id * conv_param->stride_w - conv_param->pad_left;
+						int img_row_idx = conv_row_id * conv_param->stride_h + kh - conv_param->pad_top;
+						float *pB_next = pChannel + img_row_idx * conv_param->input_w + img_col_idx;
+						float32x4x4_t vld1, vld2, vld3;
+						if(pack_len == 8)
+						{
+							vld1 = vld4q_f32(pB);
+							vld2 = vld4q_f32(pB + 16);
+							vld3 = vld4q_f32(pB_next);
+							vld3.val[0] = vsetq_lane_f32(0.f, vld3.val[0], 0);
+							vld3.val[1] = vsetq_lane_f32(0.f, vld3.val[1], 0); 
+						}
+						else
+						{
+							vld1 = vld4q_f32(pB);
+							vld2 = vld4q_f32(pB_next);
+							// vld1.val[0] = vsetq_lane_f32(0.f, vld2.val[0], 3);
+							vld3 = vld4q_f32(pB_next + 16);
+							// vld1.val[1] = vsetq_lane_f32(0.f, vld2.val[1], 3);
+						}
+						//kw = 0
+						vst1q_f32(pPack,      vld1.val[0]); // 0  4  8 12, conv1
+						vst1q_f32(pPack + 4,  vld2.val[0]); //16 20 24 28, conv2
+						vst1q_f32(pPack + 8,  vld3.val[0]); //32 36 40 44, conv3
+						//kw = 1
+						vst1q_f32(pPack + 12, vld1.val[1]); // 1  5  9 13, conv1
+						vst1q_f32(pPack + 16, vld2.val[1]); //17 21 25 29, conv2
+						vst1q_f32(pPack + 20, vld3.val[1]); //33 37 41 45, conv3
+						//kw = 2
+						vst1q_f32(pPack + 24, vld1.val[2]); // 2  6 10 14, conv1
+						vst1q_f32(pPack + 28, vld2.val[2]); //18 22 26 30, conv2
+						vst1q_f32(pPack + 32, vld3.val[2]); //34 38 42 46, conv3
+						//kw = 3
+						vst1q_f32(pPack + 36, vld1.val[3]); // 3  7 11 15, conv1
+						vst1q_f32(pPack + 40, vld2.val[3]); //19 23 27 31, conv2
+						vst1q_f32(pPack + 44, vld3.val[3]); //35 39 43 47, conv3
+						//kw = 4
+						if (pack_len == 8)
+						{
+							vld1 = vld4q_f32(pB + 4);
+							vld2 = vld4q_f32(pB + 20);
+							vld3 = vld4q_f32(pB_next + 4);
+							// vld2.val[0] = vsetq_lane_f32(0.f, vld2.val[0], 3);
+							// vld2.val[1] = vsetq_lane_f32(0.f, vld2.val[1], 3); 
+						}
+						else
+						{
+							vld1 = vld4q_f32(pB + 4);
+							vld2 = vld4q_f32(pB_next + 4);
+							vld3 = vld4q_f32(pB_next + 20);
+							vld2.val[0] = vsetq_lane_f32(0.f, vld2.val[0], 0);
+							vld2.val[1] = vsetq_lane_f32(0.f, vld2.val[1], 0); 
+						}
+						vst1q_f32(pPack + 48, vld1.val[0]); // 4  8 12 16, conv1
+						vst1q_f32(pPack + 52, vld2.val[0]); //20 24 28 32, conv2
+						vst1q_f32(pPack + 56, vld3.val[0]); //36 40 44 48, conv3
+					}
+					else
+					#endif
+					{
+						// printf("pack len %d id %d\n", pack_len, img_col_idx);
+						for (int kw = 0; kw < conv_param->kernel_w; ++kw)
+						{
+							for (int i = 0; i < COL_BATCH; ++i)
+							{
+								conv_row_id = (j + i + nt) / output_w; //conv_row_id should consider kernel elem id.
+								conv_col_id = (j + i + nt) % output_w;
+								img_col_idx = conv_col_id * conv_param->stride_w + kw - conv_param->pad_left;
+								img_row_idx = conv_row_id * conv_param->stride_h + kh - conv_param->pad_top;
+								// if(k == 0)
+								// {
+								// 	printf("(%d, %d) (%d, %d)\n", conv_row_id, conv_col_id, img_row_idx, img_col_idx);
+								// }
+								if (img_col_idx < 0 || img_row_idx < 0 || img_col_idx >= conv_param->input_w || img_row_idx >= conv_param->input_h)
+									pPack[i] = 0.f;
+								else
+								{
+									pPack[i] = *(pChannel + img_row_idx * conv_param->input_w + img_col_idx);
+								}
+							}
+							pPack += COL_BATCH;
+						}
+					}
+				}
+				if (nc_floor < nc)
+				{
+					printf("nc floor!\n");
+					int j = nc_floor;
+					int n_len = nc - nc_floor;
+					pPack = packB + (j / COL_BATCH) * kc * COL_BATCH * kernel_elem_size + (row_idx * kernel_elem_size + kh * 5) * COL_BATCH;
+					for (int kw = 0; kw < conv_param->kernel_w; ++kw)
+					{
+						int col_idx = j + kw;
+						for (int i = 0; i < n_len; ++i)
+						{
+							int conv_row_id = (j + i + nt) / output_w; //conv_row_id should consider kernel elem id.
+							int conv_col_id = (j + i + nt) % output_w; //Col id is always valid.
+							int img_col_idx = conv_col_id * conv_param->stride_w + kw;
+							int img_row_idx = conv_row_id * conv_param->stride_h + kh;
+							float *pB = pChannel + img_row_idx * conv_param->input_w + img_col_idx;
+							if (img_col_idx < 0 || img_col_idx < 0 || img_col_idx >= conv_param->input_w || img_row_idx >= conv_param->input_h)
+								pPack[i] = 0.f;
+							else
+								pPack[i] = pB[0];
+						}
+						pPack += COL_BATCH;
+					}
+				}
+			}
+		}
+	}
+}
+
+
 void pack_B_im2col_neon_5x5s4(ConvParam *conv_param, int kc, int nc, int nt, float* packB, float *B, int ldb)
 {
 	const int STRIDE = 4;
@@ -1549,7 +1795,10 @@ void pack_B_im2col_neon_5x5s4(ConvParam *conv_param, int kc, int nc, int nt, flo
 								int conv_col_id = (j + i + nt) % output_width;
 								int img_col_idx = conv_col_id * conv_param->stride_w + kw;
 								int img_row_idx = conv_row_id * conv_param->stride_h + kh;
-								pPack[i] = *(pChannel + img_row_idx * conv_param->input_w + img_col_idx);
+								if(img_col_idx < 0 || img_col_idx < 0 || img_col_idx >= conv_param->input_w|| img_row_idx >= conv_param->input_h)
+									pPack[i] = 0.f;
+								else
+									pPack[i] = *(pChannel + img_row_idx * conv_param->input_w + img_col_idx);
 							}
 							pPack += COL_BATCH;
 						}
@@ -1570,7 +1819,10 @@ void pack_B_im2col_neon_5x5s4(ConvParam *conv_param, int kc, int nc, int nt, flo
 							int img_col_idx = conv_col_id * conv_param->stride_w + kw;
 							int img_row_idx = conv_row_id * conv_param->stride_h + kh;
 							float *pB = pChannel + img_row_idx * conv_param->input_w + img_col_idx;
-							pPack[i] = pB[0];
+							if (img_col_idx < 0 || img_col_idx < 0 || img_col_idx >= conv_param->input_w || img_row_idx >= conv_param->input_h)
+								pPack[i] = 0.f;
+							else
+								pPack[i] = pB[0];
 						}
 						pPack += COL_BATCH;
 					}
@@ -1754,7 +2006,7 @@ void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float
 	int k_len = kc;
 	int n_len = nc;
 	
-//	__attribute__((aligned(32))) float packB[kc * nc * kernel_elem_size];
+	// __attribute__((aligned(32))) float packB[kc * nc * kernel_elem_size];
     float *packB = pack_array;
 	Timer tmr;
 	double time_acc = 0.f;
@@ -1770,18 +2022,18 @@ void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float
 			// printf("kt %d klen %d nt %d nlen %d\n", kt, k_len, nt, n_len);
 			// printf("kt %d nt %d pack offset %d\n", kt, nt, kc * kt * conv_param->input_w * conv_param->input_h);
 			// tmr.startBench();
-			
 			if(conv_param->stride_w == 1)
 				pack_B_im2col_neon<1>(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else if (conv_param->stride_w == 2 && conv_param->kernel_h == 3 && conv_param->kernel_w == 3)
 				pack_B_im2col_neon_3x3s2(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else if (conv_param->stride_w == 2)
 				pack_B_im2col_neon<2>(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
+			else if (conv_param->stride_w == 4 && conv_param->kernel_h == 5 && conv_param->kernel_w == 5 && (conv_param->pad_left == 2) && (conv_param->pad_bottom == 2) && (conv_param->pad_right == 2) && (conv_param->pad_top == 2))
+				pack_B_im2col_neon_5x5s4p2(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else if (conv_param->stride_w == 4 && conv_param->kernel_h == 5 && conv_param->kernel_w == 5)
 				pack_B_im2col_neon_5x5s4(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else
-				pack_B_im2col_scalar(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
-				
+				pack_B_im2col_scalar(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);			
 			// pack_B_im2col_scalar_v2(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			// print_floats(packB, (n_len * k_len * 25 + 11)/ 12, 12);
 			// time_acc += tmr.endBench("Packing costs: ");

@@ -127,14 +127,15 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
     // param->AssignPaddedDim();
     ConvParam padded_param = *param;
 	padded_param.AssignPaddedDim();
-    padded_param.LogParams("PADDED DIM");
+    // padded_param.LogParams("PADDED DIM");
     float* padded_input = buffer;
     int M = param->output_channels;
     int N = param->output_h * param->output_w;
     int K = param->input_channels * param->kernel_h * param->kernel_w;
     const int kc = 32;
     const int nc = 360;
-    float* pack_arr = buffer + param->input_channels * param->output_h * param->output_w;
+    // float* pack_arr = buffer + param->input_channels * param->output_h * param->output_w;
+    float* pack_arr = buffer + padded_param.input_channels * padded_param.input_h * padded_param.input_w;
 
     pad_input(padded_input, input, param->input_channels, param->input_w, param->input_h, param->pad_left, param->pad_top, param->pad_right, param->pad_bottom);
     // packed_sgeconv(padded_input, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, padded_input + offset);
@@ -273,7 +274,7 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = WINOGRADF63;
     }
-    else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
+    else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3)
     {
        this->algo = SGECONV;
     }
