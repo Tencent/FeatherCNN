@@ -63,7 +63,10 @@ int NAIVE_Forward(ConvParam *param, float* output, float* input, float* processe
 //IM2COL Methods
 int IM2COL_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
+    const int kc = 320;
+    const int nc = 240;
     *buffer_size = param->input_channels * param->output_h * param->output_w * param->kernel_h * param->kernel_w;
+    *buffer_size += (kc + 8) * nc;
     *processed_kernel_size = param->input_channels * param->output_channels * param->kernel_h * param->kernel_w;
     return 0;
 }
@@ -72,7 +75,7 @@ int IM2COL_Init(ConvParam *param, float* processed_kernel, float* kernel)
 {
     const int M = param->output_channels;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    packed_sgemm_init<8>(M, K, 320, processed_kernel, kernel, K);
+    packed_sgemm_init<4>(M, K, 320, processed_kernel, kernel, K);
     return 0;
 }
 
@@ -81,31 +84,68 @@ int IM2COL_Forward(ConvParam *param, float* output, float* input, float* process
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
+    float* pack_arr = buffer + param->input_channels * param->output_h * param->output_w * param->kernel_h * param->kernel_w;
     im2col(param, buffer, input);
     if ((!param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<false, false>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<false, false>(M, N, K, processed_kernel, buffer, N, output, N, 240, 320, bias_arr, 1, pack_arr);
     else if ((param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<true,  false>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<true,  false>(M, N, K, processed_kernel, buffer, N, output, N, 240, 320, bias_arr, 1, pack_arr);
     else if ((!param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<false,  true>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<false,  true>(M, N, K, processed_kernel, buffer, N, output, N, 240, 320, bias_arr, 1, pack_arr);
     else if ((param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<true,   true>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<true,   true>(M, N, K, processed_kernel, buffer, N, output, N, 240, 320, bias_arr, 1, pack_arr);
     return 0;
 }
 
 //SGECONV Methods
 int SGECONV_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
+    int M = param->output_channels;
+    int N = param->output_h * param->output_w;
+    int K = param->input_channels * param->kernel_h * param->kernel_w;
+    const int kc = 32;
+    const int nc = 360;
+    *processed_kernel_size = M * K;
+    //For padding
+    *buffer_size = param->input_channels * (param->input_h + param->pad_bottom + param->pad_top) * (param->input_w + param->pad_left + param->pad_right);
+    //For small block buffering -- can be allocated implicitly.
+    *buffer_size += kc * nc * param->kernel_h * param->kernel_w;
     return 0;
 }
 
 int SGECONV_Init(ConvParam *param, float* processed_kernel, float* kernel)
 {
+    const int kc = 32;
+    const int nc = 360;
+    // return 0;
+    packed_sgeconv_init<4>(param, kc * param->kernel_h * param->kernel_w, processed_kernel, kernel);
     return 0;
 }
 
 int SGECONV_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
 {
+    // param->AssignPaddedDim();
+    ConvParam padded_param = *param;
+	padded_param.AssignPaddedDim();
+    padded_param.LogParams("PADDED DIM");
+    float* padded_input = buffer;
+    int M = param->output_channels;
+    int N = param->output_h * param->output_w;
+    int K = param->input_channels * param->kernel_h * param->kernel_w;
+    const int kc = 32;
+    const int nc = 360;
+    float* pack_arr = buffer + param->input_channels * param->output_h * param->output_w;
+
+    pad_input(padded_input, input, param->input_channels, param->input_w, param->input_h, param->pad_left, param->pad_top, param->pad_right, param->pad_bottom);
+    // packed_sgeconv(padded_input, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, padded_input + offset);
+    if ((!param->bias_term) && (param->activation == None))
+        packed_sgeconv_im2col_activation<false, false>(&padded_param, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, pack_arr);
+    else if ((param->bias_term) && (param->activation == None))
+        packed_sgeconv_im2col_activation<true, false>(&padded_param, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, pack_arr);
+    else if ((!param->bias_term) && (param->activation == ReLU))
+        packed_sgeconv_im2col_activation<false, true>(&padded_param, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, pack_arr);
+    else if ((param->bias_term) && (param->activation == ReLU))
+        packed_sgeconv_im2col_activation<true, true>(&padded_param, processed_kernel, padded_input, N, output, N, nc, kc, bias_arr, 1, pack_arr);
     return 0;
 }
 
@@ -270,6 +310,11 @@ int ConvBooster::SetFuncs()
         this->Init = IM2COL_Init;
         this->Forward = IM2COL_Forward;
         return 0;
+    case SGECONV:
+        this->GetBufferSize = SGECONV_GetBufferSize;
+        this->Init = SGECONV_Init;
+        this->Forward = SGECONV_Forward;
+        return 0;
     case WINOGRADF63:
         this->GetBufferSize = WINOGRADF63_GetBufferSize;
         this->Init = WINOGRADF63_Init;
@@ -279,8 +324,9 @@ int ConvBooster::SetFuncs()
         this->GetBufferSize = DEPTHWISE_GetBufferSize;
         this->Init = DEPTHWISE_Init;
         this->Forward = DEPTHWISE_Forward;
+        return 0;
     default:
-        LOGE("This algo is not supported on AVX2.");
+        LOGE("This algo is not supported on Arm CPUs.");
         this->GetBufferSize = NULL;
         this->Init = NULL;
         this->Forward = NULL;
