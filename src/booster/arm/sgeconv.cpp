@@ -1,3 +1,4 @@
+#include <booster/booster.h>
 #include <booster/sgeconv.h>
 #include <booster/helper.h>
 
@@ -7,7 +8,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-namespace sgeconv_dev{
+namespace booster{
 int align_ceil(int num, int align)
 {
 	return num + (align - (num % align)) % align;
@@ -1769,6 +1770,7 @@ void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float
 			// printf("kt %d klen %d nt %d nlen %d\n", kt, k_len, nt, n_len);
 			// printf("kt %d nt %d pack offset %d\n", kt, nt, kc * kt * conv_param->input_w * conv_param->input_h);
 			// tmr.startBench();
+			
 			if(conv_param->stride_w == 1)
 				pack_B_im2col_neon<1>(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else if (conv_param->stride_w == 2 && conv_param->kernel_h == 3 && conv_param->kernel_w == 3)
@@ -1779,6 +1781,7 @@ void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float
 				pack_B_im2col_neon_5x5s4(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			else
 				pack_B_im2col_scalar(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
+				
 			// pack_B_im2col_scalar_v2(conv_param, k_len, n_len, nt * nc, packB, B + kc * kt * conv_param->input_w * conv_param->input_h, N);
 			// print_floats(packB, (n_len * k_len * 25 + 11)/ 12, 12);
 			// time_acc += tmr.endBench("Packing costs: ");
