@@ -13,7 +13,6 @@
 //specific language governing permissions and limitations under the License.
 
 #include "reshape_layer.h"
-#include "arm/generic_kernels.h"
 #include "math.h"
 
 namespace feather
