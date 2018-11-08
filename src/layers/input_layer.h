@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "../feather_simple_generated.h"
+#include "../feather_generated.h"
 #include "../layer.h"
-#include "arm/helper.h"
+//#include "booster/helper.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -48,7 +48,7 @@ class InputLayer : public Layer
                 _top_blobs[input_name] = new Blob<float>(num, channels, height, width);
                 _top_blobs[input_name]->Alloc();
                 //_top_blobs[input_name]->PrintBlobInfo();
-                // LOGI("input_name %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
+                //LOGI("input_name %s (n c h w)=(%ld %ld %ld %ld)", input_name.c_str(), num, channels, height, width);
             }
         }
 

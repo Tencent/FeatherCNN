@@ -13,7 +13,7 @@
 //specific language governing permissions and limitations under the License.
 
 #include "softmax_layer.h"
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
 
 #include <math.h>
 

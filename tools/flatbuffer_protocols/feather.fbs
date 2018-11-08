@@ -1,0 +1,315 @@
+namespace feather.EltwiseParameter_;
+
+enum EltwiseOp : int {
+  PROD = 0,
+  SUM = 1,
+  MAX_ = 2,//To avoid enum MAX
+}
+
+namespace feather.ParamSpec_;
+
+enum DimCheckMode : int {
+  STRICT = 0,
+  PERMISSIVE = 1,
+}
+
+namespace feather.LRNParameter_;
+
+enum NormRegion : int {
+  ACROSS_CHANNELS = 0,
+  WITHIN_CHANNEL = 1,
+}
+
+namespace feather.PoolingParameter_;
+
+enum PoolMethod : int {
+  MAX_ = 0,
+  AVE = 1,
+  STOCHASTIC = 2,
+}
+
+namespace feather.ReductionParameter_;
+
+enum ReductionOp : int {
+  SUM = 0,
+  ASUM = 1,
+  SUMSQ = 2,
+  MEAN = 3,
+}
+
+namespace feather;
+
+table NetParameter {
+  name:string;
+  input:[string];
+  input_shape:[feather.BlobShape];
+  layer:[feather.LayerParameter];
+}
+
+table InputParameter {
+  name:[string];
+  dim:[long];
+}
+
+table LayerParameter {
+  name:string;
+  type:string;
+  bottom:[string];
+  top:[string];
+  blobs:[feather.BlobProto];
+  input_param:feather.InputParameter;
+  argmax_param:feather.ArgMaxParameter;
+  batch_norm_param:feather.BatchNormParameter;
+  bias_param:feather.BiasParameter;
+  concat_param:feather.ConcatParameter;
+  convolution_param:feather.ConvolutionParameter;
+  crop_param:feather.CropParameter;
+  data_param:feather.DataParameter;
+  dropout_param:feather.DropoutParameter;
+  eltwise_param:feather.EltwiseParameter;
+  elu_param:feather.ELUParameter;
+  embed_param:feather.EmbedParameter;
+  exp_param:feather.ExpParameter;
+  flatten_param:feather.FlattenParameter;
+  image_data_param:feather.ImageDataParameter;
+  inner_product_param:feather.InnerProductParameter;
+  log_param:feather.LogParameter;
+  lrn_param:feather.LRNParameter;
+  pooling_param:feather.PoolingParameter;
+  power_param:feather.PowerParameter;
+  prelu_param:feather.PReLUParameter;
+  reduction_param:feather.ReductionParameter;
+  relu_param:feather.ReLUParameter;
+  reshape_param:feather.ReshapeParameter;
+  scale_param:feather.ScaleParameter;
+  sigmoid_param:feather.SigmoidParameter;
+  softmax_param:feather.SoftmaxParameter;
+  slice_param:feather.SliceParameter;
+  tanh_param:feather.TanHParameter;
+  filter_param:feather.FilterParameter;
+  interp_param:feather.InterpParameter;
+}
+
+table ArgMaxParameter {
+  out_max_val:bool;
+  top_k:uint = 1;
+  axis:int;
+}
+
+table ConcatParameter {
+  axis:int = 1;
+  concat_dim:uint = 1;
+}
+
+table BatchNormParameter {
+  use_global_stats:bool;
+  moving_average_fraction:float = 0.999;
+  eps:float = 1e-5;
+}
+
+table BiasParameter {
+  axis:int = 1;
+  num_axes:int = 1;
+}
+
+
+table ConvolutionParameter {
+  num_output:uint;
+  bias_term:bool;
+  pad:[uint];
+  kernel_size:[uint];
+  stride:[uint];
+  dilation:[uint];
+  pad_h:uint;
+  pad_w:uint;
+  kernel_h:uint;
+  kernel_w:uint;
+  stride_h:uint;
+  stride_w:uint;
+  group:uint = 1;
+  axis:int = 1;
+  force_nd_im2col:bool;
+}
+
+table CropParameter {
+  axis:int = 2;
+  offset:[uint];
+}
+
+table DataParameter {
+  source:string;
+  batch_size:uint;
+  rand_skip:uint;
+  scale:float = 1;
+  mean_file:string;
+  crop_size:uint;
+  mirror:bool;
+  force_encoded_color:bool;
+  prefetch:uint = 4;
+}
+
+table DropoutParameter {
+  dropout_ratio:float = 0.5;
+}
+
+
+table EltwiseParameter {
+  operation:feather.EltwiseParameter_.EltwiseOp;
+  coeff:[float];
+  stable_prod_grad:bool;
+}
+
+table ELUParameter {
+  alpha:float = 1;
+}
+
+table EmbedParameter {
+  num_output:uint;
+  input_dim:uint;
+  bias_term:bool;
+}
+
+table ExpParameter {
+  base:float = -1.0;
+  scale:float = 1.0;
+  shift:float = 0.0;
+}
+
+/// Message that stores parameters used by FlattenLayer
+table FlattenParameter {
+  axis:int = 1;
+  end_axis:int = -1;
+}
+
+table FilterParameter{
+	num_output:int = 1;
+}
+
+table ImageDataParameter {
+  source:string;
+  batch_size:uint = 1;
+  rand_skip:uint;
+  shuffle:bool;
+  new_height:uint;
+  new_width:uint;
+  is_color:bool;
+  scale:float = 1;
+  mean_file:string;
+  crop_size:uint;
+  mirror:bool;
+  root_folder:string;
+}
+
+table InterpParameter {
+  height:int=0;
+  width:int=0;
+  zoom_factor:int=1;
+  shrink_factor:int=1;
+  pad_beg:int=0;
+  pad_end:int=0;	
+}
+
+table InnerProductParameter {
+  num_output:uint;
+  bias_term:bool;
+  axis:int = 1;
+  transpose:bool;
+}
+
+
+table LogParameter {
+  base:float = -1.0;
+  scale:float = 1.0;
+  shift:float = 0.0;
+}
+
+table LRNParameter {
+  local_size:uint = 5;
+  alpha:float = 1.;
+  beta:float = 0.75;
+  norm_region:feather.LRNParameter_.NormRegion;
+  k:float = 1.;
+}
+
+
+table PoolingParameter {
+  pool:feather.PoolingParameter_.PoolMethod;
+  pad_h:uint;
+  pad_w:uint;
+  kernel_size:uint;
+  kernel_h:uint;
+  kernel_w:uint;
+  stride_h:uint;
+  stride_w:uint;
+  global_pooling:bool;
+}
+
+table PowerParameter {
+  power:float = 1.0;
+  scale:float = 1.0;
+  shift:float = 0.0;
+}
+
+table PReLUParameter {
+  slope_size:uint;
+}
+
+table RecurrentParameter {
+  num_output:uint;
+  debug_info:bool;
+  expose_hidden:bool;
+}
+
+table ReductionParameter {
+  operation:feather.ReductionParameter_.ReductionOp;
+  axis:int;
+  coeff:float = 1.0;
+}
+
+table ReLUParameter {
+  negative_slope:float;
+}
+
+table ReshapeParameter {
+  shape:feather.BlobShape;
+  axis:int;
+  num_axes:int = -1;
+}
+table TanHParameter {
+}
+
+
+table ScaleParameter {
+  axis:int = 1;
+  num_axes:int = 1;
+  bias_term:bool;
+}
+
+table SigmoidParameter {
+}
+
+table SliceParameter {
+  axis:int = 1;
+  slice_point:[uint];
+  slice_dim:uint = 1;
+}
+
+table SoftmaxParameter {
+  axis:int = 1;
+}
+
+
+table BlobShape {
+  dim:[long];
+}
+
+table BlobProto {
+  data:[float];
+  num:int;
+  channels:int;
+  height:int;
+  width:int;
+  data_fp16:[ushort];
+}
+
+root_type NetParameter;

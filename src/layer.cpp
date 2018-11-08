@@ -13,7 +13,7 @@
 //specific language governing permissions and limitations under the License.
 
 #include "layer.h"
-#include "feather_simple_generated.h"//For LayerParameter
+#include "feather_generated.h"//For LayerParameter
 
 
 namespace feather
@@ -180,6 +180,11 @@ const Blob<float>* Layer::top_blob(size_t idx)
 {
     std::string name = this->top(idx);
     return top_blob(name);
+}
+const Blob<float>* Layer::bottom_blob(size_t idx)
+{
+    std::string name = this->bottom(idx);
+    return _bottom_blobs[name];
 }
 const size_t Layer::weight_blob_num() const
 {

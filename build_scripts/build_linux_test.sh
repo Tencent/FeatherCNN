@@ -1,3 +1,5 @@
 #!/bin/bash
 
-aarch64-linux-gnu-g++ ./test/test.cpp -I./build-linux-aarch64/install/feather/include/ -L ./build-linux-aarch64/install/feather/lib/ -lfeather -fopenmp -O3 -o feather_benchmark
+./build_scripts/build_linux_avx.sh
+g++ ./test/feather/test_txt.cpp -fopenmp -I./build-linux-avx/install/feather/include/ -L ./build-linux-avx/install/feather/lib/ -lfeather  -g -o feather_test_txt
+g++ ./test/feather/test_bin.cpp -fopenmp -I./build-linux-avx/install/feather/include/ -L ./build-linux-avx/install/feather/lib/ -lfeather  -g -o feather_test_bin

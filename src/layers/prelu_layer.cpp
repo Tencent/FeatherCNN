@@ -1,5 +1,5 @@
 #include "prelu_layer.h"
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
 
 namespace feather
 {

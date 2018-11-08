@@ -14,9 +14,11 @@
 
 #pragma once
 
-#include "../feather_simple_generated.h"
+#include "../feather_generated.h"
 #include "../layer.h"
-#include "./arm/helper.h"
+
+#include <booster/helper.h>
+#include <booster/booster.h>
 #include <assert.h>
 #include <stdio.h>
 
@@ -26,34 +28,32 @@ class ConvLayer : public Layer
 {
     public:
         ConvLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : Layer(layer_param, rt_param)
+            : Layer(layer_param, rt_param),
+              conv_booster(),
+              conv_param(),
+              bias_data(NULL),
+              kernel_data(NULL),
+              processed_kernel(NULL)
         {
             //From proto
-            const ConvolutionParameter *conv_param = layer_param->convolution_param();
-            bias_term = conv_param->bias_term();
-
-	    group = conv_param->group();
-	    if(group == 0)	group = 1;
-            kernel_height = conv_param->kernel_h();
-            kernel_width = conv_param->kernel_w();
-
-            stride_height = conv_param->stride_h();
-            stride_width = conv_param->stride_w();
-
-            padding_left = conv_param->pad_w();
-            padding_top = conv_param->pad_h();
-            padding_right = conv_param->pad_w();
-            padding_bottom = conv_param->pad_h();
-
-            assert(_weight_blobs.size() > 0);
+            const ConvolutionParameter *conv_param_in = layer_param->convolution_param();
+            
+            conv_param.kernel_h = conv_param_in->kernel_h();
+            conv_param.kernel_w = conv_param_in->kernel_w();
+            conv_param.stride_h = conv_param_in->stride_h();
+            conv_param.stride_w = conv_param_in->stride_w();
+            conv_param.pad_left = conv_param_in->pad_w();
+            conv_param.pad_bottom = conv_param_in->pad_h();
+            conv_param.pad_right = conv_param_in->pad_w();
+            conv_param.pad_top = conv_param_in->pad_h();
+            conv_param.group = conv_param_in->group();
             kernel_data = this->_weight_blobs[0]->data();
-            output_channels = this->_weight_blobs[0]->num();
-            // input_channels = this->_weight_blobs[0]->channels();
-      
-	    if(stride_width  == 0)	stride_width  = 1;
-	    if(stride_height == 0) 	stride_height = 1; 
+            conv_param.output_channels = this->_weight_blobs[0]->num();
+            conv_param.bias_term = conv_param_in->bias_term();
+            conv_param.activation = booster::None;
+            assert(_weight_blobs.size() > 0);
 
-	    if (bias_term)
+            if (conv_param.bias_term)
             {
                 assert(this->_weight_blobs.size() == 2);
                 bias_data = this->_weight_blobs[1]->data();
@@ -64,77 +64,60 @@ class ConvLayer : public Layer
         {
             //Conv layer has and only has one bottom blob.
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
-	        printf("bottom name %s ptr 0x%lx\n", _bottom[0].c_str(), bottom_blob);
-            input_width = bottom_blob->width();
-            input_height = bottom_blob->height();
-            input_channels = bottom_blob->channels();
-            if (stride_width == 0 || stride_height == 0)
-            {
-                stride_width = 1;
-                stride_height = 1;
-            }
-            output_width = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
-            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
-#if 0
-            printf("input channels %d\n", input_channels);
-            assert(input_channels == bottom_blob->channels());
-            printf("input w %lu\n", input_width);
-            printf("padding_left %lu\n", padding_left);
-            printf("padding_top %lu\n", padding_top);
-            printf("stride_width %lu\n", stride_width);
-            printf("stride_height %lu\n", stride_height);
-            printf("output %ld %ld\n", output_width, output_height);
-#endif
-            _top_blobs[_top[0]] = new Blob<float>(1, output_channels, output_height, output_width);
+	        conv_param.input_w = bottom_blob->width();
+            conv_param.input_h = bottom_blob->height();
+            conv_param.input_channels = bottom_blob->channels();
+            conv_param.AssignOutputDim();
+            conv_param.LogParams(this->name().c_str());
+            _top_blobs[_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             _top_blobs[_top[0]]->Alloc();
+            conv_booster.SelectAlgo(&this->conv_param);
+	    //conv_booster.ForceSelectAlgo(booster::NAIVE);
+	    //conv_booster.ForceSelectAlgo(booster::IM2COL);
             return 0;
         }
 
-        virtual int ForwardReshape()
+        int ForwardReshape()
         {
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
-            input_height    = bottom_blob->height();
-            input_width     = bottom_blob->width();
-
-            output_width  = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
-            output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
-
-            _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, output_height, output_width);
-            LOGI("output (c %d h %d w %d)", output_channels, output_height, output_width);
-
+            conv_param.input_h = bottom_blob->height();
+            conv_param.input_w = bottom_blob->width();
+            conv_param.AssignOutputDim();
+            _top_blobs[_top[0]]->ReshapeWithRealloc(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             return this->Forward();
         }
 
-        virtual int Forward()
+        int Forward()
         {
-            return -1;
+	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
+            //_top_blobs[_top[0]]->PrintBlobInfo();
+            float* input = _bottom_blobs[_bottom[0]]->data();
+            float* output = _top_blobs[_top[0]]->data();
+            float* buffer = NULL;
+            MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&buffer));
+            conv_booster.Forward(&conv_param, output, input, processed_kernel, buffer, bias_data);
+            return 0;
+        }
+
+         int Init()
+        {
+            int buffer_size = 0;
+            int processed_kernel_size = 0;
+            int ret = conv_booster.GetBufferSize(&conv_param, &buffer_size, &processed_kernel_size);
+            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&processed_kernel, sizeof(float) * (processed_kernel_size)));
+            conv_booster.Init(&conv_param, processed_kernel, kernel_data);
+            MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * buffer_size));
+            printf("buffer size %d, processed_kernel_size %d\n", buffer_size, processed_kernel_size);
+            return 0;
         }
 
     protected:
-        size_t input_channels;
-        size_t input_width;
-        size_t input_height;
-
-        size_t output_channels;
-        size_t output_width;
-        size_t output_height;
-
-        size_t kernel_width;
-        size_t kernel_height;
-
-        size_t stride_width;
-        size_t stride_height;
-
-        size_t padding_left;
-        size_t padding_right;
-        size_t padding_top;
-        size_t padding_bottom;
-
-        size_t group;
-
-        bool bias_term;
-
-        float *kernel_data;
+        booster::ConvBooster conv_booster;
+        booster::ConvParam   conv_param;
+        
         float *bias_data;
+        
+        float *kernel_data;
+        float *processed_kernel;
 };
 };

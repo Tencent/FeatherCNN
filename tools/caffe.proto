@@ -396,6 +396,7 @@ message LayerParameter {
   optional ImageDataParameter image_data_param = 115;
   optional InfogainLossParameter infogain_loss_param = 116;
   optional InnerProductParameter inner_product_param = 117;
+  optional InterpParameter interp_param = 148;
   optional InputParameter input_param = 143;
   optional LogParameter log_param = 134;
   optional LRNParameter lrn_param = 118;
@@ -859,6 +860,15 @@ message InfogainLossParameter {
   // Specify the infogain matrix source.
   optional string source = 1;
   optional int32 axis = 2 [default = 1]; // axis of prob
+}
+
+message InterpParameter {
+	optional int32 height = 1 [default = 0]; // Height of output
+	optional int32 width = 2 [default = 0]; // Width of output
+	optional int32 zoom_factor = 3 [default = 1]; // zoom factor
+	optional int32 shrink_factor = 4 [default = 1]; // shrink factor
+	optional int32 pad_beg = 5 [default = 0]; // padding at begin of input
+	optional int32 pad_end = 6 [default = 0]; // padding at end of input
 }
 
 message InnerProductParameter {
