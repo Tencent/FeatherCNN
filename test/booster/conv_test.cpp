@@ -58,6 +58,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     float* im2col_buffer = (float*) malloc(sizeof(float) * buffer_size);
     im2col_booster.Init(&conv_param, im2col_processed_kernel, kernel_data);
 
+    
 #ifdef TEST_SGECONV
     printf("Initializing sgeconv...\n");
     booster::ConvBooster sgeconv_booster;
@@ -105,10 +106,6 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 
 int main()
 {
-    // test_kernels(64, 3, 224, 224, 3, 3, 1, 1);
-    // test_kernels(64, 3, 16, 16, 5, 5, 4, 1);
-    // test_kernels(4, 4, 4, 4, 5, 5, 4, 0);
-    // test_kernels(1, 1, 6, 6, 3, 3, 1, 1);
     test_general_conv_kernels(64, 32, 224, 224, 5, 5, 4, 1);
-    // test_kernels(64, 64, 224, 224, 3, 3, 1, 1);
+    return 0;
 }
