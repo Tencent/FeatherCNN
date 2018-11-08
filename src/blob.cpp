@@ -12,10 +12,11 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#include "feather_simple_generated.h"
+#include "feather_generated.h"
 #include "blob.h"
+#include "fp16/fp16.h"
 
-#include "arm/helper.h"
+#include "booster/helper.h"
 
 #include "common.h"
 
@@ -25,7 +26,7 @@ template<class Dtype>
 void Blob<Dtype>::Alloc()
 {
     size_t dim_byte = _num * _channels * _height * _width * sizeof(Dtype);
-    _data = (Dtype*) _mm_malloc(dim_byte, 16);
+    _data = (Dtype*) _mm_malloc(dim_byte, 32);
 }
 template<class Dtype>
 void Blob<Dtype>::Free()
@@ -73,21 +74,42 @@ void Blob<Dtype>::Realloc(size_t elem_size)
 template<class Dtype>
 void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobProto*
 {
+    bool use_fp16_data = false;
     const BlobProto* proto = (const BlobProto*) proto_in;
     this->_num = proto->num();
     this->_channels = proto->channels();
     this->_height = proto->height();
     this->_width = proto->width();
     size_t data_length;
-    data_length = proto->data()->Length();
+    data_length = VectorLength(proto->data());
+    //printf("data length %d & %d\n", data_length, VectorLength(proto->data_fp16()));
+    if(data_length == 0)
+    {
+	    data_length = VectorLength(proto->data_fp16());
+	    //printf("LOADING FROM FP16 DATA LEN %zu\n", data_length);
+	    use_fp16_data = true;
+    }
+    else
+    {
+	if(VectorLength(proto->data_fp16()) > 0)
+	{
+		fprintf(stderr, "Fatal error: this model have FP16 and FP32 data in the same blob, aborting...\n");
+		exit(-1);
+	}
+    }
+
 
     if (_num * _channels * _height * _width == data_length)
     {
         this->Alloc();
         for (int i = 0; i < data_length; ++i)
-        {
-            this->_data[i] = proto->data()->Get(i);
-        }
+	{
+		if(use_fp16_data){
+			this->_data[i] = fp16_ieee_to_fp32_value(proto->data_fp16()->Get(i));
+		}
+		else
+			this->_data[i] = proto->data()->Get(i);
+	}
     }
     else
     {

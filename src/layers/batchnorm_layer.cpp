@@ -14,8 +14,10 @@
 
 #include "batchnorm_layer.h"
 #include "scale_layer.h"//For fuse
-#include "arm/generic_kernels.h"
+#include "booster/generic_kernels.h"
 #include <math.h>
+
+using namespace booster;
 
 namespace feather
 {
@@ -23,6 +25,8 @@ int BatchNormLayer::Forward()
 {
     const float* input = _bottom_blobs[_bottom[0]]->data();
     float* output = _top_blobs[_top[0]]->data();
+    //memset(input, sizeof(float) * this->bottom_blob(0)->data_size());
+    memset(output, 0xFF, sizeof(float) * this->top_blob(0)->data_size());
     size_t stride = input_width * input_height;
     bn_kernel(input_channels, stride, alpha, beta, scale_bias_data, scale_data, input, output, num_threads);
     return 0;

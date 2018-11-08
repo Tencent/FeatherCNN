@@ -1,5 +1,8 @@
 #include "caffe.pb.h"
-#include "../src/feather_simple_generated.h"
+#ifdef FP16_STORAGE
+#include "fp16/fp16.h"
+#endif
+#include "feather_generated.h"
 
 #include <iostream>
 #include <fstream>
@@ -8,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +55,7 @@ CaffeModelWeightsConvert::CaffeModelWeightsConvert(std::string caffe_prototxt_na
 
 bool CaffeModelWeightsConvert::Convert()
 {
+
     if (!ReadNetParam())
     {
         std::cerr << "Read net params fail!" << std::endl;
@@ -158,6 +163,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
         {
             //There should be an input layer
             printf("Input Layer\n");
+            std::vector<flatbuffers::Offset<flatbuffers::String>>   input_top_vec;
             std::vector<flatbuffers::Offset<flatbuffers::String>>   input_name_vec;
             std::vector<int64_t>                                    input_dim_vec;
             for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
@@ -168,73 +174,83 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 
                 if (layer_type.compare("Input") == 0)
                 {
-                    input_name_vec.push_back(fbb.CreateString(layer_name));
+		    for(int ti = 0; ti < caffe_layer.top_size(); ++ti)
+		    {
+			    std::string top_name = caffe_layer.top(ti);
+			    printf("Input top blob name %s\n", top_name.c_str());
+			    input_top_vec.push_back(fbb.CreateString(top_name));
+			    input_name_vec.push_back(fbb.CreateString(top_name));
+		    }
+                    //input_name_vec.push_back(fbb.CreateString(layer_name));
 
                     assert(caffe_layer.input_param().shape_size() == 1);
+		   	 
                     for (int j = 0; j < caffe_layer.input_param().shape(0).dim_size(); ++j)
                     {
                         int64_t dim = caffe_layer.input_param().shape(0).dim(j);
-                        printf("Input dim %ld\n", dim);
+                        printf("Input dim %lld\n", dim);
                         input_dim_vec.push_back(dim);
                     }
+		    auto input_param = feather::CreateInputParameterDirect(fbb,
+				    &input_name_vec,
+				    &input_dim_vec);
+
+		    //build this layer
+		    auto input_top_fbvec = fbb.CreateVector(input_top_vec);
+		    auto input_layer_name = fbb.CreateString("input_layer");
+		    auto input_layer_type = fbb.CreateString("Input");
+		    //auto input_bottom = fbb.CreateString("");
+		    feather::LayerParameterBuilder layer_builder(fbb);
+		    layer_builder.add_name(input_layer_name);
+		    layer_builder.add_type(input_layer_type);
+		    layer_builder.add_input_param(input_param);
+		    layer_builder.add_top(input_top_fbvec);
+		    //layer_builder.add_bottom(input_bottom);
+		    layer_vec.push_back(layer_builder.Finish());
                 }
             }
-            auto input_param = feather::CreateInputParameterDirect(fbb,
-                               &input_name_vec,
-                               &input_dim_vec);
-
-            //build this layer
-            auto input_layer_name = fbb.CreateString("input_layer");
-            auto input_layer_type = fbb.CreateString("Input");
-            //auto input_bottom = fbb.CreateString("");
-            feather::LayerParameterBuilder layer_builder(fbb);
-            layer_builder.add_name(input_layer_name);
-            layer_builder.add_type(input_layer_type);
-            layer_builder.add_input_param(input_param);
-            //layer_builder.add_bottom(input_bottom);
-            layer_vec.push_back(layer_builder.Finish());
         }
 
         std::vector<std::string> prototxt_name_map;
 
-        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
+        for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
         {
             prototxt_name_map.push_back(net_param_prototxt.layer(i).name());
         }
 
+#ifdef FP16_STORAGE
+        std::vector<uint16_t> blob_data_vec_fp16;
         std::vector<float> blob_data_vec;
+#else
+        std::vector<float> blob_data_vec;
+#endif
+        printf("Layer num %d\n", net_param.layer_size());
         printf("Layer num %d\n", net_param_prototxt.layer_size());
-        printf("Legacy layer num %d\n", net_param_prototxt.layers_size());
-	size_t layer_num = 0;
-	if(net_param.layer_size() > 0 && net_param.layers_size() == 0)
-	{
-		layer_num = net_param.layer_size();
-	}
-	else if(net_param.layer_size() == 0 && net_param.layers_size() > 0)
-	{
-		fprintf(stderr, "Error, this is an legacy caffe model, please upgrade your prototxt and models with official tools.\n Aborting...\n");
-		exit(-1);
-	}
-	else
-	{
-		fprintf(stderr, "Conflicted layer params. Aborting...\n");
-		exit(-1);
-	}
+        printf("Legacy layer num %d\n", net_param.layers_size());
+
 
         std::map<std::string, int> caffe_model_layer_map;
-        for (int i = 0; i < layer_num; ++i)
+        for (int i = 0; i != net_param.layer_size(); ++i)
         {
             std::string layer_name = net_param.layer(i).name();
             caffe_model_layer_map[layer_name] = i;
         }
 
         std::map<std::string, std::string> inplace_blob_map;
-        for (int i = 0; i != net_param_prototxt.layer_size(); ++i)
+	for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
+	{
+		auto caffe_layer = net_param_prototxt.layer(i);
+		std::string layer_name = caffe_layer.name();
+		std::string layer_type = caffe_layer.type();
+		printf("Layer %d name %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
+	}
+        for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
         {
+		
             auto caffe_layer = net_param_prototxt.layer(i);
             std::string layer_name = caffe_layer.name();
             std::string layer_type = caffe_layer.type();
-
+	    //printf("Processing layer %d %s type %s\n", i, layer_name.c_str(), layer_type.c_str());
             if (layer_type.compare("Input") == 0)
                 continue;
             //if (layer_type.compare("Sigmoid") == 0)
@@ -314,12 +330,48 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             for (int j = 0; j != caffe_model_layer.blobs_size(); ++j)
             {
                 auto caffe_blob = caffe_model_layer.blobs(j);
+                float diff_sum = 0.f;
+
+#ifdef FP16_STORAGE
+                bool is_fp16_blob = true;
+                for (int k = 0; k != caffe_blob.data_size(); ++k)
+                {
+                    uint16_t data = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+                    float diff = caffe_blob.data(k) - fp16_ieee_to_fp32_value(data);
+                    diff_sum += fabs(diff);
+                    //if(diff >= 0.01)
+                    //    printf("diff=%f fp32 %f vs fp16 %f\n", diff, caffe_blob.data(k), fp16_ieee_to_fp32_value(data));
+                }
+                const float fp16_loss_threshold = 10.0f;
+                if (fabs(diff_sum) - fp16_loss_threshold > 0||std::isnan(diff_sum))
+                {
+                    is_fp16_blob = false;
+                }
+                printf("diff_sum %f, %f, is_fp_16_blob %d\n", diff_sum, fabs(diff_sum), is_fp16_blob);
+                for (int k = 0; k != caffe_blob.data_size(); ++k)
+                {
+                    if(is_fp16_blob)
+                    {
+                        uint16_t data_fp16 = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+                        blob_data_vec_fp16.push_back(data_fp16);
+                    }
+                    else
+                    {
+                        float data = caffe_blob.data(k);
+                        blob_data_vec.push_back(data);
+                    }
+                }
+                auto blob_data_fbvec_fp16 = fbb.CreateVector<uint16_t>(blob_data_vec_fp16);
+                auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
+#else
                 for (int k = 0; k != caffe_blob.data_size(); ++k)
                 {
                     float data = caffe_blob.data(k);
                     blob_data_vec.push_back(data);
                 }
                 auto blob_data_fbvec = fbb.CreateVector<float>(blob_data_vec);
+#endif
+
                 int dim_len = caffe_blob.shape().dim_size();
                 long data_size = 1;
                 feather::BlobProtoBuilder blob_builder(fbb);
@@ -330,7 +382,21 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     printf("%ld ", dim);
                 }
                 printf("data size %ld\n", data_size);
+#ifdef FP16_STORAGE
+                if(is_fp16_blob)
+                {
+                    printf("STORE FP16 BLOB LEN %d\n", blob_data_vec_fp16.size());
+                    blob_builder.add_data_fp16(blob_data_fbvec_fp16);
+                }
+                else
+                {
+                    printf("STORE FP32 BLOB LEN %d\n", blob_data_vec.size());
+                    blob_builder.add_data(blob_data_fbvec);
+                }
+
+#else
                 blob_builder.add_data(blob_data_fbvec);
+#endif
 
                 if (dim_len == 0)
                 {
@@ -393,6 +459,9 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     }
                 }
                 blob_vec.push_back(blob_builder.Finish());
+#ifdef FP16_STORAGE
+                blob_data_vec_fp16.clear();
+#endif
                 blob_data_vec.clear();
             }
             auto blobs_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::BlobProto> >(blob_vec);
@@ -410,7 +479,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
             flatbuffers::Offset<feather::PReLUParameter> prelu_param;
             flatbuffers::Offset<feather::DropoutParameter> dropout_param;
             flatbuffers::Offset<feather::FilterParameter> filter_param;
-            flatbuffers::Offset<feather::ReshapeParameter> reshape_param;
+            flatbuffers::Offset<feather::FlattenParameter> flatten_param;
+            flatbuffers::Offset<feather::InterpParameter> interp_param;
 
             if (layer_type.compare("Convolution") == 0 || (layer_type.compare("DepthwiseConvolution") == 0))
             {
@@ -439,7 +509,20 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 				fprintf(stderr, "Bad kernel_h/w configuration.\n");
 		}
 
-                if (caffe_conv_param.stride_size() == 1)
+		if (caffe_conv_param.has_stride_h())
+		{
+			if(caffe_conv_param.has_stride_w())
+			{
+				conv_param_builder.add_stride_h(caffe_conv_param.stride_h());
+				conv_param_builder.add_stride_w(caffe_conv_param.stride_w());
+			}
+			else
+			{
+				fprintf(stderr, "Conv param has stride h but no stride w\n");
+				exit(-1);
+			}
+		}
+		else if (caffe_conv_param.stride_size() == 1)
                 {
                     printf("+ stride %d\n", caffe_conv_param.stride(0));
                     conv_param_builder.add_stride_h(caffe_conv_param.stride(0));
@@ -581,16 +664,24 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 pooling_param_builder.add_global_pooling(caffe_pooling_param.global_pooling());
                 pooling_param = pooling_param_builder.Finish();
             }
+	    else if (layer_type.compare("Interp") == 0)
+	    {
+		auto caffe_interp_param = caffe_layer.interp_param();
+		int height = caffe_interp_param.height();	
+		int width = caffe_interp_param.width();	
+		int zoom_factor = caffe_interp_param.zoom_factor();	
+		int shrink_factor = caffe_interp_param.shrink_factor();	
+		int pad_beg = caffe_interp_param.pad_beg();
+		int pad_end = caffe_interp_param.pad_end();
+		interp_param = feather::CreateInterpParameter(fbb, height, width, zoom_factor, shrink_factor, pad_beg, pad_end);
+		
+	    }
             else if (layer_type.compare("InnerProduct") == 0)
             {
                 auto caffe_inner_product_param = caffe_layer.inner_product_param();
                 feather::InnerProductParameterBuilder inner_product_param_builder(fbb);
                 inner_product_param_builder.add_bias_term(caffe_inner_product_param.bias_term());
                 inner_product_param = inner_product_param_builder.Finish();
-            }
-            else if (layer_type.compare("BatchNorm") == 0)
-            {
-                //Do nothing
             }
             else if (layer_type.compare("Softmax") == 0)
             {
@@ -637,9 +728,12 @@ defalut:
                 printf("Loaded coeff size %ld\n", coeff_vec.size());
                 eltwise_param = feather::CreateEltwiseParameterDirect(fbb, feather_op, &coeff_vec);
             }
-            else if (layer_type.compare("ReLU") == 0)
+            else if (layer_type.compare("Flatten") == 0)
             {
-                //Do nothing
+		auto caffe_flatten_param = caffe_layer.flatten_param();
+		int axis = caffe_flatten_param.axis();
+		int end_axis = caffe_flatten_param.end_axis();
+		flatten_param = feather::CreateFlattenParameter(fbb, axis, end_axis);
             }
             else if (layer_type.compare("Filter") == 0)
             {
@@ -647,39 +741,6 @@ defalut:
                 size_t num_output = caffe_filter_param.num_output();
                 printf("Filter param: num_output %ld\n", num_output);
 		filter_param = feather::CreateFilterParameter(fbb, num_output);
-            }
-	    else if (layer_type.compare("Reshape") == 0)
-	    {
-		auto caffe_reshape_param = caffe_layer.reshape_param();
-		auto reshape_blob_shape = caffe_reshape_param.shape();
-		size_t dim_len = reshape_blob_shape.dim_size();
-		int n = reshape_blob_shape.dim(0);
-		int c = reshape_blob_shape.dim(1);
-		int h = reshape_blob_shape.dim(2);
-		int w = reshape_blob_shape.dim(3);
-		printf("dim len %ld, %d %d %d %d\n",dim_len, n, c, h, w);
-
-		std::vector<int64_t> shape_dim;
-		shape_dim.push_back(reshape_blob_shape.dim(0));
-		shape_dim.push_back(reshape_blob_shape.dim(1));
-		shape_dim.push_back(reshape_blob_shape.dim(2));
-		shape_dim.push_back(reshape_blob_shape.dim(3));
-		
-		auto shape = feather::CreateBlobShapeDirect(fbb, &shape_dim);
-		reshape_param = feather::CreateReshapeParameter(fbb, shape);	
-		if(caffe_reshape_param.has_axis() || caffe_reshape_param.has_num_axes())
-		{
-			fprintf(stderr, "Caffe reshape parameter are not yet supported! Aborting...\n");
-			exit(-1);
-		}
-	    }
-            else if (layer_type.compare("PReLU") == 0)
-            {
-
-            }
-            else if (layer_type.compare("Dropout") == 0)
-            {
-
             }
 
             auto layer_name_fbb = fbb.CreateString(layer_name);
@@ -698,14 +759,16 @@ defalut:
                 layer_builder.add_filter_param(filter_param);
             else if (layer_type.compare("Pooling") == 0)
                 layer_builder.add_pooling_param(pooling_param);
+            else if (layer_type.compare("Interp") == 0)
+		layer_builder.add_interp_param(interp_param);
             else if (layer_type.compare("InnerProduct") == 0)
                 layer_builder.add_inner_product_param(inner_product_param);
             else if (layer_type.compare("Scale") == 0)
                 layer_builder.add_scale_param(scale_param);
             else if (layer_type.compare("Eltwise") == 0)
                 layer_builder.add_eltwise_param(eltwise_param);
-            else if (layer_type.compare("Reshape") == 0)
-                layer_builder.add_reshape_param(reshape_param);
+            else if (layer_type.compare("Flatten") == 0)
+		    layer_builder.add_flatten_param(flatten_param);
             layer_vec.push_back(layer_builder.Finish());
         }
         auto layer_fbvec = fbb.CreateVector<flatbuffers::Offset<feather::LayerParameter>>(layer_vec);
