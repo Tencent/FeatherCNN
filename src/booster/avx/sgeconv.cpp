@@ -1,3 +1,4 @@
+#include <booster/booster.h>
 #include <booster/sgeconv.h>
 #include <immintrin.h>
 #include <string.h>
@@ -361,7 +362,7 @@ void pack_B_avx(int kc, int nc, float* packB, float* B, int ldb)
 
 
 	
-void pack_B_im2col_stride_1_avx(ConvParam *conv_param, int kc, int nc, int nt, float* packB, float* tB, float *B, int ldb)
+void pack_B_im2col_stride_1_avx(booster::ConvParam *conv_param, int kc, int nc, int nt, float* packB, float* tB, float *B, int ldb)
 {
 	const int COL_BATCH = 16;
 	int nc_floor = nc - nc % COL_BATCH;
@@ -410,7 +411,7 @@ void pack_B_im2col_stride_1_avx(ConvParam *conv_param, int kc, int nc, int nt, f
 }
 #include <assert.h>
 template<bool fuseBias, bool fuseRelu>
-void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias)
+void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias)
 {
 	//nc = nc - nc % (kernel_h * kernel_w);
 	int M = conv_param->output_channels;
@@ -487,7 +488,7 @@ void packed_sgeconv_im2col_activation(ConvParam *conv_param, float *packA, float
 	//_mm_free(loadC);
 }
 
-template void packed_sgeconv_im2col_activation<false, false>(ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias);
+template void packed_sgeconv_im2col_activation<false, false>(booster::ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias);
 // template void packed_sgeconv_im2col_activation<false,  true>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);
 // template void packed_sgeconv_im2col_activation<true,  false>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);
 // template void packed_sgeconv_im2col_activation<true,   true>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);
