@@ -63,13 +63,13 @@ bool createCommandQueue(cl_context context, cl_command_queue* commandQueue, cl_d
     /* Retrieve the size of the buffer needed to contain information about the devices in this OpenCL context. */
     if (!checkSuccess(clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &deviceBufferSize)))
     {
-        cerr << "Failed to get OpenCL context information. " << __FILE__ << ":"<< __LINE__ << endl;
+        LOGE("Failed to get OpenCL context information. %s: %s", __FILE__, __LINE__);
         return false;
     }
 
     if(deviceBufferSize == 0)
     {
-        cerr << "No OpenCL devices found. " << __FILE__ << ":"<< __LINE__ << endl;
+        LOGE("No OpenCL devices found. %s: %s", __FILE__, __LINE__);
         return false;
     }
 
@@ -77,7 +77,7 @@ bool createCommandQueue(cl_context context, cl_command_queue* commandQueue, cl_d
     devices = new cl_device_id[deviceBufferSize / sizeof(cl_device_id)];
     if (!checkSuccess(clGetContextInfo(context, CL_CONTEXT_DEVICES, deviceBufferSize, devices, NULL)))
     {
-        cerr << "Failed to get the OpenCL context information. " << __FILE__ << ":"<< __LINE__ << endl;
+        LOGE("Failed to get the OpenCL context information. %s: %s", __FILE__, __LINE__);
         delete [] devices;
         return false;
     }
@@ -90,7 +90,7 @@ bool createCommandQueue(cl_context context, cl_command_queue* commandQueue, cl_d
     *commandQueue = clCreateCommandQueue(context, *device, CL_QUEUE_PROFILING_ENABLE, &errorNumber);
     if (!checkSuccess(errorNumber))
     {
-        cerr << "Failed to create the OpenCL command queue. " << __FILE__ << ":"<< __LINE__ << endl;
+        LOGE("Failed to create the OpenCL command queue. %s: %s", __FILE__, __LINE__);
         return false;
     }
 

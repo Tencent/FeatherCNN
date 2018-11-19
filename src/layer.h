@@ -22,6 +22,8 @@
 #endif
 #include <vector>
 #include <map>
+#include <booster/helper.h>
+#include <common.h>
 
 namespace feather
 {
@@ -51,7 +53,7 @@ class Layer
         virtual int Init();
 
         virtual int Forward();
-        
+
         virtual int ForwardReshape();
 
         std::string name();
@@ -61,12 +63,12 @@ class Layer
         std::string top(size_t i);
         size_t top_size();
         size_t top_blob_size();
-        const Blob<float>* top_blob(std::string name);
-        const Blob<float>* top_blob(size_t idx);
-        const Blob<float>* bottom_blob(size_t idx);
+        const Blob<Dtype>* top_blob(std::string name);
+        const Blob<Dtype>* top_blob(size_t idx);
+        const Blob<Dtype>* bottom_blob(size_t idx);
         //For fusing
         const size_t weight_blob_num() const;
-        const Blob<float>* weight_blob(size_t i) const;
+        const Blob<Dtype>* weight_blob(size_t i) const;
         bool fusible() const;
     protected:
         std::string _name;
@@ -88,7 +90,7 @@ class Layer
         CommonMemPool<Dtype>    *common_mempool;
 
         PrivateMemPool<Dtype>   private_mempool;
-        
+
         RuntimeParameter<Dtype> *rt_param;
 
 #ifdef FEATHER_OPENCL
@@ -96,6 +98,14 @@ class Layer
         std::vector<std::string> cl_kernel_symbols;
         std::vector<std::string> cl_kernel_functions;
         std::vector<cl_program> cl_programs;
+        std::vector<cl_kernel> kernels;
+        std::vector<cl_event> events;
+        std::vector<std::string> build_options;
+        size_t global_work_size[3];
+        size_t local_work_size[3];
+        int group_size_h = 8;
+        int group_size_w = 8;
 #endif
 };
+
 };

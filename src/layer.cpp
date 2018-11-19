@@ -17,6 +17,7 @@
 #include "layer.h"
 #include "feather_generated.h"//For LayerParameter
 
+
 namespace feather
 {
 template<class Dtype>
@@ -124,7 +125,7 @@ int Layer<Dtype>::GenerateTopBlobs()
 {
     if (_top.size() != 1 || _bottom.size() != 1)
         return -1;
-    Blob<float>* p_blob = new Blob<float>();
+    Blob<Dtype>* p_blob = new Blob<Dtype>();
     p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
     p_blob->Alloc();
     _top_blobs[_top[0]] = p_blob;
@@ -146,12 +147,12 @@ int Layer<Dtype>::Forward()
 template<class Dtype>
 int Layer<Dtype>::ForwardReshape()
 {
-    //Default Reshape Assertation: 
+    //Default Reshape Assertation:
     //There should be a single top blob as well as bottom blob.
     //The default behaviour is that the top blob is identical to the bottom blob
     //Use default reallocation.
     _top_blobs[top(0)]->ReshapeWithRealloc(_bottom_blobs[bottom(0)]);
-    
+
     this->Forward();
     return true;
 }
@@ -199,7 +200,7 @@ size_t Layer<Dtype>::top_blob_size()
 }
 
 template<class Dtype>
-const Blob<float>* Layer<Dtype>::top_blob(std::string name)
+const Blob<Dtype>* Layer<Dtype>::top_blob(std::string name)
 {
     if (_top_blobs.find(name) != _top_blobs.end())
         return _top_blobs[name];
@@ -208,14 +209,14 @@ const Blob<float>* Layer<Dtype>::top_blob(std::string name)
 }
 
 template<class Dtype>
-const Blob<float>* Layer<Dtype>::top_blob(size_t idx)
+const Blob<Dtype>* Layer<Dtype>::top_blob(size_t idx)
 {
     std::string name = this->top(idx);
     return top_blob(name);
 }
 
 template<class Dtype>
-const Blob<float>* Layer<Dtype>::bottom_blob(size_t idx)
+const Blob<Dtype>* Layer<Dtype>::bottom_blob(size_t idx)
 {
     std::string name = this->bottom(idx);
     return _bottom_blobs[name];
@@ -228,7 +229,7 @@ const size_t Layer<Dtype>::weight_blob_num() const
 }
 
 template<class Dtype>
-const Blob<float>* Layer<Dtype>::weight_blob(size_t i) const
+const Blob<Dtype>* Layer<Dtype>::weight_blob(size_t i) const
 {
     return i > _weight_blobs.size() ? NULL : _weight_blobs[i];
 }
@@ -258,7 +259,7 @@ int Layer<Dtype>::BuildOpenCLProgram()
         }
 
         cl_program cur_program;
-        if (buildProgramFromSource(this->context, this->device, cur_program, cl_kernel_symbols[i])){
+        if (buildProgramFromSource(rt_param->context(), rt_param->device(), cur_program, cl_kernel_symbols[i])){
             LOGE("Build program from source failed.");
             return -1;
         }
@@ -278,5 +279,8 @@ int Layer<Dtype>::SetKernelParameters()
 #endif
 
 template class Layer<float>;
-// template class Layer<uint16_t>;
+
+#ifdef FEATHER_OPENCL
+template class Layer<uint16_t>;
+#endif
 };

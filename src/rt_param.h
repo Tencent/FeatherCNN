@@ -37,17 +37,18 @@ class RuntimeParameter
 {
     public:
       RuntimeParameter() : _common_mempool(NULL),
+                           _device_type(DeviceType::CPU),
 #ifdef FEATHER_OPENCL
-                           _device_type(DeviceType::CPU), 
-                           _context(NULL), 
-                           _commandQueue(NULL), _device(NULL),
+                           _context(NULL),
+                           _command_queue(NULL), _device(NULL),
 #endif
                            _num_threads(1)
       {
       }
-      RuntimeParameter(CommonMemPool<Dtype> *common_mempool, size_t num_threads)
-          : _common_mempool(common_mempool), 
-          _num_threads(num_threads)
+      RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
+          : _common_mempool(common_mempool),
+          _num_threads(num_threads),
+          _device_type(device_type)
       {
       }
 
@@ -57,7 +58,6 @@ class RuntimeParameter
           const cl_command_queue &command_queue,
           const cl_device_id &device)
       {
-          _device_type = DeviceType::GPU_CL;
           _context = context;
           _command_queue = command_queue;
           _device = device;
@@ -85,7 +85,7 @@ class RuntimeParameter
         }
         cl_command_queue commandQueue() const
         {
-            return _commandQueue;
+            return _command_queue;
         }
         cl_device_id device() const
         {

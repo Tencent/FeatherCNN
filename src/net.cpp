@@ -14,6 +14,11 @@
 
 #include "feather_generated.h"
 #include "layer_factory.h"
+
+#ifdef FEATHER_OPENCL
+#include "layer_factory_cl.h"
+#endif
+
 #include "net.h"
 #include "layer.h"
 #include "layers/input_layer.h"
@@ -29,11 +34,14 @@
 
 namespace feather
 {
-Net::Net(size_t num_threads)
+Net::Net(size_t num_threads, DeviceType device_type)
 {
     register_layer_creators();
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
-    rt_param = new RuntimeParameter<float>(mempool, num_threads);
+    rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
+#ifdef FEATHER_OPENCL
+    OpenCLProbe();
+#endif
 }
 
 
@@ -45,7 +53,12 @@ Net::~Net()
     }
     delete rt_param->common_mempool();
     delete rt_param;
+#ifdef FEATHER_OPENCL
+    ReleaseOpenCLEnv();
+#endif
 }
+
+
 
 
 int Net::ExtractBlob(float* output_ptr, std::string name)
@@ -78,7 +91,7 @@ int Net::PrintBlobData(std::string blob_name)
     }
     LOGD("\n");
     free(arr);
-	
+
     return 0;
 }
 
@@ -103,7 +116,7 @@ int Net::Forward(float *input)
     {
         input_layer->CopyInput(input_layer->input_name(i), input);
     }
-    
+
     for (int i = 1; i < layers.size(); ++i)
     {
         // sleep(2);
@@ -118,7 +131,7 @@ int Net::Forward(float *input)
         for (size_t j = 0; j < layers[i]->top_blob_size(); j++)
             layers[i]->top_blob(j)->PrintBlobInfo();
 
-	PrintBlobData(layers[i]->name());	
+	PrintBlobData(layers[i]->name());
 #endif
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
@@ -272,7 +285,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
 #endif
         layers.push_back(new_layer);
     }
-    
+
 #ifdef PRINT_SETUP_LOG
         LOGD("Layer setup finish");
 #endif
@@ -356,7 +369,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
     {
 	    if(layers[i]->type().compare("Dropout") == 0)
 	    {
-		  
+
 #ifdef PRINT_SETUP_LOG
                 LOGD("Erase layer %d %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
 #endif
@@ -474,6 +487,12 @@ int Net::OpenCLProbe()
     rt_param->SetupOpenCLEnv(context, command_queue, device);
     return 0;
 }
+
+int Net::ReleaseOpenCLEnv()
+{
+    fprintf(stderr, "NOT IMPLEMENTED YET");
+}
+
 #endif
 
 };

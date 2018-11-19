@@ -93,6 +93,7 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     {
 	if(VectorLength(proto->data_fp16()) > 0)
 	{
+    //printf("LOADING FROM FP16 DATA LEN %zu\n", VectorLength(proto->data_fp16()));
 		fprintf(stderr, "Fatal error: this model have FP16 and FP32 data in the same blob, aborting...\n");
 		exit(-1);
 	}

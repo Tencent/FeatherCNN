@@ -20,6 +20,7 @@
 
 #include "layer.h"
 // #include "layers_cl/input_layer.h"
+//#include "layers_cl/input_layer_cl.h"
 
 
 namespace feather

@@ -27,7 +27,7 @@ using namespace std;
 
 namespace feather
 {
-template class Layer<float>;
+//template class Layer<float>;
 
 class LayerRegistry
 {

@@ -23,10 +23,11 @@ namespace feather
 class Net
 {
     public:
-        Net(size_t num_threads);
+        Net(size_t num_threads, DeviceType device_type);
         ~Net();
 #ifdef FEATHER_OPENCL
         int OpenCLProbe();
+        int ReleaseOpenCLEnv();
 #endif
         void InitFromPath(const char *model_path);
         void InitFromStringPath(std::string model_path);
