@@ -31,10 +31,10 @@ enum PoolMethod : int {
 namespace feather.ReductionParameter_;
 
 enum ReductionOp : int {
-  SUM = 1,
-  ASUM = 2,
-  SUMSQ = 3,
-  MEAN = 4,
+  SUM = 0,
+  ASUM = 1,
+  SUMSQ = 2,
+  MEAN = 3,
 }
 
 namespace feather;
@@ -86,6 +86,7 @@ table LayerParameter {
   softmax_param:feather.SoftmaxParameter;
   slice_param:feather.SliceParameter;
   tanh_param:feather.TanHParameter;
+  filter_param:feather.FilterParameter;
 }
 
 table ArgMaxParameter {
@@ -179,6 +180,9 @@ table FlattenParameter {
   end_axis:int = -1;
 }
 
+table FilterParameter{
+	num_output:int = 1;
+}
 
 table ImageDataParameter {
   source:string;
@@ -237,7 +241,7 @@ table PowerParameter {
 }
 
 table PReLUParameter {
-  channel_shared:bool;
+  slope_size:uint;
 }
 
 table RecurrentParameter {
@@ -296,6 +300,5 @@ table BlobProto {
   height:int;
   width:int;
 }
-
 
 root_type NetParameter;
