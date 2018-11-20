@@ -48,34 +48,44 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
     printf("++++++Start Loader++++++\n");
-    feather::Net forward_net(num_threads);
+    feather::Net forward_net(num_threads, DeviceType::CPU);
     forward_net.InitFromPath(model_path.c_str());
     //size_t input_size = 224 * 224 * 3 ;
     size_t input_size = 300 * 300 * 3 ;
     float *input = new float[input_size * 20];
 
-    //size_t count = 0;
+    size_t count = 0;
     double time = 0;
 
-    //TODO judge file size
-    size_t file_size = 0;
-    FILE* fp = fopen(data_path.c_str(), "rb+");
-    fseek(fp, 0, SEEK_END);
-    file_size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    if(file_size < input_size)
+
+    for(int i = 0; i < input_size; i++)
     {
-	    fprintf(stderr, "Loading input file smaller than specified size %zu\n", file_size);
-	    exit(6);
+      if (count > 255){
+        count = 0;
+      }
+      input[i] = count;
+      count++;
     }
-    size_t bytes = fread(input, sizeof(float), input_size, fp);
-    //assert(bytes == input_size * sizeof(float));
-    if(bytes < input_size)
-    {
-	    fprintf(stderr, "Loading fewer bytes, expected %zu\n", file_size);
-	    exit(6);
-    }
-    fclose(fp);
+
+    // //TODO judge file size
+    // size_t file_size = 0;
+    // FILE* fp = fopen(data_path.c_str(), "rb+");
+    // fseek(fp, 0, SEEK_END);
+    // file_size = ftell(fp);
+    // fseek(fp, 0, SEEK_SET);
+    // if(file_size < input_size)
+    // {
+	  //   fprintf(stderr, "Loading input file smaller than specified size %zu\n", file_size);
+	  //   exit(6);
+    // }
+    // size_t bytes = fread(input, sizeof(float), input_size, fp);
+    // //assert(bytes == input_size * sizeof(float));
+    // if(bytes < input_size)
+    // {
+	  //   fprintf(stderr, "Loading fewer bytes, expected %zu\n", file_size);
+	  //   exit(6);
+    // }
+    // fclose(fp);
     for (int i = 0; i < loop; ++i)
     {
 	    timespec tpstart, tpend;
@@ -87,14 +97,14 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 	    if (i > 0)
 		    time += timedif;
     }
-    printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
+    printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
     //PrintBlobData(&forward_net, "fc6", 0);
-
+    PrintBlobData(&forward_net, "conv1", 10);
     //PrintBlobData(&forward_net, "data", 100);
     //printf("------------------------\n");
-    PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
-    printf("------------------------\n");
-    PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
+    // PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
+    // printf("------------------------\n");
+    // PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
     //printf("%f, %f\n", input[0], input[1]);
     //printf("%f, %f\n", input[300], input[301]);
     //printf("%f, %f\n", input[90000], input[90001]);
@@ -114,6 +124,7 @@ int main(int argc, char* argv[])
         size_t num_threads = atoi(argv[4]);
         size_t loop = atoi(argv[3]);
         test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+        printf("Done\n");
     }
     else
     {

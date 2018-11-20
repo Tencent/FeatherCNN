@@ -43,6 +43,7 @@
   /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/map \
   /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/__tree \
   ../../build-android/feather/include/feather/rt_param.h \
+  ../../build-android/feather/include/feather/common.h \
   /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/vector \
   /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/__bit_reference \
   /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/climits \
@@ -158,6 +159,8 @@
 /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/__tree:
 
 ../../build-android/feather/include/feather/rt_param.h:
+
+../../build-android/feather/include/feather/common.h:
 
 /Users/lan/code/android-ndk/android-ndk-r18b/sources/cxx-stl/llvm-libc++/include/vector:
 
