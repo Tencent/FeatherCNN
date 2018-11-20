@@ -48,8 +48,8 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
     printf("++++++Start Loader++++++\n");
-    feather::Net forward_net(num_threads, DeviceType::CPU);
-    forward_net.InitFromPath(model_path.c_str());
+    feather::Net* forward_net = new feather::Net(num_threads, DeviceType::CPU);
+    forward_net->InitFromPath(model_path.c_str());
     //size_t input_size = 224 * 224 * 3 ;
     size_t input_size = 300 * 300 * 3 ;
     float *input = new float[input_size * 20];
@@ -90,7 +90,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     {
 	    timespec tpstart, tpend;
 	    clock_gettime(CLOCK_MONOTONIC, &tpstart);
-	    forward_net.Forward(input);
+	    forward_net->Forward(input);
 	    clock_gettime(CLOCK_MONOTONIC, &tpend);
 	    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
 	    printf("Prediction costs %lfms\n", timedif / 1000.0);
@@ -98,13 +98,13 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 		    time += timedif;
     }
     printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
-    //PrintBlobData(&forward_net, "fc6", 0);
-    PrintBlobData(&forward_net, "conv1", 10);
-    //PrintBlobData(&forward_net, "data", 100);
+    //PrintBlobData(forward_net, "fc6", 0);
+    PrintBlobData(forward_net, "conv1", 10);
+    //PrintBlobData(forward_net, "data", 100);
     //printf("------------------------\n");
-    // PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
+    // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
     // printf("------------------------\n");
-    // PrintBlobData(&forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
+    // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
     //printf("%f, %f\n", input[0], input[1]);
     //printf("%f, %f\n", input[300], input[301]);
     //printf("%f, %f\n", input[90000], input[90001]);
@@ -116,6 +116,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
         delete [] input;
         input = NULL;
     }
+    delete forward_net;
 }
 int main(int argc, char* argv[])
 {
