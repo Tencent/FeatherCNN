@@ -15,6 +15,8 @@
 /*
  * The layer factory modifies from caffe.
  */
+#ifdef FEATHER_OPENCL
+
 #pragma once
 
 #include "layer.h"
@@ -27,12 +29,11 @@ using namespace std;
 
 namespace feather
 {
-template class Layer<float>;
 
 class LayerRegistryCL
 {
     public:
-        typedef Layer<float>* (*Creator)(const LayerParameter *, RuntimeParameter<float> *);
+        typedef Layer<uint16_t>* (*Creator)(const LayerParameter *, RuntimeParameter<float> *);
         typedef std::map<string, Creator> CreatorRegistry;
 
         static CreatorRegistry &Registry()
@@ -49,7 +50,7 @@ class LayerRegistryCL
         }
 
         // Get a layer using a LayerParameter.
-        static Layer<float> *CreateLayer(const LayerParameter *param, RuntimeParameter<float> *rt_param)
+        static Layer<uint16_t> *CreateLayer(const LayerParameter *param, RuntimeParameter<float> *rt_param)
         {
             const string &type = param->type()->str();
             CreatorRegistry &registry = Registry();
@@ -74,14 +75,16 @@ class LayerRegistererCL
 {
     public:
         LayerRegistererCL(const string &type,
-                        Layer<float> * (*creator)(const LayerParameter *, RuntimeParameter<float>*))
+                        Layer<uint16_t> * (*creator)(const LayerParameter *, RuntimeParameter<float>*))
         {
             LayerRegistryCL::AddCreator(type, creator);
         }
 };
 
-void register_layer_creators();
+void register_layer_creators_cl();
 
 #define REGISTER_LAYER_CREATOR_CL(type, creator) \
     static LayerRegistererCL g_creator_f_##type(#type, creator);
 };
+
+#endif

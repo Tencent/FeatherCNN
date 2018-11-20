@@ -21,7 +21,7 @@
 namespace feather
 {
 template<class Dtype>
-Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<Dtype>* rt_param)
+Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<float>* rt_param)
     : _fusible(false),
       _inplace(false),
       rt_param(rt_param),
@@ -266,6 +266,14 @@ int Layer<Dtype>::BuildOpenCLProgram()
         cl_programs.push_back(cur_program);
         cl_program_map[cl_kernel_names[i]] = cur_program;
     }
+
+    std::map<std::string, cl_program>::iterator program_iter = cl_program_map.begin();
+    for(; program_iter != cl_program_map.end(); program_iter++){
+        if(program_iter->second != 0){
+            clReleaseProgram(program_iter->second);
+        }
+    }
+
     return 0;
 }
 
@@ -274,6 +282,31 @@ int Layer<Dtype>::SetKernelParameters()
 {
     //Base layer doesn't know settings.
     return -1;
+}
+
+template<class Dtype>
+int Layer<Dtype>::FineTuneGroupSize(const cl_kernel& kernel, const size_t& height, const size_t& width)
+{
+    //global_work_size HWC
+    //local_work_size  HWC
+    size_t current_work_group_size;
+    if(clGetKernelWorkGroupInfo(kernel, rt_param->device(), CL_KERNEL_WORK_GROUP_SIZE,
+                                sizeof(size_t), &current_work_group_size, NULL)){
+        LOGE("Get kernel work group info failed. %s: %s", __FILE__, __LINE__);
+        return -1;
+    };
+    while(local_work_size[0] * local_work_size[1] * local_work_size[2] > current_work_group_size){
+        if(local_work_size[0] > 1){
+            local_work_size[0] /= 2;
+        } else if(local_work_size[1] > 1){
+            local_work_size[1] /= 2;
+        } else if(local_work_size[2] > 1){
+            local_work_size[2] /= 2;
+        }
+    }
+    this->global_work_size[0] = (height / local_work_size[0] + !!(height % local_work_size[0])) * local_work_size[0];
+    this->global_work_size[1] = (width / local_work_size[1]  + !!(width % local_work_size[1])) * local_work_size[1];
+    return 0;
 }
 
 #endif

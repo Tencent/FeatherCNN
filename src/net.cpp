@@ -16,7 +16,7 @@
 #include "layer_factory.h"
 
 #ifdef FEATHER_OPENCL
-#include "layer_factory_cl.h"
+//#include "layer_factory_cl.h"
 #endif
 
 #include "net.h"
@@ -51,11 +51,13 @@ Net::~Net()
     {
         delete layers[i];
     }
+    LOGI("Layers delated");
     delete rt_param->common_mempool();
-    delete rt_param;
 #ifdef FEATHER_OPENCL
-    ReleaseOpenCLEnv();
+    rt_param->ReleaseOpenCLEnv();
 #endif
+    delete rt_param;
+    LOGI("Destroyed net");
 }
 
 
@@ -486,11 +488,6 @@ int Net::OpenCLProbe()
     }
     rt_param->SetupOpenCLEnv(context, command_queue, device);
     return 0;
-}
-
-int Net::ReleaseOpenCLEnv()
-{
-    fprintf(stderr, "NOT IMPLEMENTED YET");
 }
 
 #endif

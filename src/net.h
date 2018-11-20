@@ -27,7 +27,6 @@ class Net
         ~Net();
 #ifdef FEATHER_OPENCL
         int OpenCLProbe();
-        int ReleaseOpenCLEnv();
 #endif
         void InitFromPath(const char *model_path);
         void InitFromStringPath(std::string model_path);
@@ -37,19 +36,20 @@ class Net
         int  Forward(float* input);
         int  Forward(float* input, int height, int width);
 
-	    int RemoveLayer(Layer<float>* layer);
+	      int RemoveLayer(Layer<float>* layer);
         void TraverseNet();
         int GetBlobDataSize(size_t* data_size, std::string blob_name);
-	    int PrintBlobData(std::string blob_name);
+	      int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);
         std::map<std::string, const Blob<float> *> blob_map;
-#ifdef FEATHER_OPENCL
-        std::map<std::string, const Blob<uint16_t> *> blob_map_cl;
-#endif
+// #ifdef FEATHER_OPENCL
+//         std::map<std::string, const Blob<uint16_t> *> blob_map_cl;
+// #endif
       private:
         std::vector<Layer<float>* > layers;
 #ifdef FEATHER_OPENCL
-        std::vector<Layer<uint16_t> *> layers_cl;
+        // std::vector<Layer<uint16_t>* > layers_cl;
+        std::vector<Layer<float>*> layers_cl;
 #endif
         RuntimeParameter<float> *rt_param;
 };

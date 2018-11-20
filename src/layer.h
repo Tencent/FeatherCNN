@@ -22,7 +22,6 @@
 #endif
 #include <vector>
 #include <map>
-#include <booster/helper.h>
 #include <common.h>
 
 namespace feather
@@ -31,7 +30,7 @@ template<class Dtype>
 class Layer
 {
     public:
-        Layer(const void* layer_param, RuntimeParameter<Dtype>* rt_param);//Layer param must be LayerParameter type
+        Layer(const void* layer_param, RuntimeParameter<float>* rt_param);//Layer param must be LayerParameter type
         ~Layer();
         int SetupBottomBlob(const Blob<Dtype>* p_blob, std::string name);
 
@@ -43,6 +42,8 @@ class Layer
         int BuildOpenCLProgram();
 
         virtual int SetKernelParameters();
+
+        int FineTuneGroupSize(const cl_kernel& kernel, const size_t& height, const size_t& width);
 #endif
 
         virtual int Fuse(Layer* next_layer);
@@ -87,11 +88,11 @@ class Layer
 
         size_t num_threads;
 
-        CommonMemPool<Dtype>    *common_mempool;
+        CommonMemPool<float>    *common_mempool;
 
-        PrivateMemPool<Dtype>   private_mempool;
+        PrivateMemPool<float>   private_mempool;
 
-        RuntimeParameter<Dtype> *rt_param;
+        RuntimeParameter<float> *rt_param;
 
 #ifdef FEATHER_OPENCL
         std::vector<std::string> cl_kernel_names;

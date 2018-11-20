@@ -11,21 +11,21 @@
 //under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
-
 #pragma once
 
 #include "../feather_generated.h"
 #include "../layer.h"
+#include <CL/opencl_kernels.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string>
 #include <map>
 
 namespace feather {
-class InputLayerCL : public Layer<Dtype> {
+class InputLayerCL : public Layer<uint16_t> {
 public:
-  CLInputLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-      : Layer(layer_param, rt_param) {
+  InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+      : Layer<uint16_t>(layer_param, rt_param) {
     //From proto
     const InputParameter *input_param = layer_param->input_param();
     size_t input_num = VectorLength(input_param->name());
@@ -40,75 +40,50 @@ public:
 
       std::string input_name = input_param->name()->Get(i)->str();
       _top.push_back(input_name);
-      _top_blobs[input_name] = new Blob<float>(num, channels, height, width);
+      _top_blobs[input_name] = new Blob<uint16_t>(num, channels, height, width);
 
       //_top_blobs[input_name]->PrintBlobInfo();
       LOGI("input_name cl %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
-      this->InitCl();
+      this->InitCL();
     }
   }
 
-  ~CLInputLayer() {
-    int error_num = clEnqueueUnmapMemObject(this->commandQueue, this->_cl_image, this->_map_data, 0, NULL, NULL);
-    if (!checkSuccess(error_num)) {
-      LOGE("fatal error: Deconstructor Unmapping _cl_image objects failed.");
-    }
-
-    error_num = clEnqueueUnmapMemObject(this->commandQueue, this->_cl_img2d, this->_map_img, 0, NULL, NULL);
+  ~InputLayerCL() {
+    int error_num;
+    error_num = clEnqueueUnmapMemObject(this->rt_param->command_queue(), this->_cl_img2d, this->_map_img, 0, NULL, NULL);
     if (!checkSuccess(error_num)) {
       LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
     }
 
-    error_num = clEnqueueUnmapMemObject(this->commandQueue, this->_cl_fimage, this->_map_fdata, 0, NULL, NULL);
+    error_num = clEnqueueUnmapMemObject(this->rt_param->command_queue(), this->_cl_fimage, this->_map_fdata, 0, NULL, NULL);
     if (!checkSuccess(error_num)) {
       LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
     }
   }
 
-  int Reshape(std::string name, int height, int width) {
-    int num = _top_blobs[name]->num();
-    int channels = _top_blobs[name]->channels();
-    _top_blobs[name]->ReshapeWithRealloc(num, channels, height, width);
-    return 0;
-  }
-
-  int Init() {
-    return 0;
-  }
-
-  int InitCl();
-  int UintToDevice();
-  int FloatToDevice();
+  int InitCL();
+  int UintToDevice(const uint8_t* src_bgra);
+  int FloatToDevice(const float* input_data);
   int RunKernel(int type);
   //int ForwardClImage();
 
-  int build();
+  //int build();
+  virtual int SetKernelParameters();
 
-  int CopyInput(std::string name, float *input_data) {
-    _input_data = input_data;
-    this->FloatToDevice();
+  int CopyInput(std::string name, const float *input_data) {
+    this->FloatToDevice(input_data);
     this->RunKernel(0);
     return 0;
   }
 
   int CopyInput(std::string name, const uint8_t* src_bgra) {
-    _input_image = src_bgra;
-    this->UintToDevice();
+    this->UintToDevice(src_bgra);
     this->RunKernel(1);
-
     return 0;
-  }
-
-  bool IsInputBlob(std::string input_blob_name) {
-    return false;
   }
 
   size_t input_size() {
     return _top_blobs.size();
-  }
-
-  const Blob<float> *input_blob(std::string name) {
-    return _top_blobs[name];
   }
 
   std::string input_name(int idx) {
@@ -119,13 +94,9 @@ public:
     return it->first;
   }
 
-  cl_mem _cl_image;
   cl_mem _cl_img2d;
   cl_mem _cl_fimage;
-  half* _map_data;
   float* _map_fdata;
   uint8_t* _map_img;
-  float* _input_data;
-  const uint8_t* _input_image;
 };
 }; // namespace feather

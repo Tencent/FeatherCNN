@@ -18,6 +18,10 @@
 #include <assert.h>
 #include <stdio.h>
 
+#ifdef FEATHER_OPENCL
+#include <CL/cl.h>
+#endif
+
 namespace feather
 {
 template <class Dtype>
@@ -25,23 +29,39 @@ class Blob
 {
     public:
         Blob()
-            : _num(0), _channels(0), _height(0), _width(0), _data(NULL) {}
+            : _num(0), _channels(0), _height(0), _width(0), _data(NULL)
+#ifdef FEATHER_OPENCL
+            , _data_cl(NULL)
+#endif
+            {}
 
         explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
-            : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+            : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name()
+#ifdef FEATHER_OPENCL
+            , _data_cl(NULL)
+#endif
+            {}
 
 
         explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
-            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name() {}
+            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name()
+#ifdef FEATHER_OPENCL
+            , _data_cl(NULL)
+#endif
+            {}
 
         explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
-            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name) {}
+            : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name)
+#ifdef FEATHER_OPENCL
+            , _data_cl(NULL)
+#endif
+            {}
 
         ~Blob()
         {
             Free();
         }
-        
+
         void Free();
         void Alloc();
 
@@ -111,13 +131,52 @@ class Blob
             printf("----------------\n");
         }
 
+#ifdef FEATHER_OPENCL
+        cl_mem data_cl() const
+        {
+            return _data_cl;
+        }
+        size_t channel_grp() const
+        {
+            return _channel_grp;
+        }
+        size_t get_channels_padding() const
+        {
+            return (_channels / _channel_grp + !!(_channels % _channel_grp)) * _channel_grp;
+        }
+        size_t get_num_padding() const
+        {
+            return (_num / _num_grp + !!(_num % _num_grp)) * _num_grp;
+        }
+        size_t data_size_padded_c() const
+        {
+            return _num * get_channels_padding() * _height * _width;
+        }
+        size_t data_size_padded_nc() const
+        {
+            return get_num_padding() * get_channels_padding() * _height * _width;
+        }
+        int AllocDevice(cl_context context, size_t data_size);
+        int FreeDevice();
+
+        int WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size);
+        int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size);
+
+#endif
+
     private:
         Dtype* _data;
-        
+
+#ifdef FEATHER_OPENCL
+        /* Image2D in the near future */
+        cl_mem _data_cl;
+#endif
         size_t _num;
         size_t _channels;
         size_t _height;
         size_t _width;
+        size_t _channel_grp = 4;
+        size_t _num_grp = 4;
 
         std::string _name;
 };

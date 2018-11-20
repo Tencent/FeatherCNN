@@ -19,6 +19,7 @@
 #pragma once
 
 #include "mempool.h"
+#include "common.h"
 
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
@@ -61,6 +62,24 @@ class RuntimeParameter
           _context = context;
           _command_queue = command_queue;
           _device = device;
+          return 0;
+      }
+
+      int ReleaseOpenCLEnv()
+      {
+          if (!checkSuccess(clFinish(_command_queue))){
+            LOGE("Failed waiting for command queue run. ");
+            return -1;
+          }
+
+          if(_context != 0){
+              clReleaseContext(_context);
+          }
+
+          if (_command_queue != 0){
+              clReleaseCommandQueue(_command_queue);
+          }
+          return 0;
       }
 #endif
 
@@ -83,7 +102,7 @@ class RuntimeParameter
         {
             return _context;
         }
-        cl_command_queue commandQueue() const
+        cl_command_queue command_queue() const
         {
             return _command_queue;
         }

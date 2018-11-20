@@ -7,7 +7,7 @@
 #include <CL/cl.h>
 #include <CL/cl_gl.h>
 #include <EGL/egl.h>
-#include "arm/helper.h"
+#include <booster/helper.h>
 
 
 typedef void (*f_pfn_notify)(const char *, const void *, size_t, void *);

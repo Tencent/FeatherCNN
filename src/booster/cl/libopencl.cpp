@@ -9,7 +9,7 @@
  *   If none of these are set, default system paths will be considered
 **/
 
-#include "libopencl.h"
+#include <CL/libopencl.h>
 
 #include <iostream>
 #include "common.h"

@@ -118,7 +118,98 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     }
 }
 
+#ifdef FEATHER_OPENCL
+
+template<class Dtype>
+int Blob<Dtype>::WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size)
+{
+    int error_num;
+    /* Image2D in the near future */
+    Dtype* data_mapped = (Dtype* )clEnqueueMapBuffer(queue, _data_cl,
+                                            CL_TRUE, CL_MAP_WRITE, 0,
+                                            data_size * sizeof(Dtype),
+                                            0, NULL, NULL, &error_num);
+
+    if (!checkSuccess(error_num))
+    {
+      LOGE("fatal error: WriteBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
+      return 1;
+    }
+
+    memcpy(data_mapped, data, data_size * sizeof(Dtype));
+
+    error_num = clEnqueueUnmapMemObject(queue, _data_cl, data_mapped, 0, NULL, NULL);
+    if (!checkSuccess(error_num)){
+      LOGE("fatal error: WriteBuffer Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
+      return 1;
+    }
+    return 0;
+
+}
+
+template<class Dtype>
+int Blob<Dtype>::ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size)
+{
+    int error_num;
+
+    Dtype* data_mapped = (Dtype* )clEnqueueMapBuffer(queue, _data_cl,
+                                                  CL_TRUE, CL_MAP_READ,
+                                                  0, data_size * sizeof(Dtype), 0, NULL,
+                                                  NULL, &error_num);
+    if (!checkSuccess(error_num)){
+      LOGE("fatal error: ReadBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
+      return 1;
+    }
+
+    memcpy(data, data_mapped, data_size * sizeof(Dtype));
+
+    error_num = clEnqueueUnmapMemObject(queue, _data_cl, data_mapped, 0,  NULL, NULL);
+
+    if (!checkSuccess(error_num)){
+      LOGE("fatal error: ReadBuffer Unmapping memory objects failed. %s:  %s", __FILE__, __LINE__);
+      return 1;
+    }
+    return 0;
+}
+
+template<class Dtype>
+int Blob<Dtype>::AllocDevice(cl_context context, size_t data_size)
+{
+    if (!this->_data_cl)
+    {
+        int error_num;
+        /* Image2D in the near future */
+        _data_cl = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, data_size * sizeof(Dtype), NULL, &error_num);
+
+        if (!checkSuccess(error_num))
+        {
+            LOGE("Failed to create OpenCL buffers[%d]. %s: %s", error_num, __FILE__, __LINE__);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+template<class Dtype>
+int Blob<Dtype>::FreeDevice()
+{
+    int error_num;
+    if (this->_data_cl){
+        error_num = clReleaseMemObject(_data_cl);
+        if (!checkSuccess(error_num))
+        {
+            LOGE("Failed to release mem object. %s: %s", __FILE__, __LINE__);
+            return 1;
+        }
+        _data_cl = NULL;
+    }
+    return 0;
+}
+#endif
+
+
+
 template class Blob<float>;
-template class Blob<short>;
+template class Blob<uint16_t>;
 template class Blob<char>;
 };

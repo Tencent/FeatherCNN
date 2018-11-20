@@ -12,6 +12,8 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
+#ifdef FEATHER_OPENCL
+
 #include <stdio.h>
 
 #include "feather_generated.h"
@@ -20,18 +22,20 @@
 
 #include "layer.h"
 // #include "layers_cl/input_layer.h"
-//#include "layers_cl/input_layer_cl.h"
+//#include <layers_cl/input_layer_cl.h>
 
 
 namespace feather
 {
-Layer<float> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<uint16_t> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    // return (Layer<float> *)new InputLayer(layer_param, rt_param);
+    //return (Layer<uint16_t> *)new InputLayerCL(layer_param, rt_param);
 }
 
-void register_layer_creators()
+void register_layer_creators_cl()
 {
-    REGISTER_LAYER_CREATOR_CL(Input, GetInputLayerCL);
+    //REGISTER_LAYER_CREATOR_CL(Input, GetInputLayerCL);
 }
 };
+
+#endif
