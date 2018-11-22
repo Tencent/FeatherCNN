@@ -259,14 +259,20 @@ int Layer<Dtype>::BuildOpenCLProgram()
         }
 
         cl_program cur_program;
-        if (buildProgramFromSource(rt_param->context(), rt_param->device(), cur_program, cl_kernel_symbols[i])){
+        std::string opt_str = "";
+        for (auto &opt : this->build_options) {
+          opt_str += " " + opt;
+        }
+        if (buildProgramFromSource(this->rt_param->context(), this->rt_param->device(), cur_program, this->cl_kernel_symbols[i], opt_str)){
             LOGE("Build program from source failed.");
             return -1;
         }
+
         cl_programs.push_back(cur_program);
         cl_program_map[cl_kernel_names[i]] = cur_program;
-    }
 
+
+    }
     std::map<std::string, cl_program>::iterator program_iter = cl_program_map.begin();
     for(; program_iter != cl_program_map.end(); program_iter++){
         if(program_iter->second != 0){

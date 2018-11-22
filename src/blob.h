@@ -161,7 +161,6 @@ class Blob
 
         int WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size);
         int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size);
-
 #endif
 
     private:

@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string>
 #include <map>
+#include <sstream>
 
 namespace feather {
 class InputLayerCL : public Layer<uint16_t> {

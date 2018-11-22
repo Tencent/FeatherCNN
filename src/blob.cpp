@@ -104,13 +104,23 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     {
         this->Alloc();
         for (int i = 0; i < data_length; ++i)
-	{
-		if(use_fp16_data){
-			this->_data[i] = fp16_ieee_to_fp32_value(proto->data_fp16()->Get(i));
-		}
-		else
-			this->_data[i] = proto->data()->Get(i);
-	}
+        {
+            if (use_fp16_data)
+            {
+                if (std::is_same<Dtype, uint16_t>::value)
+                {
+                    this->_data[i] = proto->data_fp16()->Get(i);
+                }
+                else
+                {
+                    this->_data[i] = fp16_ieee_to_fp32_value(proto->data_fp16()->Get(i));
+                }
+            }
+            else
+            {
+              this->_data[i] = proto->data()->Get(i);
+            }
+        }
     }
     else
     {

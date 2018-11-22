@@ -212,18 +212,18 @@ inline bool checkSuccess(cl_int error_num)
     return true;
 }
 
-
 int buildProgramFromSource(const cl_context& context, const cl_device_id& device, cl_program& program,
-                            const string& kernelCode){
+                            const string& kernel_code, string build_opts){
     int error_num;
-    program = clCreateProgramWithSource(context, 1, (const char **) & kernelCode, NULL, &error_num);
-
+    const char* kernel_cstr = kernel_code.c_str();
+    program = clCreateProgramWithSource(context, 1, (const char **) & kernel_cstr, NULL, &error_num);
     if (error_num){
         LOGE("error code in create program with source is: %d", error_num);
         return 1;
     }
 
-    error_num = clBuildProgram(program, 0, NULL, "-cl-mad-enable -cl-fast-relaxed-math", NULL, NULL);
+    build_opts += " -cl-mad-enable -cl-fast-relaxed-math";
+    error_num = clBuildProgram(program, 0, NULL, build_opts.c_str(), NULL, NULL);
     if (error_num){
         char *buff_erro;
         cl_int errcode;
@@ -253,4 +253,48 @@ int buildProgramFromSource(const cl_context& context, const cl_device_id& device
     }
     return 0;
 }
+
+// int buildProgramFromSource(const cl_context& context, const cl_device_id& device, cl_program& program,
+//                             const string& kernelCode){
+//     LOGE("ENTER in 1");
+//     int error_num;
+//     LOGE("ENTER in 1.1");
+//     program = clCreateProgramWithSource(context, 1, (const char **) & kernelCode, NULL, &error_num);
+//     LOGE("ENTER in 2");
+//     if (error_num){
+//         LOGE("error code in create program with source is: %d", error_num);
+//         return 1;
+//     }
+//
+//
+//     error_num = clBuildProgram(program, 0, NULL, "-cl-mad-enable -cl-fast-relaxed-math", NULL, NULL);
+//     if (error_num){
+//         char *buff_erro;
+//         cl_int errcode;
+//         size_t build_log_len;
+//         errcode = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_len);
+//         if (errcode) {
+//             LOGE("clGetProgramBuildInfo failed at line: %d", __LINE__);
+//             return -1;
+//         }
+//
+//         buff_erro = (char *)malloc(build_log_len);
+//         if (!buff_erro) {
+//             LOGE("malloc failed at line: %d",__LINE__);
+//             return -1;
+//         }
+//
+//         errcode = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, build_log_len, buff_erro, NULL);
+//         if (errcode) {
+//             LOGE("clGetProgramBuildInfo failed at line: %d", __LINE__);
+//             return -1;
+//         }
+//
+//         LOGE("Build log: %s" ,buff_erro); //Be careful with  the fprint
+//         free(buff_erro);
+//         LOGE("clBuildProgram failed %d", error_num);
+//         return -1;
+//     }
+//     return 0;
+// }
 #endif

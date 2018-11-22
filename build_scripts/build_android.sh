@@ -28,7 +28,7 @@ mkdir -p booster
 pushd feather
 mkdir -p include
 mkdir -p include/feather
-cp ../arm64-v8a/install/feather/include/* ./include/feather/
+cp -r ../arm64-v8a/install/feather/include/* ./include/feather/
 mkdir -p arm64-v8a
 cp ../arm64-v8a/install/feather/lib/* ./arm64-v8a/
 mkdir -p armeabi-v7a

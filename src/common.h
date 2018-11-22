@@ -69,5 +69,5 @@ std::string errorNumberToString(cl_int errorNumber);
 bool checkSuccess(cl_int errorNumber);
 
 int buildProgramFromSource(const cl_context& context, const cl_device_id& device, cl_program& program,
-                            const std::string& kernelCode);
+                            const std::string& kernel_code, std::string build_opts);
 #endif

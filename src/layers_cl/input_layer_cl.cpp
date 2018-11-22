@@ -13,6 +13,16 @@ int InputLayerCL::InitCL()
     auto it_source2 = booster::opencl_kernel_string_map.find("inputImage");
     std::string kernel_str2(it_source2->second.begin(),it_source2->second.end());
 
+    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+    size_t channels = layer_blob->channels();
+    if (channels < 1 || channels > 4) {
+        LOGE("unsupported channel size: %d", channels);
+        return -1;
+    }
+    std::ostringstream ss;
+    ss << channels;
+    this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
+
 
     this->cl_kernel_functions.push_back(func_name1);
     this->cl_kernel_functions.push_back(func_name2);

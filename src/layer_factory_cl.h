@@ -60,7 +60,7 @@ class LayerRegistryCL
             }
             else
             {
-                fprintf(stderr, "Layer type %s not registered\n", type.c_str());
+                fprintf(stderr, "cl Layer type %s not registered\n", type.c_str());
                 return NULL;
             }
         }

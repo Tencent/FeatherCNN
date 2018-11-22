@@ -14,11 +14,11 @@
 
 #include "feather_generated.h"
 #include "layer_factory.h"
-
+//
 #ifdef FEATHER_OPENCL
-//#include "layer_factory_cl.h"
+#include "layer_factory_cl.h"
 #endif
-
+// #include <CL/cl.h>
 #include "net.h"
 #include "layer.h"
 #include "layers/input_layer.h"
@@ -30,18 +30,23 @@
 #include <cstring>
 
 //#define LAYER_TIMING
-//#define PRINT_SETUP_LOG
+#define PRINT_SETUP_LOG
 
 namespace feather
 {
+
 Net::Net(size_t num_threads, DeviceType device_type)
 {
+#ifdef  FEATHER_OPENCL
+    register_layer_creators_cl();
+#endif
     register_layer_creators();
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
     rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
 #ifdef FEATHER_OPENCL
     OpenCLProbe();
 #endif
+
 }
 
 
@@ -51,18 +56,28 @@ Net::~Net()
     {
         delete layers[i];
     }
-    LOGI("Layers delated");
+    for(auto const& iter: blob_map)
+    {
+        delete iter.second;
+    }
     delete rt_param->common_mempool();
 #ifdef FEATHER_OPENCL
+    for(int i = 0; i < layers_cl.size(); ++i)
+    {
+        delete layers_cl[i];
+    }
+    for(auto const& iter: blob_map_cl)
+    {
+        delete iter.second;
+    }
     rt_param->ReleaseOpenCLEnv();
 #endif
+
     delete rt_param;
-    LOGI("Destroyed net");
+
 }
 
-
-
-
+//
 int Net::ExtractBlob(float* output_ptr, std::string name)
 {
     if (blob_map.find(std::string(name)) == blob_map.end())
@@ -113,6 +128,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 
 int Net::Forward(float *input)
 {
+
     InputLayer *input_layer = (InputLayer *)layers[0];
     for (int i = 0; i < input_layer->input_size(); ++i)
     {
@@ -219,7 +235,27 @@ void Net::InitFromFile(FILE* fp)
         exit(-1);
     }
     LOGD("Finished loading from file");
-    this->InitFromBuffer(net_buffer);
+    //this->InitFromBuffer(net_buffer);
+
+    switch (rt_param->device_type())
+    {
+        case DeviceType::CPU:
+          this->InitFromBuffer(net_buffer);
+          break;
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+          this->InitFromBufferCL(net_buffer);
+#else
+          LOGE("Please compile OpenCL to use device type GPU_CL.");
+#endif
+          break;
+        case DeviceType::GPU_GL:
+          LOGE("Not implemented yet.");
+          break;
+        default:
+          LOGE("Have not supported yet.");
+          break;
+    }
     free(net_buffer);
 }
 
@@ -278,19 +314,22 @@ bool Net::InitFromBuffer(const void *net_buffer)
             break;
         }
     }
+
     for (int i = 1; i < layer_num; ++i)
     {
         const LayerParameter *layer_param = net_param->layer()->Get(i);
         Layer<float> *new_layer = LayerRegistry::CreateLayer(layer_param, rt_param);
+        layers.push_back(new_layer);
 #ifdef PRINT_SETUP_LOG
         LOGD("Setup layer %d %s\n", i, layer_param->name()->c_str());
 #endif
-        layers.push_back(new_layer);
     }
 
 #ifdef PRINT_SETUP_LOG
         LOGD("Layer setup finish");
 #endif
+
+
     //Generate top blobs, will check the dependency.
     for (int i = 0; i < layers.size(); ++i)
     {
@@ -310,7 +349,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
                 else
                 {
                     LOGE("Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
-                    exit(-1);
+                    return false;
                 }
             }
             layers[i]->GenerateTopBlobs();
@@ -396,23 +435,7 @@ bool Net::InitFromBuffer(const void *net_buffer)
             blob_map[blob_name]->PrintBlobInfo();
 #endif
         }
-        switch(rt_param->device_type())
-        {
-            case CPU:
-                layers[i]->Init();
-                break;
-            case GPU_CL:
-#ifdef FEATHER_OPENCL
-                if (layers[i]->BuildOpenCLProgram())
-                {
-                    LOGE("Build layer programs failed");
-                    return -1;
-                }
-#endif
-                break;
-            case GPU_GL:
-                break;
-        }
+        layers[i]->Init();
     }
 
     //Allocate for common mempool.
@@ -422,9 +445,200 @@ bool Net::InitFromBuffer(const void *net_buffer)
 
 #ifdef FEATHER_OPENCL
 
+int Net::RemoveLayer(Layer<uint16_t>* target_layer)
+{
+	if(target_layer->bottom_size() != 1 || target_layer->top_size() != 1)
+	{
+		LOGE("Cannot remove target layer %s type %s with mutliple input/outputs!", target_layer->name().c_str(), target_layer->type().c_str());
+		return -1;
+	}
+
+	std::string new_bottom = target_layer->bottom(0);
+	std::string old_bottom = target_layer->top(0);
+#ifdef PRINT_SETUP_LOG
+                LOGD("Old bottom %s to new bottom %s", old_bottom.c_str(), new_bottom.c_str());
+#endif
+	const Blob<uint16_t> * new_bottom_blob = target_layer->bottom_blob(0);
+
+	for(int i = 0; i < layers_cl.size(); ++i)
+	{
+		if(layers_cl[i] == target_layer)
+		{
+			layers_cl.erase(layers_cl.begin() + i);
+			--i;
+			continue;
+		}
+		Layer<uint16_t> *next_layer = layers_cl[i];
+		for(int b = 0; b < next_layer->bottom_size(); ++b)
+		{
+			if (next_layer->bottom(b).compare(old_bottom) == 0)
+			{
+				next_layer->ReplaceBottomBlob(old_bottom, new_bottom, new_bottom_blob);
+				break;
+			}
+		}
+	}
+	delete target_layer;
+	return 0;
+}
+
+bool Net::InitFromBufferCL(const void *net_buffer)
+{
+    //rt_param in the param list just to distinguish.
+    const NetParameter *net_param = feather::GetNetParameter(net_buffer);
+    size_t layer_num = VectorLength(net_param->layer());
+    //Find input layer.
+#ifdef PRINT_SETUP_LOG
+    LOGD("Loading %d layers", layer_num);
+#endif
+    for (int i = 0; i < layer_num; ++i)
+    {
+        if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)
+        {
+            layers_cl.push_back(LayerRegistryCL::CreateLayer(net_param->layer()->Get(i), rt_param));
+            break;
+        }
+    }
+
+    for (int i = 1; i < layer_num; ++i)
+    {
+        const LayerParameter *layer_param = net_param->layer()->Get(i);
+        Layer<uint16_t> *new_layer = LayerRegistryCL::CreateLayer(layer_param, rt_param);
+        layers_cl.push_back(new_layer);
+#ifdef PRINT_SETUP_LOG
+        LOGD("Setup cl layer %d %s\n", i, layer_param->name()->c_str());
+#endif
+    }
+
+#ifdef PRINT_SETUP_LOG
+        LOGD("cl layer setup finish");
+#endif
+
+
+    //Generate top blobs, will check the dependency.
+    for (int i = 0; i < layers_cl.size(); ++i)
+    {
+        size_t top_num = layers_cl[i]->top_size();
+        size_t top_blob_num = layers_cl[i]->top_blob_size();
+        if (top_blob_num == 0)
+        {
+            for (int b = 0; b < layers_cl[i]->bottom_size(); ++b)
+            {
+                std::string blob_name = layers_cl[i]->bottom(b);
+#ifdef PRINT_SETUP_LOG
+                LOGI("Setting up blob %s", blob_name.c_str());
+#endif
+                //TODO handle error: when blob_name has not been inserted into map.
+                if (blob_map_cl.find(blob_name) != blob_map_cl.end())
+                    layers_cl[i]->SetupBottomBlob(blob_map_cl[blob_name], blob_name);
+                else
+                {
+                    LOGE("Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
+                    return false;
+                }
+            }
+
+            layers_cl[i]->GenerateTopBlobs();
+
+        }
+        for (int t = 0; t < top_num; ++t)
+        {
+            std::string blob_name = layers_cl[i]->top(t);
+            blob_map_cl[blob_name] = layers_cl[i]->top_blob(blob_name);
+            //blob_map[blob_name]->PrintBlobInfo();
+        }
+    }
+
+    //Try to fuse some layers together
+    for (int i = 1; i < layers_cl.size() - 1; ++i)
+    {
+        if (!layers_cl[i]->fusible())
+            continue;
+        for (int j = i + 1; j < layers_cl.size(); ++j)
+        {
+            Layer<uint16_t> *next_layer = layers_cl[j];
+            while (layers_cl[i]->TryFuse(next_layer) == 1)
+            {
+#if 0
+                //Update the respective bottoms in other layers.
+                std::string new_bottom = layers_cl[i]->top(0);
+                std::string old_bottom = next_layer->top(0);
+#ifdef PRINT_SETUP_LOG
+                LOGD("Old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
+#endif
+                for (int k = i + 1; k < layers_cl.size(); ++k)
+                {
+                    if (k == j)
+                        continue;
+
+                    for (int b = 0; b < layers_cl[k]->bottom_size(); ++b)
+                    {
+                        if (layers_cl[k]->bottom(b).compare(old_bottom) == 0)
+                            layers_cl[k]->ReplaceBottomBlob(old_bottom, new_bottom, layers_cl[i]->top_blob(0));
+                    }
+                }
+                delete layers_cl[j];
+                layers_cl.erase(layers_cl.begin() + j);
+#else
+                this->RemoveLayer(layers_cl[j]);
+#endif
+#ifdef PRINT_SETUP_LOG
+                LOGD("Erased layer %d %s\n", j, next_layer->name().c_str());
+#endif
+                next_layer = layers_cl[j];
+#ifdef PRINT_SETUP_LOG
+                LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
+#endif
+            }
+        }
+    }
+    //Remove Dropout Layers
+    for (int i = 0; i < layers_cl.size() - 1; ++i)
+    {
+	    if(layers_cl[i]->type().compare("Dropout") == 0)
+	    {
+
+#ifdef PRINT_SETUP_LOG
+                LOGD("Erase layer %d %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
+#endif
+		this->RemoveLayer(layers_cl[i]);
+#ifdef PRINT_SETUP_LOG
+                LOGD("Layer %d after erasing: %s type %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
+#endif
+		--i;
+	    }
+    }
+
+    //Rebuild blob map
+    blob_map_cl.clear();
+    for (int i = 0; i < layers_cl.size(); ++i)
+    {
+      for (int t = 0; t < layers_cl[i]->top_size(); ++t)
+      {
+        std::string blob_name = layers_cl[i]->top(t);
+        blob_map_cl[blob_name] = layers_cl[i]->top_blob(blob_name);
+#ifdef PRINT_SETUP_LOG
+	    LOGI("Blob %s", blob_name.c_str());
+            blob_map_cl[blob_name]->PrintBlobInfo();
+#endif
+      }
+
+      if (layers_cl[i]->BuildOpenCLProgram())
+      {
+          LOGE("Build layer programs failed");
+          return false;
+      }
+
+    }
+
+//     //Allocate for common mempool.
+    rt_param->common_mempool()->Alloc();
+    return true;
+}
 
 int Net::OpenCLProbe()
 {
+
     cl_command_queue command_queue;
     cl_context context;
     cl_device_id device;
@@ -476,11 +690,13 @@ int Net::OpenCLProbe()
     }
 
     context = clCreateContext(NULL, 1, &device, NULL, NULL, &error_num);
-
     if (error_num) {
         LOGE("failed to clCreateContext: %d", error_num);
         return -1;
     }
+    std::string kernelCode = "";
+    clCreateProgramWithSource(context, 1, (const char **) & kernelCode, NULL, &error_num);
+    // clCreateProgramWithSource(context, 1, tmp.data(), NULL, &error_num);
 
     if (!createCommandQueue(context, &command_queue, &device)){
         LOGE("failed to createCommandQueue");
@@ -489,6 +705,7 @@ int Net::OpenCLProbe()
     rt_param->SetupOpenCLEnv(context, command_queue, device);
     return 0;
 }
+
 
 #endif
 

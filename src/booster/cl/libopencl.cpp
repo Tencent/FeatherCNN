@@ -10,9 +10,9 @@
 **/
 
 #include <CL/libopencl.h>
-
+//#include "libopencl.h"
 #include <iostream>
-#include "common.h"
+// #include "common.h"
 using namespace std;
 
 #if defined(__APPLE__) || defined(__MACOSX)
@@ -631,12 +631,13 @@ clCreateProgramWithSource(cl_context        context,
                           cl_int *          errcode_ret)
 {
   f_clCreateProgramWithSource func;
-
   if(!so_handle)
     open_libopencl_so();
 
   func = (f_clCreateProgramWithSource) dlsym(so_handle, "clCreateProgramWithSource");
+
   if(func) {
+    // LOGI("BAD");
     return func(context, count, strings, lengths, errcode_ret);
   } else {
     return NULL;
