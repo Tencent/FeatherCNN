@@ -24,18 +24,24 @@
 // #include "layers_cl/input_layer.h"
 #include <layers_cl/input_layer_cl.h>
 #include <layers_cl/direct_conv_buffer_layer_cl.h>
+#include <layers_cl/elewise_layer_cl.h>
 
 
 namespace feather
 {
 Layer<uint16_t> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *)new InputLayerCL(layer_param, rt_param);
+    return (Layer<uint16_t> *) new InputLayerCL(layer_param, rt_param);
 }
 
 Layer<uint16_t> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
     return (Layer<uint16_t> *) new DirectConvBufferLayer(layer_param, rt_param);
+}
+
+Layer<uint16_t> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<uint16_t> *) new EltwiseLayerCL(layer_param, rt_param);
 }
 
 void register_layer_creators_cl()
