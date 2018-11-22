@@ -130,6 +130,7 @@ public:
                         ( i % n_grp_size ) * c_grp_size +
                         k % c_grp_size;
           weight_padding[dst_idx] = kernel_data[src_idx];
+          //printf("%f, ", hs_halfToFloat(weight_padding[dst_idx]));
         }
       }
     }
@@ -209,13 +210,13 @@ public:
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
     if(group <=0)	group = 1;
-    // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
-    // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
-    // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
-    // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
-    // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
-    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", globalWorkSize[0], globalWorkSize[1], globalWorkSize[2]);
+    LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
+    LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
+    LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
+    LOGI("input (GPU_CL) %dx%d", input_height, input_width);
+    LOGI("output (GPU_CL) %dx%d", output_height, output_width);
+    LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
+    LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
     int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel. %d", error_num);

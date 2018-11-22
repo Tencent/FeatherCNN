@@ -25,50 +25,49 @@ using namespace std;
 using namespace feather;
 
 //
-// void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
-// {
-//     size_t data_size;
-//     forward_net->GetBlobDataSize(&data_size, blob_name);
-//     float *arr = (float*) malloc(sizeof(float) * data_size);
-//     forward_net->ExtractBlob(arr, blob_name);
-//     size_t len = 0;
-//     if (n <= 0)
-//         len = data_size;
-//     else
-//         len = n;
-//
-//     for (int i = 0; i < len; ++i)
-//     {
-//         printf("%f\n", arr[i]);
-//     }
-//     free(arr);
-// }
+void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
+{
+    size_t data_size;
+    forward_net->GetBlobDataSize(&data_size, blob_name);
+    float *arr = (float*) malloc(sizeof(float) * data_size);
+    forward_net->ExtractBlob(arr, blob_name);
+    size_t len = 0;
+    if (n <= 0)
+        len = data_size;
+    else
+        len = n;
+
+    for (int i = 0; i < len; ++i)
+    {
+        printf("%f\n", arr[i]);
+    }
+    free(arr);
+}
 
 void test(std::string model_path, std::string data_path, int loop, int num_threads)
 {
     printf("++++++Start Loader++++++\n");
 
-    feather::Net forward_net(num_threads, DeviceType::GPU_CL);
+    feather::Net forward_net(num_threads, DeviceType::CPU );
     //forward_net.test_opencl();
     // printf("done initialization\n");
     forward_net.InitFromPath(model_path.c_str());
 
     //size_t input_size = 224 * 224 * 3 ;
-    // size_t input_size = 300 * 300 * 3 ;
-    // float *input = new float[input_size * 20];
-    //
-    // size_t count = 0;
-    // double time = 0;
-    //
-    //
-    // for(int i = 0; i < input_size; i++)
-    // {
-    //   if (count > 255){
-    //     count = 0;
-    //   }
-    //   input[i] = count;
-    //   count++;
-    // }
+    size_t input_size = 300 * 300 * 3 ;
+    float *input = new float[input_size * 20];
+
+    size_t count = 0;
+    double time = 0;
+
+    for(int i = 0; i < input_size; i++)
+    {
+      if (count > 255){
+        count = 0;
+      }
+      input[i] = count;
+      count++;
+    }
     //
     // // //TODO judge file size
     // // size_t file_size = 0;
@@ -89,20 +88,22 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 	  // //   exit(6);
     // // }
     // // fclose(fp);
-    // for (int i = 0; i < loop; ++i)
-    // {
-	  //   timespec tpstart, tpend;
-	  //   clock_gettime(CLOCK_MONOTONIC, &tpstart);
-	  //   forward_net->Forward(input);
-	  //   clock_gettime(CLOCK_MONOTONIC, &tpend);
-	  //   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-	  //   printf("Prediction costs %lfms\n", timedif / 1000.0);
-	  //   if (i > 0)
-		//     time += timedif;
-    // }
-    // printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
+    printf("forward begin\n");
+    for (int i = 0; i < loop; ++i)
+    {
+
+	    timespec tpstart, tpend;
+	    clock_gettime(CLOCK_MONOTONIC, &tpstart);
+	    forward_net.Forward(input);
+	    clock_gettime(CLOCK_MONOTONIC, &tpend);
+	    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+	    printf("Prediction costs %lfms\n", timedif / 1000.0);
+	    if (i > 0)
+		    time += timedif;
+    }
+    printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
     // //PrintBlobData(forward_net, "fc6", 0);
-    // PrintBlobData(forward_net, "conv1", 10);
+    PrintBlobData(&forward_net, "conv1", 10);
     // //PrintBlobData(forward_net, "data", 100);
     // //printf("------------------------\n");
     // // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);

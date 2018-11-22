@@ -17,6 +17,7 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
+#include <CL/half.h>
 
 #ifdef FEATHER_OPENCL
 #include <CL/cl.h>
@@ -160,7 +161,8 @@ class Blob
         int FreeDevice();
 
         int WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size);
-        int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size);
+        int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size) const;
+        int ReadFromDeviceCHW(cl_command_queue queue, float* data) const;
 #endif
 
     private:

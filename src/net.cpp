@@ -17,11 +17,13 @@
 //
 #ifdef FEATHER_OPENCL
 #include "layer_factory_cl.h"
+#include "layers_cl/input_layer_cl.h"
 #endif
 // #include <CL/cl.h>
 #include "net.h"
 #include "layer.h"
 #include "layers/input_layer.h"
+
 #include "mempool.h"
 
 #include "booster/helper.h"
@@ -80,16 +82,52 @@ Net::~Net()
 //
 int Net::ExtractBlob(float* output_ptr, std::string name)
 {
-    if (blob_map.find(std::string(name)) == blob_map.end())
-    {
-        LOGE("Cannot find blob %s\n", name.c_str());
-        return -1;
-    }
-    const Blob<float> *p_blob = blob_map[name];
-    const size_t data_size = p_blob->data_size();
-    const float *data = p_blob->data();
 
-    memcpy(output_ptr, data, sizeof(float) * data_size);
+
+    switch(rt_param->device_type())
+    {
+        case DeviceType::CPU:
+        {
+            if (blob_map.find(std::string(name)) == blob_map.end())
+            {
+                LOGE("Cannot find blob %s\n", name.c_str());
+                return -1;
+            }
+            const Blob<float> *p_blob = blob_map[name];
+            const size_t data_size = p_blob->data_size();
+            const float *data = p_blob->data();
+            memcpy(output_ptr, data, sizeof(float) * data_size);
+            break;
+        }
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+        {
+            if (blob_map_cl.find(std::string(name)) == blob_map_cl.end())
+            {
+                LOGE("Cannot find blob %s\n", name.c_str());
+                return -1;
+            }
+            const Blob<uint16_t> *p_blob = blob_map_cl[name];
+            p_blob->ReadFromDeviceCHW(rt_param->command_queue(), output_ptr);
+            break;
+        }
+#else
+            LOGE("Please compile OpenCL to use device type GPU_CL.");
+            return -1;
+#endif
+        case DeviceType::GPU_GL:
+            LOGE("Not Implemented yet");
+            return -1;
+        default:
+            LOGE("Unsupported device type");
+            return -1;
+    }
+
+    // const Blob<float> *p_blob = blob_map[name];
+    // const size_t data_size = p_blob->data_size();
+    // const float *data = p_blob->data();
+    //
+    // memcpy(output_ptr, data, sizeof(float) * data_size);
     return 0;
 }
 
@@ -115,13 +153,48 @@ int Net::PrintBlobData(std::string blob_name)
 
 int Net::GetBlobDataSize(size_t *data_size, std::string name)
 {
-    if (blob_map.find(std::string(name)) == blob_map.end())
+
+
+    switch(rt_param->device_type())
     {
-        LOGE("Cannot find blob %s\n", name.c_str());
-        return -1;
+        case DeviceType::CPU:
+        {
+            if (blob_map.find(std::string(name)) == blob_map.end())
+            {
+                LOGE("Cannot find blob %s\n", name.c_str());
+                return -1;
+            }
+            const Blob<float> *p_blob = blob_map[name];
+            *data_size = p_blob->data_size();
+            break;
+        }
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+        {
+            if (blob_map_cl.find(std::string(name)) == blob_map_cl.end())
+            {
+                LOGE("Cannot find blob %s\n", name.c_str());
+                return -1;
+            }
+            const Blob<uint16_t> *p_blob = blob_map_cl[name];
+            *data_size = p_blob->data_size();
+            break;
+        }
+#else
+            LOGE("Please compile OpenCL to use device type GPU_CL.");
+            return -1;
+#endif
+        case DeviceType::GPU_GL:
+            LOGE("Not Implemented yet");
+            return -1;
+        default:
+            LOGE("Unsupported device type");
+            return -1;
     }
-    const Blob<float> *p_blob = blob_map[name];
-    *data_size = p_blob->data_size();
+
+
+    // const Blob<float> *p_blob = blob_map[name];
+    // *data_size = p_blob->data_size();
     return 0;
 }
 
@@ -129,13 +202,53 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 int Net::Forward(float *input)
 {
 
-    InputLayer *input_layer = (InputLayer *)layers[0];
-    for (int i = 0; i < input_layer->input_size(); ++i)
-    {
-        input_layer->CopyInput(input_layer->input_name(i), input);
+    // InputLayer *input_layer = (InputLayer *)layers[0];
+    // for (int i = 0; i < input_layer->input_size(); ++i)
+    // {
+    //     input_layer->CopyInput(input_layer->input_name(i), input);
+    // }
+    switch (rt_param->device_type()) {
+        case DeviceType::CPU:
+        {
+            InputLayer *input_layer = (InputLayer *)layers[0];
+            for (int i = 0; i < input_layer->input_size(); ++i)
+            {
+                input_layer->CopyInput(input_layer->input_name(i), input);
+            }
+            break;
+        }
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+        {
+            InputLayerCL *input_layer = (InputLayerCL *)layers_cl[0];
+            for (int i = 0; i < input_layer->input_size(); ++i)
+            {
+                //LOGI("%s", input_layer->input_name(i).c_str());
+                input_layer->CopyInput(input_layer->input_name(i), input);
+            }
+            break;
+        }
+#else
+        LOGE("Please compile OpenCL to use device type GPU_CL.");
+        return -1;
+#endif
+        case DeviceType::GPU_GL:
+            LOGE("Not implemented yet");
+            return -1;
+        default:
+            LOGE("Unsupported device type");
+            return -1;
     }
 
-    for (int i = 1; i < layers.size(); ++i)
+    int layer_size;
+
+#ifdef FEATHER_OPENCL
+    layer_size = rt_param->device_type() == DeviceType::CPU ? layers.size() : layers_cl.size();
+#else
+    layer_size = layers.size();
+#endif
+
+    for (int i = 1; i < layer_size; ++i)
     {
         // sleep(2);
 #ifdef LAYER_TIMING
@@ -143,14 +256,36 @@ int Net::Forward(float *input)
         LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-        //LOGD("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
-        layers[i]->Forward();
+        //LOGD("Forward layer%d:%s %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
+        // layers[i]->Forward();
+        switch (rt_param->device_type()) {
+            case DeviceType::CPU:
+                layers[i]->Forward();
+                break;
+            case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+                layers_cl[i]->ForwardCL();
+                break;
+#else
+                LOGE("Please compile OpenCL to use device type GPU_CL.");
+                return -1;
+#endif
+            case DeviceType::GPU_GL:
+                LOGE("Not implemented yet");
+                return -1;
+            default:
+                LOGE("Unsupported device type");
+                return -1;
+        }
+
+
 #if 0
         for (size_t j = 0; j < layers[i]->top_blob_size(); j++)
             layers[i]->top_blob(j)->PrintBlobInfo();
 
 	PrintBlobData(layers[i]->name());
 #endif
+
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -503,11 +638,12 @@ bool Net::InitFromBufferCL(const void *net_buffer)
     for (int i = 1; i < layer_num; ++i)
     {
         const LayerParameter *layer_param = net_param->layer()->Get(i);
-        Layer<uint16_t> *new_layer = LayerRegistryCL::CreateLayer(layer_param, rt_param);
-        layers_cl.push_back(new_layer);
 #ifdef PRINT_SETUP_LOG
         LOGD("Setup cl layer %d %s\n", i, layer_param->name()->c_str());
 #endif
+        Layer<uint16_t> *new_layer = LayerRegistryCL::CreateLayer(layer_param, rt_param);
+        layers_cl.push_back(new_layer);
+
     }
 
 #ifdef PRINT_SETUP_LOG
@@ -628,6 +764,11 @@ bool Net::InitFromBufferCL(const void *net_buffer)
           LOGE("Build layer programs failed");
           return false;
       }
+      if (layers_cl[i]->SetKernelParameters())
+      {
+          LOGE("Set up kernel parameters failed");
+          return false;
+      }
 
     }
 
@@ -694,9 +835,6 @@ int Net::OpenCLProbe()
         LOGE("failed to clCreateContext: %d", error_num);
         return -1;
     }
-    std::string kernelCode = "";
-    clCreateProgramWithSource(context, 1, (const char **) & kernelCode, NULL, &error_num);
-    // clCreateProgramWithSource(context, 1, tmp.data(), NULL, &error_num);
 
     if (!createCommandQueue(context, &command_queue, &device)){
         LOGE("failed to createCommandQueue");

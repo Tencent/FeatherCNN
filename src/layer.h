@@ -24,6 +24,10 @@
 #include <map>
 #include <common.h>
 
+#ifdef FEATHER_OPENCL
+#include <CL/half.h>
+#endif
+
 namespace feather
 {
 template<class Dtype>
@@ -44,6 +48,8 @@ class Layer
         virtual int SetKernelParameters();
 
         int FineTuneGroupSize(const cl_kernel& kernel, const size_t& height, const size_t& width);
+
+        virtual int ForwardCL();
 #endif
 
         virtual int Fuse(Layer* next_layer);

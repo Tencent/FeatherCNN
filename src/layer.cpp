@@ -270,15 +270,13 @@ int Layer<Dtype>::BuildOpenCLProgram()
 
         cl_programs.push_back(cur_program);
         cl_program_map[cl_kernel_names[i]] = cur_program;
-
-
     }
-    std::map<std::string, cl_program>::iterator program_iter = cl_program_map.begin();
-    for(; program_iter != cl_program_map.end(); program_iter++){
-        if(program_iter->second != 0){
-            clReleaseProgram(program_iter->second);
-        }
-    }
+    // std::map<std::string, cl_program>::iterator program_iter = cl_program_map.begin();
+    // for(; program_iter != cl_program_map.end(); program_iter++){
+    //     if(program_iter->second != 0){
+    //         clReleaseProgram(program_iter->second);
+    //     }
+    // }
 
     return 0;
 }
@@ -313,6 +311,12 @@ int Layer<Dtype>::FineTuneGroupSize(const cl_kernel& kernel, const size_t& heigh
     this->global_work_size[0] = (height / local_work_size[0] + !!(height % local_work_size[0])) * local_work_size[0];
     this->global_work_size[1] = (width / local_work_size[1]  + !!(width % local_work_size[1])) * local_work_size[1];
     return 0;
+}
+
+template<class Dtype>
+int Layer<Dtype>::ForwardCL()
+{
+    return false;
 }
 
 #endif

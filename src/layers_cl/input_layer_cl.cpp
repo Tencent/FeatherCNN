@@ -98,7 +98,7 @@ int InputLayerCL::SetKernelParameters() {
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &layer_data_cl));
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_height));
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_width));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_channels));
+  //set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_channels));
 
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
@@ -158,9 +158,7 @@ int InputLayerCL::SetKernelParameters() {
 int InputLayerCL::FloatToDevice(const float* input_data) {
   Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
   size_t data_size = layer_blob->data_size();
-
   memcpy(this->_map_fdata, input_data, data_size * sizeof(float));
-
   return 0;
 }
 
