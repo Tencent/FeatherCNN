@@ -38,7 +38,7 @@ Layer<uint16_t> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParam
 
 Layer<uint16_t> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *) new DirectConvBufferLayer(layer_param, rt_param);
+    return (Layer<uint16_t> *) new DirectConvLayerCL(layer_param, rt_param);
 }
 Layer<uint16_t> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {

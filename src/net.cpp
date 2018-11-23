@@ -26,13 +26,11 @@
 
 #include "mempool.h"
 
-#include "booster/helper.h"
-
 #include <stdio.h>
 #include <cstring>
 
 //#define LAYER_TIMING
-#define PRINT_SETUP_LOG
+//#define PRINT_SETUP_LOG
 
 namespace feather
 {
@@ -619,6 +617,7 @@ bool Net::InitFromBufferCL(const void *net_buffer)
     const NetParameter *net_param = feather::GetNetParameter(net_buffer);
     size_t layer_num = VectorLength(net_param->layer());
     //Find input layer.
+    LOGI("got here");
 #ifdef PRINT_SETUP_LOG
     LOGD("Loading %d layers", layer_num);
 #endif

@@ -15,7 +15,7 @@
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-DirectConvBufferLayer::DirectConvBufferLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
                         : fuse_relu(false), Layer<uint16_t>(layer_param, rt_param)
 {
     _fusible = true;
@@ -50,7 +50,7 @@ DirectConvBufferLayer::DirectConvBufferLayer(const LayerParameter *layer_param, 
     InitCL();
 }
 
-int DirectConvBufferLayer::InitCL()
+int DirectConvLayerCL::InitCL()
 {
     std::string func_name = "convolution";
     this->cl_kernel_functions.push_back(func_name);
@@ -81,7 +81,7 @@ int DirectConvBufferLayer::InitCL()
     return 0;
 }
 
-int DirectConvBufferLayer::SetKernelParameters()
+int DirectConvLayerCL::SetKernelParameters()
 {
     int error_num;
     int param_idx = 0;
@@ -195,7 +195,7 @@ int DirectConvBufferLayer::SetKernelParameters()
     return 0;
   }
 
-int DirectConvBufferLayer::ForwardCL()
+int DirectConvLayerCL::ForwardCL()
 {
 #ifdef TIMING_CL
     clFinish(rt_param->command_queue());
@@ -239,7 +239,7 @@ int DirectConvBufferLayer::ForwardCL()
     return 0;
   }
 
-void DirectConvBufferLayer::FinetuneKernel()
+void DirectConvLayerCL::FinetuneKernel()
 {
     std::string cur_kname;
     std::string cur_kstr;
@@ -265,7 +265,7 @@ void DirectConvBufferLayer::FinetuneKernel()
     cl_kernel_symbols.push_back(cur_kstr);
   }
 
-int DirectConvBufferLayer::GenerateTopBlobs() {
+int DirectConvLayerCL::GenerateTopBlobs() {
     //Conv layer has and only has one bottom blob.
 
     const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
@@ -313,7 +313,7 @@ int DirectConvBufferLayer::GenerateTopBlobs() {
   }
 
 
-int DirectConvBufferLayer::Fuse(Layer *next_layer)
+int DirectConvLayerCL::Fuse(Layer *next_layer)
 {
     if (next_layer->type().compare("ReLU") == 0) {
       fuse_relu = true;

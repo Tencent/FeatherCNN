@@ -24,9 +24,9 @@
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-class DirectConvBufferLayer : public Layer<uint16_t> {
+class DirectConvLayerCL : public Layer<uint16_t> {
 public:
-  DirectConvBufferLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
+  DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
     int InitCL();
     virtual int ForwardCL();
