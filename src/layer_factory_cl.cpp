@@ -23,7 +23,9 @@
 #include "layer.h"
 // #include "layers_cl/input_layer.h"
 #include <layers_cl/input_layer_cl.h>
-#include <layers_cl/direct_conv_buffer_layer_cl.h>
+#include <layers_cl/direct_conv_layer_cl.h>
+#include <layers_cl/pooling_layer_cl.h>
+#include <layers_cl/relu_layer_cl.h>
 #include <layers_cl/elewise_layer_cl.h>
 
 
@@ -38,6 +40,15 @@ Layer<uint16_t> *GetConvolutionLayerCL(const LayerParameter *layer_param, Runtim
 {
     return (Layer<uint16_t> *) new DirectConvBufferLayer(layer_param, rt_param);
 }
+Layer<uint16_t> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<uint16_t> *)new PoolingLayerCL(layer_param, rt_param);
+}
+
+Layer<uint16_t> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<uint16_t> *)new ReluLayerCL(layer_param, rt_param);
+}
 
 Layer<uint16_t> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
@@ -48,7 +59,10 @@ void register_layer_creators_cl()
 {
     REGISTER_LAYER_CREATOR_CL(Input, GetInputLayerCL);
     REGISTER_LAYER_CREATOR_CL(Convolution, GetConvolutionLayerCL);
+    REGISTER_LAYER_CREATOR_CL(Pooling, GetPoolingLayerCL);
+    REGISTER_LAYER_CREATOR_CL(ReLU, GetReluLayerCL);
 }
+
 };
 
 #endif

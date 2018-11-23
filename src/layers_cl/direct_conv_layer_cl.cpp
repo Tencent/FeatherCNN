@@ -11,23 +11,13 @@
 //under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
-
-#pragma once
-
-#include "../feather_generated.h"
-#include "../layer.h"
-#include "blob.h"
-#include <CL/opencl_kernels.h>
-
-#include <assert.h>
-#include <stdio.h>
+#include "direct_conv_layer_cl.h"
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-class DirectConvBufferLayer : public Layer<uint16_t> {
-public:
-  DirectConvBufferLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-      : fuse_relu(false), Layer<uint16_t>(layer_param, rt_param) {
+DirectConvBufferLayer::DirectConvBufferLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+                        : fuse_relu(false), Layer<uint16_t>(layer_param, rt_param)
+{
     _fusible = true;
     const ConvolutionParameter *conv_param = layer_param->convolution_param();
     bias_term = conv_param->bias_term();
@@ -58,16 +48,17 @@ public:
         bias_data = this->_weight_blobs[1]->data();
     }
     InitCL();
-  }
+}
 
-  int InitCL() {
-    string func_name = "convolution";
+int DirectConvBufferLayer::InitCL()
+{
+    std::string func_name = "convolution";
     this->cl_kernel_functions.push_back(func_name);
-    string kernel_name_4o4 = "clConvIn4o4";
+    std::string kernel_name_4o4 = "clConvIn4o4";
     auto it_source0 = booster::opencl_kernel_string_map.find("convBufferReformW4o4_1v1_grp1");
     std::string kernel_str_4o4(it_source0->second.begin(), it_source0->second.end());
 
-    string kernel_name_8o8 = "clConvIn8o8";
+    std::string kernel_name_8o8 = "clConvIn8o8";
     auto it_source1 = booster::opencl_kernel_string_map.find("convBufferReformW8o8_1v1_grp1");
     std::string kernel_str_8o8(it_source1->second.begin(), it_source1->second.end());
 
@@ -88,14 +79,15 @@ public:
     cl_event event;
     this->events.push_back(event);
     return 0;
-  }
+}
 
-  int SetKernelParameters() {
+int DirectConvBufferLayer::SetKernelParameters()
+{
     int error_num;
     int param_idx = 0;
     bool set_kernel_arg_success = true;
-    int out_real_channels = _top_blobs[_top[0]]->get_channels_padding();
-    int in_real_channels = _bottom_blobs[_bottom[0]]->get_channels_padding();
+    int out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    int in_real_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
 
     //size_t c_grp_size = this->in_channel_grp_size;
     size_t c_grp_size = 1;
@@ -184,40 +176,41 @@ public:
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &in_real_channels));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &input_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &input_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &kernel_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &kernel_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &stride_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &stride_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &padding_top));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &padding_left));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->padding_top));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->padding_left));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &use_relu));
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL kernels[0] arguments.");
       return 1;
     }
-    FineTuneGroupSize(this->kernels[0], _top_blobs[_top[0]]->height(), _top_blobs[_top[0]]->width());
+    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
   }
 
-  int ForwardCL() {
+int DirectConvBufferLayer::ForwardCL()
+{
 #ifdef TIMING_CL
     clFinish(rt_param->command_queue());
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
     if(group <=0)	group = 1;
-    LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
-    LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
-    LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
-    LOGI("input (GPU_CL) %dx%d", input_height, input_width);
-    LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
-    LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
-    int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL,&events[0]);
+    // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
+    // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
+    // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
+    // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
+    // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
+    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
+    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
+    int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
@@ -246,9 +239,10 @@ public:
     return 0;
   }
 
-  void FinetuneKernel() {
-    string cur_kname;
-    string cur_kstr;
+void DirectConvBufferLayer::FinetuneKernel()
+{
+    std::string cur_kname;
+    std::string cur_kstr;
     size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
     size_t padded_output_c = _top_blobs[_top[0]]->get_channels_padding();
 
@@ -271,37 +265,37 @@ public:
     cl_kernel_symbols.push_back(cur_kstr);
   }
 
-  int GenerateTopBlobs() {
+int DirectConvBufferLayer::GenerateTopBlobs() {
     //Conv layer has and only has one bottom blob.
 
-    const Blob<uint16_t> *bottom_blob = _bottom_blobs[_bottom[0]];
+    const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
-    input_width = bottom_blob->width();
-    input_height = bottom_blob->height();
-    input_channels = bottom_blob->channels();
+    this->input_width = bottom_blob->width();
+    this->input_height = bottom_blob->height();
+    this->input_channels = bottom_blob->channels();
     if (stride_width == 0 || stride_height == 0)
     {
         stride_width = 1;
         stride_height = 1;
     }
-    output_width = (input_width + padding_left + padding_right - kernel_width) / stride_width + 1;
-    output_height = (input_height + padding_top + padding_bottom - kernel_height) / stride_height + 1;
-    if(group > 1 && group == input_channels)
+    this->output_width = (this->input_width + this->padding_left + this->padding_right - this->kernel_width) / this->stride_width + 1;
+    this->output_height = (this->input_height + this->padding_top + this->padding_bottom - this->kernel_height) / this->stride_height + 1;
+    if(this->group > 1 && this->group == this->input_channels)
     {
-        output_channels = group;
+        this->output_channels = this->group;
     }
 
-     _top_blobs[_top[0]] = new Blob<uint16_t>(1, output_channels, output_height, output_width);
-     _top_blobs[_top[0]]->AllocDevice(rt_param->context(), _top_blobs[_top[0]]->data_size_padded_c());
+     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
+     this->_top_blobs[this->_top[0]]->AllocDevice(rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     FinetuneKernel();
 
     int group_size_h = 8, group_size_w = 8;
-    if (output_width > 32) group_size_w = 16;
-    if (output_height > 32) group_size_h = 16;
+    if (this->output_width > 32) group_size_w = 16;
+    if (this->output_height > 32) group_size_h = 16;
     //LOGI("out: %d %d", output_height, output_width)
-    this->global_work_size[0] = (output_height / group_size_h + !!(output_height % group_size_h)) * group_size_h;
-    this->global_work_size[1] = (output_width / group_size_w  + !!(output_width % group_size_w)) * group_size_w;
+    this->global_work_size[0] = (this->output_height / group_size_h + !!(this->output_height % group_size_h)) * group_size_h;
+    this->global_work_size[1] = (this->output_width / group_size_w  + !!(this->output_width % group_size_w)) * group_size_w;
     this->local_work_size[0] = group_size_h;
     this->local_work_size[1] = group_size_w;
     // int work_size_w = this->globalWorkSize[1] / 2;
@@ -318,7 +312,9 @@ public:
     return 0;
   }
 
-  int Fuse(Layer *next_layer) {
+
+int DirectConvBufferLayer::Fuse(Layer *next_layer)
+{
     if (next_layer->type().compare("ReLU") == 0) {
       fuse_relu = true;
       return 1;
@@ -327,36 +323,4 @@ public:
     }
   }
 
-private:
-    bool fuse_relu;
-    size_t in_channel_grp_size;
-    size_t out_channel_grp_size;
-
-    size_t input_channels;
-    size_t input_width;
-    size_t input_height;
-
-    size_t output_channels;
-    size_t output_width;
-    size_t output_height;
-
-    size_t kernel_width;
-    size_t kernel_height;
-
-    size_t stride_width;
-    size_t stride_height;
-
-    size_t padding_left;
-    size_t padding_right;
-    size_t padding_top;
-    size_t padding_bottom;
-
-    size_t group;
-
-    bool bias_term;
-
-    uint16_t *kernel_data;
-    uint16_t *bias_data;
-
-};
 }; // namespace feather

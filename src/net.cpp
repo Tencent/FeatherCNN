@@ -46,7 +46,8 @@ Net::Net(size_t num_threads, DeviceType device_type)
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
     rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
 #ifdef FEATHER_OPENCL
-    OpenCLProbe();
+    if (device_type == DeviceType::GPU_CL)
+      OpenCLProbe();
 #endif
 
 }
@@ -58,21 +59,16 @@ Net::~Net()
     {
         delete layers[i];
     }
-    for(auto const& iter: blob_map)
-    {
-        delete iter.second;
-    }
     delete rt_param->common_mempool();
 #ifdef FEATHER_OPENCL
-    for(int i = 0; i < layers_cl.size(); ++i)
+    if (device_type == DeviceType::GPU_CL)
     {
+      for(int i = 0; i < layers_cl.size(); ++i)
+      {
         delete layers_cl[i];
+      }
+      rt_param->ReleaseOpenCLEnv();
     }
-    for(auto const& iter: blob_map_cl)
-    {
-        delete iter.second;
-    }
-    rt_param->ReleaseOpenCLEnv();
 #endif
 
     delete rt_param;
@@ -637,6 +633,11 @@ bool Net::InitFromBufferCL(const void *net_buffer)
 
     for (int i = 1; i < layer_num; ++i)
     {
+        // if ((net_param->layer()->Get(i)->type()->str().compare("ReLU") == 0))
+        // {
+        //     layers_cl[layers_cl.size()-2]->SetFuseReLU(true);
+        //     continue;
+        // }
         const LayerParameter *layer_param = net_param->layer()->Get(i);
 #ifdef PRINT_SETUP_LOG
         LOGD("Setup cl layer %d %s\n", i, layer_param->name()->c_str());
@@ -658,6 +659,7 @@ bool Net::InitFromBufferCL(const void *net_buffer)
         size_t top_blob_num = layers_cl[i]->top_blob_size();
         if (top_blob_num == 0)
         {
+
             for (int b = 0; b < layers_cl[i]->bottom_size(); ++b)
             {
                 std::string blob_name = layers_cl[i]->bottom(b);
@@ -672,10 +674,9 @@ bool Net::InitFromBufferCL(const void *net_buffer)
                     LOGE("Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
                     return false;
                 }
+
             }
-
             layers_cl[i]->GenerateTopBlobs();
-
         }
         for (int t = 0; t < top_num; ++t)
         {
