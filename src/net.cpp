@@ -61,7 +61,7 @@ Net::~Net()
     }
     delete rt_param->common_mempool();
 #ifdef FEATHER_OPENCL
-    if (device_type == DeviceType::GPU_CL)
+    if (rt_param->device_type() == DeviceType::GPU_CL)
     {
       for(int i = 0; i < layers_cl.size(); ++i)
       {

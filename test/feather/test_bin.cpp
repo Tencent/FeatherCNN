@@ -48,7 +48,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 {
     printf("++++++Start Loader++++++\n");
 
-    feather::Net forward_net(num_threads, DeviceType::CPU );
+    feather::Net forward_net(num_threads, DeviceType::GPU_CL);
     //forward_net.test_opencl();
     // printf("done initialization\n");
     forward_net.InitFromPath(model_path.c_str());
@@ -103,7 +103,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     }
     printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
     // //PrintBlobData(forward_net, "fc6", 0);
-    PrintBlobData(&forward_net, "conv1", 10);
+    PrintBlobData(&forward_net, "tx_pose/stage1/branch1/conv5_5_CPM_L2/bias_add:0", 10);
     // //PrintBlobData(forward_net, "data", 100);
     // //printf("------------------------\n");
     // // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
