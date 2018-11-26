@@ -20,32 +20,32 @@ DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeP
 {
     _fusible = true;
     const ConvolutionParameter *conv_param = layer_param->convolution_param();
-    bias_term = conv_param->bias_term();
+    this->bias_term = conv_param->bias_term();
 
     group = conv_param->group();
     if(group == 0)  group = 1;
-    kernel_height = conv_param->kernel_h();
-    kernel_width = conv_param->kernel_w();
+    this->kernel_height = conv_param->kernel_h();
+    this->kernel_width = conv_param->kernel_w();
 
-    stride_height = conv_param->stride_h();
-    stride_width = conv_param->stride_w();
+    this->stride_height = conv_param->stride_h();
+    this->stride_width = conv_param->stride_w();
 
-    padding_left = conv_param->pad_w();
-    padding_top = conv_param->pad_h();
-    padding_right = conv_param->pad_w();
-    padding_bottom = conv_param->pad_h();
+    this->padding_left = conv_param->pad_w();
+    this->padding_top = conv_param->pad_h();
+    this->padding_right = conv_param->pad_w();
+    this->padding_bottom = conv_param->pad_h();
 
-    assert(_weight_blobs.size() > 0);
+    assert(this->_weight_blobs.size() > 0);
 
-    kernel_data = this->_weight_blobs[0]->data();
-    output_channels = this->_weight_blobs[0]->num();
+    this->kernel_data = this->_weight_blobs[0]->data();
+    this->output_channels = this->_weight_blobs[0]->num();
 
-    if(stride_width  == 0)	stride_width  = 1;
-    if(stride_height == 0) 	stride_height = 1;
-    if (bias_term)
+    if(this->stride_width  == 0)	this->stride_width  = 1;
+    if(this->stride_height == 0) 	this->stride_height = 1;
+    if (this->bias_term)
     {
         assert(this->_weight_blobs.size() == 2);
-        bias_data = this->_weight_blobs[1]->data();
+        this->bias_data = this->_weight_blobs[1]->data();
     }
     InitCL();
 }
@@ -97,7 +97,7 @@ int DirectConvLayerCL::SetKernelParameters()
     size_t w_hw = this->_weight_blobs[0]->height() * this->_weight_blobs[0]->width();
 
     size_t real_weight_size = this->_weight_blobs[0]->data_size_padded_nc();
-    this->_weight_blobs[0]->AllocDevice(rt_param->context(), real_weight_size);
+    this->_weight_blobs[0]->AllocDevice(this->rt_param->context(), real_weight_size);
     std::vector<uint16_t> weight_padding(real_weight_size, 0);
 
 
@@ -121,29 +121,29 @@ int DirectConvLayerCL::SetKernelParameters()
                         ( k / c_grp_size ) * n_grp_size * c_grp_size +
                         ( i % n_grp_size ) * c_grp_size +
                         k % c_grp_size;
-          weight_padding[dst_idx] = kernel_data[src_idx];
+          weight_padding[dst_idx] = this->kernel_data[src_idx];
           //printf("%f, ", hs_halfToFloat(weight_padding[dst_idx]));
         }
       }
     }
 
-    this->_weight_blobs[0]->WriteToDevice(rt_param->command_queue(), weight_padding.data(), real_weight_size);
+    this->_weight_blobs[0]->WriteToDevice(this->rt_param->command_queue(), weight_padding.data(), real_weight_size);
     this->_weight_blobs[0]->Free();
 
     if (bias_term) {
-      this->_weight_blobs[1]->AllocDevice(rt_param->context(), out_real_channels);
+      this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), out_real_channels);
       std::vector<uint16_t> bias_padding(out_real_channels, 0);
-      memcpy(bias_padding.data(), bias_data, out_real_channels * sizeof(uint16_t));
+      memcpy(bias_padding.data(), this->bias_data, this->output_channels * sizeof(uint16_t));
       // float bias_padding[out_real_channels];
       // memset(bias_padding, 0.0f, out_real_channels * sizeof(float));
       // for (int i = 0; i < this->_weight_blobs[0]->num(); ++i) {
       //   bias_padding[i] = bias_data[i];
       // }
-      this->_weight_blobs[1]->WriteToDevice(rt_param->command_queue(), bias_padding.data(), out_real_channels);
+      this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), out_real_channels);
       this->_weight_blobs[1]->Free();
     }
 
-    kernels[0] = clCreateKernel(cl_programs[0], cl_kernel_functions[0].c_str(), &error_num);
+    kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create conv OpenCL kernels[0]. ");
       return 1;
@@ -160,9 +160,7 @@ int DirectConvLayerCL::SetKernelParameters()
       bias_mem = _weight_blobs[1]->data_cl();
     } else {
       std::vector<uint16_t> bias_vec(out_real_channels, 0);
-      //half bias_arr[out_real_channels];
-      //memset(bias_arr, 0, out_real_channels * sizeof(half));
-      bias_mem = clCreateBuffer(rt_param->context(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+      bias_mem = clCreateBuffer(this->rt_param->context(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                 out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
       if (!checkSuccess(error_num)) {
         LOGE("Failed to create OpenCL buffers[%d]", error_num);
@@ -198,7 +196,7 @@ int DirectConvLayerCL::SetKernelParameters()
 int DirectConvLayerCL::ForwardCL()
 {
 #ifdef TIMING_CL
-    clFinish(rt_param->command_queue());
+    clFinish(this->rt_param->command_queue());
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
@@ -210,7 +208,7 @@ int DirectConvLayerCL::ForwardCL()
     // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
     // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
     // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
-    int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
@@ -243,8 +241,8 @@ void DirectConvLayerCL::FinetuneKernel()
 {
     std::string cur_kname;
     std::string cur_kstr;
-    size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = _top_blobs[_top[0]]->get_channels_padding();
+    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
     int kernel_idx = 0, group_size = 4;
     if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
@@ -252,17 +250,17 @@ void DirectConvLayerCL::FinetuneKernel()
       group_size = 8;
     }
 
-    cur_kname = cl_kernel_names[kernel_idx];
-    cur_kstr = cl_kernel_symbols[kernel_idx];
+    cur_kname = this->cl_kernel_names[kernel_idx];
+    cur_kstr = this->cl_kernel_symbols[kernel_idx];
     this->global_work_size[2] = padded_output_c / group_size;
     this->in_channel_grp_size = group_size;
     this->out_channel_grp_size = group_size;
 
-    cl_kernel_names.clear();
-    cl_kernel_symbols.clear();
+    this->cl_kernel_names.clear();
+    this->cl_kernel_symbols.clear();
 
-    cl_kernel_names.push_back(cur_kname);
-    cl_kernel_symbols.push_back(cur_kstr);
+    this->cl_kernel_names.push_back(cur_kname);
+    this->cl_kernel_symbols.push_back(cur_kstr);
   }
 
 int DirectConvLayerCL::GenerateTopBlobs() {
@@ -273,10 +271,10 @@ int DirectConvLayerCL::GenerateTopBlobs() {
     this->input_width = bottom_blob->width();
     this->input_height = bottom_blob->height();
     this->input_channels = bottom_blob->channels();
-    if (stride_width == 0 || stride_height == 0)
+    if (this->stride_width == 0 || this->stride_height == 0)
     {
-        stride_width = 1;
-        stride_height = 1;
+        this->stride_width = 1;
+        this->stride_height = 1;
     }
     this->output_width = (this->input_width + this->padding_left + this->padding_right - this->kernel_width) / this->stride_width + 1;
     this->output_height = (this->input_height + this->padding_top + this->padding_bottom - this->kernel_height) / this->stride_height + 1;
@@ -286,7 +284,7 @@ int DirectConvLayerCL::GenerateTopBlobs() {
     }
 
      this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
-     this->_top_blobs[this->_top[0]]->AllocDevice(rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
+     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     FinetuneKernel();
 

@@ -27,6 +27,7 @@
 #include <layers_cl/pooling_layer_cl.h>
 #include <layers_cl/relu_layer_cl.h>
 #include <layers_cl/elewise_layer_cl.h>
+#include <layers_cl/inner_product_layer_cl.h>
 
 
 namespace feather
@@ -54,6 +55,10 @@ Layer<uint16_t> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimePar
 {
     return (Layer<uint16_t> *) new EltwiseLayerCL(layer_param, rt_param);
 }
+Layer<uint16_t> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<uint16_t> *)new InnerProductLayerCL(layer_param, rt_param);
+}
 
 void register_layer_creators_cl()
 {
@@ -61,6 +66,7 @@ void register_layer_creators_cl()
     REGISTER_LAYER_CREATOR_CL(Convolution, GetConvolutionLayerCL);
     REGISTER_LAYER_CREATOR_CL(Pooling, GetPoolingLayerCL);
     REGISTER_LAYER_CREATOR_CL(ReLU, GetReluLayerCL);
+    REGISTER_LAYER_CREATOR_CL(InnerProduct, GetInnerProductLayerCL);
 }
 
 };

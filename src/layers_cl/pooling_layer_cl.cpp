@@ -29,8 +29,8 @@ PoolingLayerCL::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParamet
     this->pad_width = pooling_param->pad_w();
     this->stride_height = pooling_param->stride_h();
     this->stride_width = pooling_param->stride_w();
-    this->stride_height = (stride_height <= 0) ? 1 : this->stride_height;
-    this->stride_width  = (stride_width  <= 0) ? 1 : this->stride_width;
+    this->stride_height = (this->stride_height <= 0) ? 1 : this->stride_height;
+    this->stride_width  = (this->stride_width  <= 0) ? 1 : this->stride_width;
     this->global_pooling = pooling_param->global_pooling();
     this->method = pooling_param->pool();
     std::string ave_opt = "-DAVE_POOLING";
@@ -126,7 +126,7 @@ int PoolingLayerCL::ForwardCL() {
     // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
     // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
     // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", globalWorkSize[0], globalWorkSize[1], globalWorkSize[2]);
-    int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the pooling kernel. %d", error_num);
       return -1;
@@ -187,7 +187,7 @@ int PoolingLayerCL::GenerateTopBlobs() {
       this->output_width = static_cast<int>(ceil(static_cast<float>(this->input_width + 2 * this->pad_width - this->kernel_width) / this->stride_width)) + 1;
     }
     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
-    this->_top_blobs[this->_top[0]]->AllocDevice(rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
+    this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     FinetuneKernel();
 
