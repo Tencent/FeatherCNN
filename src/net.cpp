@@ -91,6 +91,19 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             const size_t data_size = p_blob->data_size();
             const float *data = p_blob->data();
             memcpy(output_ptr, data, sizeof(float) * data_size);
+
+            // printf("cpu:\n");
+            // for (int i = 0; i < p_blob->channels(); ++i) {
+            //   for (int j = 0; j < p_blob->height(); ++j) {
+            //     for (int k = 0; k < p_blob->width(); ++k) {
+            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+            //       printf("%f ", output_ptr[idx]);
+            //     }
+            //     printf("\n");
+            //   }
+            //   printf("\n");
+            // }
+
             break;
         }
         case DeviceType::GPU_CL:
@@ -103,6 +116,17 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             }
             const Blob<uint16_t> *p_blob = blob_map_cl[name];
             p_blob->ReadFromDeviceCHW(rt_param->command_queue(), output_ptr);
+            // printf("gpu:\n");
+            // for (int i = 0; i < p_blob->channels(); ++i) {
+            //   for (int j = 0; j < p_blob->height(); ++j) {
+            //     for (int k = 0; k < p_blob->width(); ++k) {
+            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+            //       printf("%f ", output_ptr[idx]);
+            //     }
+            //     printf("\n");
+            //   }
+            //   printf("\n");
+            // }
             break;
         }
 #else
@@ -617,7 +641,6 @@ bool Net::InitFromBufferCL(const void *net_buffer)
     const NetParameter *net_param = feather::GetNetParameter(net_buffer);
     size_t layer_num = VectorLength(net_param->layer());
     //Find input layer.
-    LOGI("got here");
 #ifdef PRINT_SETUP_LOG
     LOGD("Loading %d layers", layer_num);
 #endif

@@ -22,8 +22,8 @@ DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeP
     const ConvolutionParameter *conv_param = layer_param->convolution_param();
     this->bias_term = conv_param->bias_term();
 
-    group = conv_param->group();
-    if(group == 0)  group = 1;
+    this->group = conv_param->group();
+    if(this->group == 0)  this->group = 1;
     this->kernel_height = conv_param->kernel_h();
     this->kernel_width = conv_param->kernel_w();
 
@@ -34,6 +34,7 @@ DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeP
     this->padding_top = conv_param->pad_h();
     this->padding_right = conv_param->pad_w();
     this->padding_bottom = conv_param->pad_h();
+    this->is_dw = false;
 
     assert(this->_weight_blobs.size() > 0);
 
@@ -47,20 +48,33 @@ DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeP
         assert(this->_weight_blobs.size() == 2);
         this->bias_data = this->_weight_blobs[1]->data();
     }
+
+
     InitCL();
 }
 
 int DirectConvLayerCL::InitCL()
 {
-    std::string func_name = "convolution";
-    this->cl_kernel_functions.push_back(func_name);
+    std::string func_name_conv = "convolution";
+    std::string func_name_depthwise = "convolution_depthwise";
+    this->cl_kernel_functions.push_back(func_name_conv);
+    this->cl_kernel_functions.push_back(func_name_depthwise);
+
     std::string kernel_name_4o4 = "clConvIn4o4";
-    auto it_source0 = booster::opencl_kernel_string_map.find("convBufferReformW4o4_1v1_grp1");
+    auto it_source0 = booster::opencl_kernel_string_map.find("convBuffer4o4_1v2_grp1");
     std::string kernel_str_4o4(it_source0->second.begin(), it_source0->second.end());
 
     std::string kernel_name_8o8 = "clConvIn8o8";
-    auto it_source1 = booster::opencl_kernel_string_map.find("convBufferReformW8o8_1v1_grp1");
+    auto it_source1 = booster::opencl_kernel_string_map.find("convBuffer8o8_1v2_grp1");
     std::string kernel_str_8o8(it_source1->second.begin(), it_source1->second.end());
+
+    std::string kernel_name_4o4_depthwise = "clDepthconvIn4V4";
+    auto it_source3 = booster::opencl_kernel_string_map.find("depthwiseConvBuffer4o4_1v1_grp4");
+    std::string kernel_str_4o4_depthwise(it_source3->second.begin(),it_source3->second.end());
+
+    std::string kernel_name_8o8_depthwise = "clDepthconvIn8V8";
+    auto it_source4 = booster::opencl_kernel_string_map.find("depthwiseConvBuffer8o8_1v1_grp8");
+    std::string kernel_str_8o8_depthwise(it_source4->second.begin(),it_source4->second.end());
 
     // string kernel_name_16o16 = "clConvIn16o16";
     // auto it_source2 = booster::opencl_kernel_string_map.find("convBufferReformW16o16_1v1_grp1");
@@ -68,10 +82,16 @@ int DirectConvLayerCL::InitCL()
 
     this->cl_kernel_names.push_back(kernel_name_4o4);
     this->cl_kernel_names.push_back(kernel_name_8o8);
+
+    this->cl_kernel_names.push_back(kernel_name_4o4_depthwise);
+    this->cl_kernel_names.push_back(kernel_name_8o8_depthwise);
     //this->cl_kernel_names.push_back(kernel_name_16o16);
 
     this->cl_kernel_symbols.push_back(kernel_str_4o4);
     this->cl_kernel_symbols.push_back(kernel_str_8o8);
+
+    this->cl_kernel_symbols.push_back(kernel_str_4o4_depthwise);
+    this->cl_kernel_symbols.push_back(kernel_str_8o8_depthwise);
     //this->cl_kernel_symbols.push_back(kernel_str_16o16);
 
     cl_kernel kernel;
@@ -96,36 +116,51 @@ int DirectConvLayerCL::SetKernelParameters()
     size_t w_channels = this->_weight_blobs[0]->channels();
     size_t w_hw = this->_weight_blobs[0]->height() * this->_weight_blobs[0]->width();
 
-    size_t real_weight_size = this->_weight_blobs[0]->data_size_padded_nc();
+    size_t real_weight_size = 0;
+    if (this->is_dw){
+      real_weight_size = w_hw * this->_weight_blobs[0]->get_num_padding();;
+    } else {
+      real_weight_size = this->_weight_blobs[0]->data_size_padded_nc();
+    }
     this->_weight_blobs[0]->AllocDevice(this->rt_param->context(), real_weight_size);
     std::vector<uint16_t> weight_padding(real_weight_size, 0);
 
-
-    // for (int i = 0; i < w_num; ++i) {
-    //     for (int j = 0; j < w_hw; ++j) {
-    //         for (int k = 0; k < w_channels; ++k) {
-    //             int dst_idx = (i * w_hw + j) * this->_weight_blobs[0]->get_channels_padding() + k;
-    //             int src_idx = (i * this->_weight_blobs[0]->channels() + k) * w_hw + j;
-    //             weight_padding[dst_idx] = kernel_data[src_idx];
-    //         }
-    //     }
-    // }
-    // printf("%d, %d\n", c_grp_size, n_grp_size);
-
-    for (int i = 0; i < w_num; ++i) {
-      for (int k = 0; k < w_channels; ++k) {
+    if (this->is_dw) {
+      for (int i = 0; i < w_num; ++i) {
         for (int j = 0; j < w_hw; ++j) {
-          int src_idx = (i * w_channels + k) * w_hw + j;
-          int dst_idx = (i / n_grp_size) * w_hw * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
-                        j * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
-                        ( k / c_grp_size ) * n_grp_size * c_grp_size +
-                        ( i % n_grp_size ) * c_grp_size +
-                        k % c_grp_size;
+          // int dst_idx = j * this->_weight_blobs[0]->get_num_padding() + i;
+          int dst_idx = (i / this->in_channel_grp_size * w_hw + j) * this->in_channel_grp_size + i % this->in_channel_grp_size;
+          int src_idx = i * w_hw + j;
           weight_padding[dst_idx] = this->kernel_data[src_idx];
-          //printf("%f, ", hs_halfToFloat(weight_padding[dst_idx]));
         }
       }
     }
+    else {
+      // for (int i = 0; i < w_num; ++i) {
+      //     for (int j = 0; j < w_hw; ++j) {
+      //         for (int k = 0; k < w_channels; ++k) {
+      //             int dst_idx = (i * w_hw + j) * this->_weight_blobs[0]->get_channels_padding() + k;
+      //             int src_idx = (i * this->_weight_blobs[0]->channels() + k) * w_hw + j;
+      //             weight_padding[dst_idx] = kernel_data[src_idx];
+      //         }
+      //     }
+      // }
+
+      for (int i = 0; i < w_num; ++i) {
+        for (int k = 0; k < w_channels; ++k) {
+          for (int j = 0; j < w_hw; ++j) {
+            int src_idx = (i * w_channels + k) * w_hw + j;
+            int dst_idx = (i / n_grp_size) * w_hw * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
+                          j * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
+                          ( k / c_grp_size ) * n_grp_size * c_grp_size +
+                          ( i % n_grp_size ) * c_grp_size +
+                          k % c_grp_size;
+            weight_padding[dst_idx] = this->kernel_data[src_idx];
+          }
+        }
+      }
+    }
+
 
     this->_weight_blobs[0]->WriteToDevice(this->rt_param->command_queue(), weight_padding.data(), real_weight_size);
     this->_weight_blobs[0]->Free();
@@ -168,12 +203,15 @@ int DirectConvLayerCL::SetKernelParameters()
       }
     }
 
+
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &weight_mem));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &bias_mem));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &in_real_channels));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
+    if (!this->is_dw){
+        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
+    }
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
@@ -200,7 +238,7 @@ int DirectConvLayerCL::ForwardCL()
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-    if(group <=0)	group = 1;
+    // if(group <=0)	group = 1;
     // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
     // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
     // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
@@ -241,26 +279,33 @@ void DirectConvLayerCL::FinetuneKernel()
 {
     std::string cur_kname;
     std::string cur_kstr;
+    std::string cur_func;
     size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-    int kernel_idx = 0, group_size = 4;
+    int kernel_idx = this->is_dw ? this->cl_kernel_names.size()-2 : 0, group_size = 4, func_idx = this->is_dw ? 1 : 0;
+
     if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      kernel_idx = 1;
+      kernel_idx = this->is_dw ? this->cl_kernel_names.size()-1 : 1;
       group_size = 8;
     }
 
+
     cur_kname = this->cl_kernel_names[kernel_idx];
     cur_kstr = this->cl_kernel_symbols[kernel_idx];
+    cur_func = this->cl_kernel_functions[func_idx];
+
     this->global_work_size[2] = padded_output_c / group_size;
     this->in_channel_grp_size = group_size;
     this->out_channel_grp_size = group_size;
 
     this->cl_kernel_names.clear();
     this->cl_kernel_symbols.clear();
+    this->cl_kernel_functions.clear();
 
     this->cl_kernel_names.push_back(cur_kname);
     this->cl_kernel_symbols.push_back(cur_kstr);
+    this->cl_kernel_functions.push_back(cur_func);
   }
 
 int DirectConvLayerCL::GenerateTopBlobs() {
@@ -281,6 +326,7 @@ int DirectConvLayerCL::GenerateTopBlobs() {
     if(this->group > 1 && this->group == this->input_channels)
     {
         this->output_channels = this->group;
+        this->is_dw = true;
     }
 
      this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);

@@ -61,6 +61,8 @@ private:
 
     size_t group;
 
+    bool is_dw;
+
     bool bias_term;
 
     uint16_t *kernel_data;

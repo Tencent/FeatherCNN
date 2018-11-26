@@ -22,7 +22,7 @@ namespace feather {
 
 int EltwiseLayerCL::InitCL() {
   string func_name = "eltwise";
-  
+
   string kernel_name_4o4 = "clEltwise4o4";
   auto it_source1 = booster::opencl_kernel_string_map.find("elewiseBuffer4o4");
   std::string kernel_str_4o4(it_source1->second.begin(),it_source1->second.end());
@@ -53,20 +53,20 @@ int EltwiseLayerCL::InitCL() {
 }
 
 int EltwiseLayerCL::GenerateTopBlobs() {
-  assert(_bottom.size() == 2);
-  assert(_bottom_blobs.size() == 2);
-  assert(_bottom_blobs[_bottom[0]]->data_size() == _bottom_blobs[_bottom[1]]->data_size());
+  assert(this->_bottom.size() == 2);
+  assert(this->_bottom_blobs.size() == 2);
+  assert(this->_bottom_blobs[this->_bottom[0]]->data_size() == this->_bottom_blobs[this->_bottom[1]]->data_size());
 
 
   Blob<uint16_t>* p_blob = new Blob<uint16_t>();
-  p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
+  p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
 
-  p_blob->AllocDevice(rt_param->context(), p_blob->data_size_padded_c());
+  p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
 
   int output_height = p_blob->height();
   int output_width = p_blob->width();
   int output_channel = p_blob->get_channels_padding();
-  _top_blobs[_top[0]] = p_blob;
+  this->_top_blobs[this->_top[0]] = p_blob;
 
   int group_size_h = 8, group_size_w = 8;
   if (output_width > 32) group_size_w = 16;
@@ -92,7 +92,7 @@ int EltwiseLayerCL::GenerateTopBlobs() {
 int EltwiseLayerCL::SetKernelParameters() {
   int error_num;
 
-  kernels[0] = clCreateKernel(cl_programs[0], cl_kernel_functions[0].c_str(), &error_num);
+  kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
     LOGE("Failed to create Elementwise OpenCL kernels[0]. ");
     return -1;
@@ -114,7 +114,7 @@ int EltwiseLayerCL::SetKernelParameters() {
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 4, sizeof(cl_int), &output_width));
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 5, sizeof(cl_int), &output_channels));
 
-  FineTuneGroupSize(this->kernels[0], _top_blobs[_top[0]]->height(), _top_blobs[_top[0]]->width());
+  FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
     return -1;
@@ -126,24 +126,41 @@ int EltwiseLayerCL::SetKernelParameters() {
 void EltwiseLayerCL::FinetuneKernel() {
   string cur_kname;
   string cur_kstr;
-  // size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
-  size_t padded_output_c = _top_blobs[_top[0]]->get_channels_padding();
+  size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
+  size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-  if (padded_output_c % 4 == 0 && padded_output_c % 8 != 0) {
-    cur_kname = cl_kernel_names[0];
-    cur_kstr = cl_kernel_symbols[0];
-    this->global_work_size[2] = padded_output_c / 4;
-  } else {
-    if (padded_output_c % 8 == 0 && padded_output_c % 16 != 0) {
-      cur_kname = cl_kernel_names[1];
-      cur_kstr = cl_kernel_symbols[1];
-      this->global_work_size[2] = padded_output_c / 8;
-    } else {
-      cur_kname = cl_kernel_names[2];
-      cur_kstr = cl_kernel_symbols[2];
-      this->global_work_size[2] = padded_output_c / 16;
-    }
+  int kernel_idx = 0, group_size = 4;
+
+  if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
+  {
+    kernel_idx = 1;
+    group_size = 8;
+  } else if (padded_input_c % 16 == 0 && padded_output_c % 8 == 16)
+  {
+    kernel_idx = 2;
+    group_size = 16;
   }
+
+  this->global_work_size[2] = padded_output_c / group_size;
+  cur_kname = this->cl_kernel_names[kernel_idx];
+  cur_kstr = this->cl_kernel_symbols[kernel_idx];
+
+
+  // if (padded_output_c % 4 == 0 && padded_output_c % 8 != 0) {
+  //   cur_kname = cl_kernel_names[0];
+  //   cur_kstr = cl_kernel_symbols[0];
+  //   this->global_work_size[2] = padded_output_c / 4;
+  // } else {
+  //   if (padded_output_c % 8 == 0 && padded_output_c % 16 != 0) {
+  //     cur_kname = cl_kernel_names[1];
+  //     cur_kstr = cl_kernel_symbols[1];
+  //     this->global_work_size[2] = padded_output_c / 8;
+  //   } else {
+  //     cur_kname = cl_kernel_names[2];
+  //     cur_kstr = cl_kernel_symbols[2];
+  //     this->global_work_size[2] = padded_output_c / 16;
+  //   }
+  // }
 
   cl_kernel_names.clear();
   cl_kernel_symbols.clear();
@@ -153,7 +170,12 @@ void EltwiseLayerCL::FinetuneKernel() {
 
 
 int EltwiseLayerCL::ForwardCL() {
-  int error_num = clEnqueueNDRangeKernel(rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL,&events[0]);
+#ifdef TIMING_CL
+    clFinish(this->rt_param->command_queue());
+    timespec tpstart, tpend;
+    clock_gettime(CLOCK_MONOTONIC, &tpstart);
+#endif
+  int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL,&events[0]);
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the element wise kernel. %s", errorNumberToString(error_num).c_str());
     return -1;
@@ -182,6 +204,3 @@ int EltwiseLayerCL::ForwardCL() {
 }
 
 }; // namespace feather
-
-
-

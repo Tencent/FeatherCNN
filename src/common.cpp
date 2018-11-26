@@ -225,6 +225,7 @@ int buildProgramFromSource(const cl_context& context, const cl_device_id& device
     build_opts += " -cl-mad-enable -cl-fast-relaxed-math";
     error_num = clBuildProgram(program, 0, NULL, build_opts.c_str(), NULL, NULL);
     if (error_num){
+        LOGE("clBuildProgram failed %d %s", error_num, errorNumberToString(error_num).c_str());
         char *buff_erro;
         cl_int errcode;
         size_t build_log_len;
@@ -245,10 +246,9 @@ int buildProgramFromSource(const cl_context& context, const cl_device_id& device
             LOGE("clGetProgramBuildInfo failed at line: %d", __LINE__);
             return -1;
         }
-
         LOGE("Build log: %s" ,buff_erro); //Be careful with  the fprint
         free(buff_erro);
-        LOGE("clBuildProgram failed %d", error_num);
+
         return -1;
     }
     return 0;
