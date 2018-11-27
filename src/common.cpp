@@ -53,5 +53,3 @@ void _mm_free(void* ptr)
     }
 }
 
-
-

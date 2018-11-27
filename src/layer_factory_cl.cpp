@@ -67,6 +67,8 @@ void register_layer_creators_cl()
     REGISTER_LAYER_CREATOR_CL(Pooling, GetPoolingLayerCL);
     REGISTER_LAYER_CREATOR_CL(ReLU, GetReluLayerCL);
     REGISTER_LAYER_CREATOR_CL(InnerProduct, GetInnerProductLayerCL);
+    REGISTER_LAYER_CREATOR_CL(DepthwiseConvolution, GetConvolutionLayerCL);
+    REGISTER_LAYER_CREATOR_CL(Eltwise, GetEltwiseLayerCL);
 }
 
 };
