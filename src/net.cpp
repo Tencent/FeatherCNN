@@ -43,11 +43,6 @@ Net::Net(size_t num_threads, DeviceType device_type)
     register_layer_creators();
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
     rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
-#ifdef FEATHER_OPENCL
-    if (device_type == DeviceType::GPU_CL)
-      OpenCLProbe();
-#endif
-
 }
 
 
@@ -65,7 +60,6 @@ Net::~Net()
       {
         delete layers_cl[i];
       }
-      rt_param->ReleaseOpenCLEnv();
     }
 #endif
 
@@ -776,74 +770,6 @@ bool Net::InitFromBufferCL(const void *net_buffer)
     rt_param->common_mempool()->Alloc();
     return true;
 }
-
-int Net::OpenCLProbe()
-{
-
-    cl_command_queue command_queue;
-    cl_context context;
-    cl_device_id device;
-
-    cl_int error_num;
-    cl_platform_id platforms;
-    cl_uint num_platforms;
-
-    error_num = clGetPlatformIDs(1, &platforms, &num_platforms);
-
-    if (error_num){
-        LOGE("failed to clGetPlatformIDs: %d", error_num);
-        return -1;
-    }
-    error_num = clGetDeviceIDs(platforms, CL_DEVICE_TYPE_GPU, 1, &device, &num_platforms);
-    if(error_num){
-        LOGE("failed to clGetDeviceIDs: %d", error_num);
-        return -1;
-    } else {
-        LOGD("number of platforms is: %d", num_platforms);
-    }
-
-    char buffer[1024];
-    error_num = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
-    if (error_num) {
-        LOGE("failed to clGetDeviceInfo CL_DEVICE_NAME: %d", error_num);
-        return -1;
-    }
-    else {
-        LOGD("CL_DEVICE_NAME = %s", buffer);
-    }
-
-    error_num = clGetDeviceInfo(device, CL_DEVICE_VERSION, sizeof(buffer), buffer, NULL);
-    if (error_num) {
-        LOGE("failed to clGetDeviceInfo CL_DEVICE_VERSION: %d", error_num);
-        return -1;
-    }
-    else {
-        LOGD("CL_DEVICE_VERSION = %s", buffer);
-    }
-
-    error_num = clGetDeviceInfo(device, CL_DEVICE_EXTENSIONS, sizeof(buffer), buffer, NULL);
-    if (error_num) {
-        LOGE("failed to clGetDeviceInfo CL_DEVICE_EXTENSIONS: %d", error_num);
-        return -1;
-    }
-    else {
-        LOGD("CL_DEVICE_EXTENSIONS = %s", buffer);
-    }
-
-    context = clCreateContext(NULL, 1, &device, NULL, NULL, &error_num);
-    if (error_num) {
-        LOGE("failed to clCreateContext: %d", error_num);
-        return -1;
-    }
-
-    if (!createCommandQueue(context, &command_queue, &device)){
-        LOGE("failed to createCommandQueue");
-        return -1;
-    }
-    rt_param->SetupOpenCLEnv(context, command_queue, device);
-    return 0;
-}
-
 
 #endif
 

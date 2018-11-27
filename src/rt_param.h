@@ -24,6 +24,7 @@
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
 #include <CL/cl.h>
+#include <CL/cl_runtime.h>
 #endif
 
 enum DeviceType
@@ -39,49 +40,27 @@ class RuntimeParameter
     public:
       RuntimeParameter() : _common_mempool(NULL),
                            _device_type(DeviceType::CPU),
-#ifdef FEATHER_OPENCL
-                           _context(NULL),
-                           _command_queue(NULL), _device(NULL),
-#endif
                            _num_threads(1)
       {
+        #ifdef FEATHER_OPENCL
+          if(_device_type == DeviceType::GPU_CL)
+            _cl_runtime = new cl_feather::OpenCLRuntime(); 
+        #endif
       }
       RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
           : _common_mempool(common_mempool),
           _num_threads(num_threads),
           _device_type(device_type)
       {
+        #ifdef FEATHER_OPENCL
+          if(_device_type == DeviceType::GPU_CL)
+            _cl_runtime = new cl_feather::OpenCLRuntime(); 
+        #endif
       }
-
-#ifdef FEATHER_OPENCL
-      int SetupOpenCLEnv(
-          const cl_context &context,
-          const cl_command_queue &command_queue,
-          const cl_device_id &device)
+      ~RuntimeParameter()
       {
-          _context = context;
-          _command_queue = command_queue;
-          _device = device;
-          return 0;
+        delete _cl_runtime;
       }
-
-      int ReleaseOpenCLEnv()
-      {
-          if (!checkSuccess(clFinish(_command_queue))){
-            LOGE("Failed waiting for command queue run. ");
-            return -1;
-          }
-
-          if(_context != 0){
-              clReleaseContext(_context);
-          }
-
-          if (_command_queue != 0){
-              clReleaseCommandQueue(_command_queue);
-          }
-          return 0;
-      }
-#endif
 
       CommonMemPool<Dtype> *common_mempool() const
       {
@@ -93,33 +72,32 @@ class RuntimeParameter
       }
 
 
-        DeviceType device_type() const
-        {
-            return _device_type;
-        }
+      DeviceType device_type() const
+      {
+          return _device_type;
+      }
+
 #ifdef FEATHER_OPENCL
-        cl_context context() const
-        {
-            return _context;
-        }
-        cl_command_queue command_queue() const
-        {
-            return _command_queue;
-        }
-        cl_device_id device() const
-        {
-            return _device;
-        }
+      cl_context context() const
+      {
+          return _cl_runtime->context();
+      }
+      cl_command_queue command_queue() const
+      {
+          return _cl_runtime->command_queue();
+      }
+      cl_device_id device() const
+      {
+          return _cl_runtime->device();
+      }
 #endif
 
       private:
         CommonMemPool<Dtype> *_common_mempool;
         size_t _num_threads;
-
         DeviceType _device_type;
+
 #ifdef FEATHER_OPENCL
-        cl_context _context;
-        cl_command_queue _command_queue;
-        cl_device_id _device;
+        cl_feather::OpenCLRuntime *_cl_runtime; 
 #endif
 };

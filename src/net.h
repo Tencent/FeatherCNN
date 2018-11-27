@@ -33,17 +33,15 @@ class Net
 
         int  Forward(float* input);
         int  Forward(float* input, int height, int width);
-
-	      int RemoveLayer(Layer<float>* layer);
+        int RemoveLayer(Layer<float>* layer);
         int GenLayerTops();
         void TraverseNet();
         int GetBlobDataSize(size_t* data_size, std::string blob_name);
-	      int PrintBlobData(std::string blob_name);
+        int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);
         std::map<std::string, const Blob<float> *> blob_map;
 #ifdef FEATHER_OPENCL
         //int test_opencl();
-        int OpenCLProbe();
         bool InitFromBufferCL(const void *net_buffer);
         int RemoveLayer(Layer<uint16_t>* layer);
         std::map<std::string, const Blob<uint16_t> *> blob_map_cl;
