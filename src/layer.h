@@ -22,10 +22,10 @@
 #endif
 #include <vector>
 #include <map>
-#include <common.h>
+#include "common.h"
 
 #ifdef FEATHER_OPENCL
-#include <CL/half.h>
+#include "CL/half.h"
 #endif
 
 namespace feather

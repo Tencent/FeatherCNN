@@ -23,8 +23,8 @@
 
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
-#include <CL/cl.h>
-#include <CL/cl_runtime.h>
+#include "CL/cl.h"
+#include "CL/cl_runtime.h"
 #endif
 
 enum DeviceType
@@ -59,7 +59,9 @@ class RuntimeParameter
       }
       ~RuntimeParameter()
       {
-        delete _cl_runtime;
+        #ifdef FEATHER_OPENCL
+          delete _cl_runtime;
+        #endif
       }
 
       CommonMemPool<Dtype> *common_mempool() const
