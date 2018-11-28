@@ -17,10 +17,10 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
-#include <CL/half.h>
 
 #ifdef FEATHER_OPENCL
-#include <CL/cl.h>
+#include "CL/half.h"
+#include "CL/cl.h"
 #endif
 
 namespace feather

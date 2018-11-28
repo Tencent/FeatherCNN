@@ -23,8 +23,8 @@
 
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
-#include <CL/cl.h>
-#include <CL/cl_runtime.h>
+#include "CL/cl.h"
+#include "CL/cl_runtime.h"
 #endif
 
 enum DeviceType
