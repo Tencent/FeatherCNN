@@ -98,7 +98,8 @@ namespace cl_feather{
         context_properties.push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
         context_properties.push_back(CL_PRIORITY_HINT_HIGH_QCOM);
 
-        _context = clCreateContext(context_properties.data(), 1, &_device, NULL, NULL, &error_num);
+        //_context = clCreateContext(context_properties.data(), 1, &_device, NULL, NULL, &error_num);
+        _context = clCreateContext(NULL, 1, &_device, NULL, NULL, &error_num);
 
     }
     else {

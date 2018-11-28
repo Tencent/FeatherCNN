@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
+#include "log.h"
 
 /**
  * Wrapper of OpenCL 2.0, based on file opencl20/CL/cl.h
