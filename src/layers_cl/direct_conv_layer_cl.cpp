@@ -61,11 +61,11 @@ int DirectConvLayerCL::InitCL()
     this->cl_kernel_functions.push_back(func_name_depthwise);
 
     std::string kernel_name_4o4 = "clConvIn4o4";
-    auto it_source0 = booster::opencl_kernel_string_map.find("convBuffer4o4_1v2_grp1");
+    auto it_source0 = booster::opencl_kernel_string_map.find("convBufferReformW4o4_1v1_grp1");
     std::string kernel_str_4o4(it_source0->second.begin(), it_source0->second.end());
 
     std::string kernel_name_8o8 = "clConvIn8o8";
-    auto it_source1 = booster::opencl_kernel_string_map.find("convBuffer8o8_1v2_grp1");
+    auto it_source1 = booster::opencl_kernel_string_map.find("convBufferReformW8o8_1v1_grp1");
     std::string kernel_str_8o8(it_source1->second.begin(), it_source1->second.end());
 
     std::string kernel_name_4o4_depthwise = "clDepthconvIn4V4";
@@ -169,11 +169,6 @@ int DirectConvLayerCL::SetKernelParameters()
       this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), out_real_channels);
       std::vector<uint16_t> bias_padding(out_real_channels, 0);
       memcpy(bias_padding.data(), this->bias_data, this->output_channels * sizeof(uint16_t));
-      // float bias_padding[out_real_channels];
-      // memset(bias_padding, 0.0f, out_real_channels * sizeof(float));
-      // for (int i = 0; i < this->_weight_blobs[0]->num(); ++i) {
-      //   bias_padding[i] = bias_data[i];
-      // }
       this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), out_real_channels);
       this->_weight_blobs[1]->Free();
     }
@@ -237,7 +232,7 @@ int DirectConvLayerCL::ForwardCL()
     clFinish(this->rt_param->command_queue());
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
+
     // if(group <=0)	group = 1;
     // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
     // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
@@ -252,8 +247,6 @@ int DirectConvLayerCL::ForwardCL()
       return -1;
     }
 
-		/* if we wanna do something for event in future */
-#ifdef TIMING_CL
     clWaitForEvents(1, &events[0]);
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -264,13 +257,21 @@ int DirectConvLayerCL::ForwardCL()
     clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
     total_time = time_end - time_start;
     LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
-#endif
 
-		error_num = clReleaseEvent(events[0]);
-		if (!checkSuccess(error_num)) {
-      LOGE("Failed release event.");
+    error_num = clReleaseEvent(events[0]);
+    if (!checkSuccess(error_num)) {
+        LOGE("Failed release event.");
+        return -1;
+    }
+
+#else
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
     }
+#endif
 
     return 0;
   }
@@ -321,41 +322,47 @@ int DirectConvLayerCL::GenerateTopBlobs() {
         this->stride_width = 1;
         this->stride_height = 1;
     }
-    this->output_width = (this->input_width + this->padding_left + this->padding_right - this->kernel_width) / this->stride_width + 1;
-    this->output_height = (this->input_height + this->padding_top + this->padding_bottom - this->kernel_height) / this->stride_height + 1;
+    AssignOutputSize();
     if(this->group > 1 && this->group == this->input_channels)
     {
         this->output_channels = this->group;
         this->is_dw = true;
     }
-
      this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
      this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     FinetuneKernel();
+    SetWorkSize();
 
-    int group_size_h = 8, group_size_w = 8;
-    if (this->output_width > 32) group_size_w = 16;
-    if (this->output_height > 32) group_size_h = 16;
-    //LOGI("out: %d %d", output_height, output_width)
-    this->global_work_size[0] = (this->output_height / group_size_h + !!(this->output_height % group_size_h)) * group_size_h;
-    this->global_work_size[1] = (this->output_width / group_size_w  + !!(this->output_width % group_size_w)) * group_size_w;
-    this->local_work_size[0] = group_size_h;
-    this->local_work_size[1] = group_size_w;
+    return 0;
+}
+
+inline void DirectConvLayerCL:: AssignOutputSize()
+{
+    this->output_width = (this->input_width + this->padding_left + this->padding_right - this->kernel_width) / this->stride_width + 1;
+    this->output_height = (this->input_height + this->padding_top + this->padding_bottom - this->kernel_height) / this->stride_height + 1;
+}
+
+int DirectConvLayerCL::SetWorkSize()
+{
+    if (this->output_width > 32) this->group_size_w = 16;
+    if (this->output_height > 32) this->group_size_h = 16;
+
+    this->global_work_size[0] = (this->output_height / this->group_size_h + !!(this->output_height % this->group_size_h)) * this->group_size_h;
+    this->global_work_size[1] = (this->output_width / this->group_size_w  + !!(this->output_width % this->group_size_w)) * this->group_size_w;
+    this->local_work_size[0] = this->group_size_h;
+    this->local_work_size[1] = this->group_size_w;
     // int work_size_w = this->globalWorkSize[1] / 2;
     // if(work_size_w >= this->localWorkSize[1] && work_size_w % this->localWorkSize[1] == 0){
     //   this->globalWorkSize[1] = work_size_w;
     // }
-
     if (this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
       this->local_work_size[2] = 4;
     } else {
       this->local_work_size[2] = 1;
     }
-
     return 0;
-  }
-
+}
 
 int DirectConvLayerCL::Fuse(Layer *next_layer)
 {

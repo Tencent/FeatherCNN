@@ -27,8 +27,10 @@ public:
   InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
   int InitCL();
+  virtual int SetWorkSize();
   virtual int SetKernelParameters();
   virtual int ForwardCL();
+  inline void AssignOutputSize();
   void FinetuneKernel();
   int GenerateTopBlobs();
   int Fuse(Layer *next_layer);

@@ -44,7 +44,7 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new cl_feather::OpenCLRuntime(); 
+            _cl_runtime = new cl_feather::OpenCLRuntime();
         #endif
       }
       RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
@@ -54,14 +54,21 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new cl_feather::OpenCLRuntime(); 
+            _cl_runtime = new cl_feather::OpenCLRuntime();
         #endif
       }
       ~RuntimeParameter()
       {
+<<<<<<< Updated upstream
         #ifdef FEATHER_OPENCL
           delete _cl_runtime;
         #endif
+=======
+          #ifdef FEATHER_OPENCL
+          if (_device_type == DeviceType::GPU_CL)
+            delete _cl_runtime;
+          #endif
+>>>>>>> Stashed changes
       }
 
       CommonMemPool<Dtype> *common_mempool() const
@@ -100,6 +107,6 @@ class RuntimeParameter
         DeviceType _device_type;
 
 #ifdef FEATHER_OPENCL
-        cl_feather::OpenCLRuntime *_cl_runtime; 
+        cl_feather::OpenCLRuntime *_cl_runtime;
 #endif
 };

@@ -89,23 +89,22 @@ namespace cl_feather{
     LOGD("Gpu:[%s][%s]", tmp_device_name.c_str(), tmp_device_version.c_str());
     if(tmp_device_name == "QUALCOMM Adreno(TM)" && tmp_device_version.find("2.0") != std::string::npos)
     {
-        
+
         LOGD("QUALCOMM 2.0 opt High");
         std::vector<cl_context_properties> context_properties;
         context_properties.reserve(5);
-        context_properties.push_back(CL_CONTEXT_PERF_HINT_QCOM);
-        context_properties.push_back(CL_PERF_HINT_HIGH_QCOM);
-        context_properties.push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
-        context_properties.push_back(CL_PRIORITY_HINT_HIGH_QCOM);
+        // context_properties.push_back(CL_CONTEXT_PERF_HINT_QCOM);
+        // context_properties.push_back(CL_PERF_HINT_HIGH_QCOM);
+        // context_properties.push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+        // context_properties.push_back(CL_PRIORITY_HINT_HIGH_QCOM);
 
         //_context = clCreateContext(context_properties.data(), 1, &_device, NULL, NULL, &error_num);
         _context = clCreateContext(NULL, 1, &_device, NULL, NULL, &error_num);
-
     }
     else {
         _context = clCreateContext(NULL, 1, &_device, NULL, NULL, &error_num);
     }
-    
+
     if (error_num) {
         LOGE("failed to clCreateContext: %d", error_num);
         return -1;

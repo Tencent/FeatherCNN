@@ -24,6 +24,8 @@
 #include "layer.h"
 #include "layers/input_layer.h"
 
+#include "log.h"
+
 #include "mempool.h"
 
 #include <stdio.h>
@@ -48,6 +50,7 @@ Net::Net(size_t num_threads, DeviceType device_type)
 
 Net::~Net()
 {
+
     for(int i = 0; i < layers.size(); ++i)
     {
         delete layers[i];
@@ -62,7 +65,6 @@ Net::~Net()
       }
     }
 #endif
-
     delete rt_param;
 
 }

@@ -29,9 +29,11 @@ public:
   DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
     int InitCL();
+    virtual int SetWorkSize();
     virtual int ForwardCL();
     virtual int SetKernelParameters();
     void FinetuneKernel();
+    inline void AssignOutputSize();
     int GenerateTopBlobs();
     int Fuse(Layer *next_layer);
 

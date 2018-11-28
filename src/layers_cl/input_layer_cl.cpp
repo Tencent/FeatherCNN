@@ -41,6 +41,29 @@ int InputLayerCL::InitCL()
     return 0;
 }
 
+int InputLayerCL::SetWorkSize() {
+    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+    size_t output_channels = layer_blob->channels();
+
+    if (this->output_height >= 32) this->group_size_h = 16;
+    if (this->output_width >= 32) this->group_size_w = 16;
+
+    //layer_blob->_groupChannel = 4; //HWC4
+    this->global_work_size[0] = (this->output_height / this->group_size_h + !!(this->output_height % this->group_size_h)) * this->group_size_h;
+    this->global_work_size[1] = (this->output_width  / this->group_size_w + !!(this->output_width  % this->group_size_w)) * this->group_size_w;
+    this->global_work_size[2] = output_channels / layer_blob->channel_grp() + !!(output_channels % layer_blob->channel_grp());
+
+    this->local_work_size[0] = group_size_h;
+    this->local_work_size[1] = group_size_w;
+    if (this->global_work_size[2] > layer_blob->channel_grp() && this->global_work_size[2] % layer_blob->channel_grp() == 0) {
+      this->local_work_size[2] = 4;
+    } else {
+      this->local_work_size[2] = 1;
+    }
+
+    return 0;
+}
+
 
 int InputLayerCL::SetKernelParameters() {
 
@@ -49,26 +72,8 @@ int InputLayerCL::SetKernelParameters() {
   bool set_kernel_arguments_success = true;
   int param_idx = 0;
   Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
-  size_t output_height = layer_blob->height();
-  size_t output_width = layer_blob->width();
-  size_t output_channels = layer_blob->channels();
 
-  if (output_height >= 32) group_size_h = 16;
-  if (output_width >= 32) group_size_w = 16;
-
-  //layer_blob->_groupChannel = 4; //HWC4
-  this->global_work_size[0] = (output_height / group_size_h + !!(output_height % group_size_h)) * group_size_h;
-  this->global_work_size[1] = (output_width  / group_size_w + !!(output_width  % group_size_w)) * group_size_w;
-  this->global_work_size[2] = output_channels / layer_blob->channel_grp() + !!(output_channels % layer_blob->channel_grp());
-
-  this->local_work_size[0] = group_size_h;
-  this->local_work_size[1] = group_size_w;
-  if (this->global_work_size[2] > layer_blob->channel_grp() && this->global_work_size[2] % layer_blob->channel_grp() == 0) {
-    this->local_work_size[2] = 4;
-  } else {
-    this->local_work_size[2] = 1;
-  }
-
+  SetWorkSize();
 
   this->kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
@@ -96,9 +101,9 @@ int InputLayerCL::SetKernelParameters() {
 
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &this->_cl_fimage));
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_height));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_width));
-  //set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_channels));
+  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
+  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+
 
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
@@ -111,8 +116,8 @@ int InputLayerCL::SetKernelParameters() {
   _cl_img2d = clCreateImage2D(this->rt_param->context(),
                                   CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
                                   &cl_img_fmt,
-                                  output_width,
-                                  output_height,
+                                  this->output_width,
+                                  this->output_height,
                                   0,
                                   NULL,
                                   &error_num);
@@ -124,8 +129,8 @@ int InputLayerCL::SetKernelParameters() {
   param_idx = 0;
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_mem), &this->_cl_img2d));
   set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_mem), &layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_int), &output_height));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_int), &output_width));
+  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_int), &this->output_height));
+  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[1], param_idx++, sizeof(cl_int), &this->output_width));
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting normalinit OpenCL kernels[1] arguments. %s: %s", __FILE__, __LINE__);
     return -1;
@@ -149,8 +154,8 @@ int InputLayerCL::SetKernelParameters() {
   }
 
 
-  FineTuneGroupSize(this->kernels[0], layer_blob->height(), layer_blob->width());
-  FineTuneGroupSize(this->kernels[1], layer_blob->height(), layer_blob->width());
+  FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+  FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
 
   return 0;
 }
@@ -172,20 +177,45 @@ int InputLayerCL::UintToDevice(const uint8_t* src_bgra) {
 }
 
 int InputLayerCL::RunKernel(int type) {
-  int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[type], 3, NULL,
-                                         global_work_size, local_work_size, 0, NULL, &events[0]);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed enqueuing the normalinit kernel.");
-    return -1;
-  }
+#ifdef TIMING_CL
+    clFinish(commandQueue);
+    timespec tpstart, tpend;
+    clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
-  /* if we wanna do something for event in future */
-  error_num = clReleaseEvent(events[0]);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed release event.");
-    return -1;
-  }
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[type], 3,
+                      NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
+      return -1;
+    }
 
-  return 0;
+    clWaitForEvents(1, &events[0]);
+    clock_gettime(CLOCK_MONOTONIC, &tpend);
+    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
+
+    cl_ulong time_start, time_end;
+    double total_time;
+    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+    total_time = time_end - time_start;
+    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
+
+    error_num = clReleaseEvent(events[0]);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed release event. %s", errorNumberToString(error_num).c_str());
+      return -1;
+    }
+
+#else
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[type], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
+      return -1;
+    }
+#endif
+
+    return 0;
 }
 }; // namespace feather

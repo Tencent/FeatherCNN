@@ -173,16 +173,14 @@ int InnerProductLayerCL::ForwardCL() {
     clFinish(commandQueue);
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
 
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
       return -1;
     }
 
-		/* if we wanna do something for event in future */
-#ifdef TIMING_CL
     clWaitForEvents(1, &events[0]);
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -194,13 +192,22 @@ int InnerProductLayerCL::ForwardCL() {
     clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
     total_time = time_end - time_start;
     LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
-#endif
 
-		error_num = clReleaseEvent(events[0]);
-		if (!checkSuccess(error_num)) {
+    error_num = clReleaseEvent(events[0]);
+    if (!checkSuccess(error_num)) {
       LOGE("Failed release event. %s", errorNumberToString(error_num).c_str());
       return -1;
     }
+
+#else
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
+      return -1;
+    }
+#endif
+
     return 0;
   }
 
@@ -237,19 +244,24 @@ int InnerProductLayerCL::GenerateTopBlobs() {
     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, 1, 1);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
-    //LOGI("%d, %d, %d, %d,", _top_blobs[_top[0]]->num(), _top_blobs[_top[0]]->channels(), _top_blobs[_top[0]]->height(), _top_blobs[_top[0]]->width());
 
     FinetuneKernel();
+    SetWorkSize();
 
+
+    return 0;
+}
+
+int InnerProductLayerCL::SetWorkSize()
+{
     this->global_work_size[0] = 1;
     this->global_work_size[1] = 1;
     //this->globalWorkSize[2] = output_channels / 4;
     this->local_work_size[0] = 1;
     this->local_work_size[1] = 1;
     this->local_work_size[2] = 1;
-
     return 0;
-  }
+}
 
 int InnerProductLayerCL::Fuse(Layer *next_layer) {
     if (next_layer->type().compare("ReLU") == 0) {

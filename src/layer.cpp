@@ -128,6 +128,7 @@ int Layer<Dtype>::GenerateTopBlobs()
     Blob<Dtype>* p_blob = new Blob<Dtype>();
     p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
     p_blob->Alloc();
+    
     _top_blobs[_top[0]] = p_blob;
     return 0;
 }
@@ -283,6 +284,13 @@ int Layer<Dtype>::BuildOpenCLProgram()
 
 template<class Dtype>
 int Layer<Dtype>::SetKernelParameters()
+{
+    //Base layer doesn't know settings.
+    return -1;
+}
+
+template<class Dtype>
+int Layer<Dtype>::SetWorkSize()
 {
     //Base layer doesn't know settings.
     return -1;

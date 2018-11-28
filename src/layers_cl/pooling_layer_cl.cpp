@@ -80,7 +80,8 @@ int PoolingLayerCL::InitCL() {
     cl_event event;
     this->events.push_back(event);
     return 0;
-  }
+}
+
 
 int PoolingLayerCL::SetKernelParameters() {
     int error_num;
@@ -120,24 +121,52 @@ int PoolingLayerCL::SetKernelParameters() {
   }
 
 int PoolingLayerCL::ForwardCL() {
+#ifdef TIMING_CL
+    clFinish(this->rt_param->command_queue());
+    timespec tpstart, tpend;
+    clock_gettime(CLOCK_MONOTONIC, &tpstart);
+
+    // if(group <=0)	group = 1;
     // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
     // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
     // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
     // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
     // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", globalWorkSize[0], globalWorkSize[1], globalWorkSize[2]);
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
+    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the pooling kernel. %d", error_num);
+      LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
     }
 
-		/* if we wanna do something for event in future */
-		error_num = clReleaseEvent(events[0]);
-		if (!checkSuccess(error_num)) {
-      LOGE("Failed release event.");
+    clWaitForEvents(1, &events[0]);
+    clock_gettime(CLOCK_MONOTONIC, &tpend);
+    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
+    cl_ulong time_start, time_end;
+    double total_time;
+    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+    total_time = time_end - time_start;
+    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
+
+    error_num = clReleaseEvent(events[0]);
+    if (!checkSuccess(error_num)) {
+        LOGE("Failed release event.");
+        return -1;
+    }
+
+#else
+    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
+                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
     }
+#endif
+
 
     return 0;
   }
@@ -174,34 +203,39 @@ int PoolingLayerCL::GenerateTopBlobs() {
     this->input_height = bottom_blob->height();
     this->input_width = bottom_blob->width();
     this->input_channels = bottom_blob->channels();
-    if (this->global_pooling) {
-      this->kernel_height = this->input_height;
-      this->kernel_width = this->input_width;
-      this->output_height = 1;
-      this->output_width = 1;
-      this->output_channels = this->input_channels;
-    } else {
-      //General pooling.
-      this->output_channels = this->input_channels;
-      this->output_height = static_cast<int>(ceil(static_cast<float>(this->input_height + 2 * this->pad_height - this->kernel_height) / this->stride_height)) + 1;
-      this->output_width = static_cast<int>(ceil(static_cast<float>(this->input_width + 2 * this->pad_width - this->kernel_width) / this->stride_width)) + 1;
-    }
+
+    AssignOutputSize();
+    this->output_channels = this->input_channels;
     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
-
     FinetuneKernel();
+    SetWorkSize();
 
-    int group_size_h = 8, group_size_w = 8;
-    if (this->output_width > 32) {
-      group_size_w = 16;
-    }
-    if (this->output_height > 32) {
-      group_size_h = 16;
-    }
-    this->global_work_size[0] = (this->output_height / group_size_h + !!(this->output_height % group_size_h)) * group_size_h;
-    this->global_work_size[1] = (this->output_width / group_size_w  + !!(this->output_width % group_size_w)) * group_size_w;
-    this->local_work_size[0] = group_size_h;
-    this->local_work_size[1] = group_size_w;
+    return 0;
+}
+
+inline void PoolingLayerCL::AssignOutputSize()
+{
+  if (this->global_pooling) {
+    this->kernel_height = this->input_height;
+    this->kernel_width = this->input_width;
+    this->output_height = 1;
+    this->output_width = 1;
+  } else {
+    //General pooling.
+    this->output_height = static_cast<int>(ceil(static_cast<float>(this->input_height + 2 * this->pad_height - this->kernel_height) / this->stride_height)) + 1;
+    this->output_width = static_cast<int>(ceil(static_cast<float>(this->input_width + 2 * this->pad_width - this->kernel_width) / this->stride_width)) + 1;
+  }
+}
+
+int PoolingLayerCL::SetWorkSize()
+{
+    if (this->output_width > 32) this->group_size_w = 16;
+    if (this->output_height > 32) this->group_size_h = 16;
+    this->global_work_size[0] = (this->output_height / this->group_size_h + !!(this->output_height % this->group_size_h)) * this->group_size_h;
+    this->global_work_size[1] = (this->output_width / this->group_size_w  + !!(this->output_width % this->group_size_w)) * this->group_size_w;
+    this->local_work_size[0] = this->group_size_h;
+    this->local_work_size[1] = this->group_size_w;
     if(this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
       this->local_work_size[2] = 4;
     } else {

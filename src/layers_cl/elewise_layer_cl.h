@@ -35,9 +35,10 @@ public:
 
   int InitCL();
   int GenerateTopBlobs();
-  int SetKernelParameters();
+  virtual int SetWorkSize();
+  virtual int SetKernelParameters();
   void FinetuneKernel();
-  int ForwardCL();
+  virtual int ForwardCL();
 
   int Fuse(Layer *next_layer) {
     if (next_layer->type().compare("ReLU") == 0) {
@@ -50,6 +51,9 @@ public:
   }
 
 private:
+  size_t output_height;
+  size_t output_width;
+
   bool fuse_relu;
 
 };

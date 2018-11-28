@@ -29,6 +29,8 @@ public:
     int InitCL();
     virtual int SetKernelParameters();
     virtual int ForwardCL();
+    virtual int SetWorkSize();
+    inline void AssignOutputSize();
     void FinetuneKernel();
     int GenerateTopBlobs();
 

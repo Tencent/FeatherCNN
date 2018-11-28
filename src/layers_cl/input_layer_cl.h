@@ -43,6 +43,9 @@ public:
       _top.push_back(input_name);
       _top_blobs[input_name] = new Blob<uint16_t>(num, channels, height, width);
 
+      this->output_height = height;
+      this->output_width = width;
+
       //_top_blobs[input_name]->PrintBlobInfo();
       LOGI("input_name cl %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
       this->InitCL();
@@ -66,9 +69,8 @@ public:
   int UintToDevice(const uint8_t* src_bgra);
   int FloatToDevice(const float* input_data);
   int RunKernel(int type);
-  //int ForwardClImage();
 
-  //int build();
+  virtual int SetWorkSize();
   virtual int SetKernelParameters();
 
   int CopyInput(std::string name, const float *input_data) {
@@ -94,6 +96,11 @@ public:
     }
     return it->first;
   }
+
+private:
+  size_t output_height;
+  size_t output_width;
+  size_t output_channels;
 
   cl_mem _cl_img2d;
   cl_mem _cl_fimage;
