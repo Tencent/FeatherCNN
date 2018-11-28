@@ -59,7 +59,9 @@ class RuntimeParameter
       }
       ~RuntimeParameter()
       {
-        delete _cl_runtime;
+        #ifdef FEATHER_OPENCL
+          delete _cl_runtime;
+        #endif
       }
 
       CommonMemPool<Dtype> *common_mempool() const
