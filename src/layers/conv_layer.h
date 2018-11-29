@@ -37,7 +37,7 @@ class ConvLayer : public Layer<float>
         {
             //From proto
             const ConvolutionParameter *conv_param_in = layer_param->convolution_param();
-            
+
             conv_param.kernel_h = conv_param_in->kernel_h();
             conv_param.kernel_w = conv_param_in->kernel_w();
             conv_param.stride_h = conv_param_in->stride_h();
@@ -114,9 +114,9 @@ class ConvLayer : public Layer<float>
     protected:
         booster::ConvBooster conv_booster;
         booster::ConvParam   conv_param;
-        
+
         float *bias_data;
-        
+
         float *kernel_data;
         float *processed_kernel;
 };

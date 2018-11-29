@@ -159,6 +159,7 @@ class Blob
         }
         int AllocDevice(cl_context context, size_t data_size);
         int FreeDevice();
+        int ReshapeWithReallocDevice(cl_context context, size_t num, size_t channels, size_t height, size_t width);
 
         int WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size);
         int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size) const;

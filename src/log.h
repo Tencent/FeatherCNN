@@ -1,7 +1,7 @@
 #ifndef CL_LOG_H
 #define CL_LOG_H
 
-#ifdef ANDROID
+#if 0
     #include <android/log.h>
     #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "FeatherLib", __VA_ARGS__)
     #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "FeatherLib", __VA_ARGS__)

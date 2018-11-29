@@ -26,7 +26,7 @@ namespace feather {
 class InputLayerCL : public Layer<uint16_t> {
 public:
   InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-      : Layer<uint16_t>(layer_param, rt_param) {
+      : Layer<uint16_t>(layer_param, rt_param), _cl_fimage(NULL), _map_fdata(NULL), _cl_img2d(NULL), _map_img(NULL) {
     //From proto
     const InputParameter *input_param = layer_param->input_param();
     size_t input_num = VectorLength(input_param->name());
@@ -61,7 +61,7 @@ public:
 
     error_num = clEnqueueUnmapMemObject(this->rt_param->command_queue(), this->_cl_fimage, this->_map_fdata, 0, NULL, NULL);
     if (!checkSuccess(error_num)) {
-      LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
+      LOGE("fatal error: Deconstructor Unmapping _cl_fimage objects failed.");
     }
   }
 
@@ -72,6 +72,36 @@ public:
 
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
+  int ResetInputAndArgs(size_t data_size);
+
+  int Reshape(std::string name, int height, int width)
+  {
+      if (height == this->output_height && width == this->output_width) {
+          return 0;
+      }
+      bool set_kernel_arguments_success = true;
+      int num = _top_blobs[name]->num();
+      int channels = _top_blobs[name]->channels();
+      if (_top_blobs[name]->ReshapeWithReallocDevice(this->rt_param->context(), num, channels, height, width) == 2) {
+          cl_mem layer_data_cl = _top_blobs[name]->data_cl();
+          set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &layer_data_cl));
+      }
+      this->output_height = _top_blobs[name]->height();
+      this->output_width = _top_blobs[name]->width();
+
+      if (ResetInputAndArgs(num * channels * height * width) == 2) {
+          set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &this->_cl_fimage));
+      }
+      set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 2, sizeof(cl_int), &this->output_height));
+      set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_int), &this->output_width));
+      if (!set_kernel_arguments_success) {
+        LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
+        return -1;
+      }
+      SetWorkSize();
+      FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+      return 0;
+  }
 
   int CopyInput(std::string name, const float *input_data) {
     this->FloatToDevice(input_data);
@@ -100,7 +130,8 @@ public:
 private:
   size_t output_height;
   size_t output_width;
-  size_t output_channels;
+  size_t output_channel;
+  size_t input_data_size;
 
   cl_mem _cl_img2d;
   cl_mem _cl_fimage;

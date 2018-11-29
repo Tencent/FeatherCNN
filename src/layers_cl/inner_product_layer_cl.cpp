@@ -66,7 +66,7 @@ int InnerProductLayerCL::InitCL() {
 
 int InnerProductLayerCL::SetKernelParameters() {
     int error_num;
-    bool set_kernel_arguments_success = true;
+    bool set_kernel_arg_success = true;
     int param_idx = 0;
 
     size_t b_channel_padding = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
@@ -149,18 +149,18 @@ int InnerProductLayerCL::SetKernelParameters() {
     }
 
     //int channel_grp = in_real_channels / 4;
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &weight_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &bias_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &b_channel_padding));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &use_relu));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &weight_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &bias_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &b_channel_padding));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &use_relu));
 
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
-    if (!set_kernel_arguments_success) {
+    if (!set_kernel_arg_success) {
       LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
       return 1;
     }
@@ -210,6 +210,17 @@ int InnerProductLayerCL::ForwardCL() {
 
     return 0;
   }
+
+int InnerProductLayerCL::ForwardReshapeCL() {
+    if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
+        this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
+        return this->ForwardCL();
+    else
+    {
+        LOGE("inner product does not support variable input size");
+        return -1;
+    }
+}
 
 void InnerProductLayerCL::FinetuneKernel() {
     std::string cur_kname;
