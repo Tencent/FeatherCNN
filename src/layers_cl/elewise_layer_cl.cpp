@@ -88,6 +88,7 @@ int EltwiseLayerCL::SetWorkSize() {
 
 int EltwiseLayerCL::SetKernelParameters() {
   int error_num;
+  int param_idx = 0;
 
   kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
@@ -101,16 +102,16 @@ int EltwiseLayerCL::SetKernelParameters() {
 
   int output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-  bool set_kernel_arguments_success = true;
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem1));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &input_mem2));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 2, sizeof(cl_mem), &output_mem));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_int), &this->output_height));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 4, sizeof(cl_int), &this->output_width));
-  set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 5, sizeof(cl_int), &output_channels));
+  bool set_kernel_arg_success = true;
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem1));
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem2));
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_channels));
 
   FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
-  if (!set_kernel_arguments_success) {
+  if (!set_kernel_arg_success) {
     LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
     return -1;
   }
@@ -163,6 +164,35 @@ void EltwiseLayerCL::FinetuneKernel() {
   cl_kernel_symbols.push_back(cur_kstr);
 }
 
+int EltwiseLayerCL::ForwardReshapeCL() {
+    if (this->output_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
+        this->output_width == this->_bottom_blobs[this->_bottom[0]]->width())
+        return this->ForwardCL();
+
+    bool set_kernel_arg_success = true;
+
+    this->output_height = this->_bottom_blobs[this->_bottom[0]]->height();
+    this->output_width = this->_bottom_blobs[this->_bottom[0]]->width();
+    if (this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
+                                      this->_top_blobs[this->_top[0]]->num(),
+                                      this->_top_blobs[this->_top[0]]->channels(),
+                                      this->output_height, this->output_width) == 2)
+    {
+        cl_mem output_mem = _top_blobs[_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 2, sizeof(cl_mem), &output_mem));
+    }
+
+    cl_mem input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl_mem input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem1));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &input_mem2));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_int), &this->output_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 4, sizeof(cl_int), &this->output_width));
+
+    SetWorkSize();
+    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    return this->ForwardCL();
+}
 
 int EltwiseLayerCL::ForwardCL() {
 #ifdef TIMING_CL

@@ -37,6 +37,7 @@ public:
   int GenerateTopBlobs();
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
+  virtual int ForwardReshapeCL();
   void FinetuneKernel();
   virtual int ForwardCL();
 

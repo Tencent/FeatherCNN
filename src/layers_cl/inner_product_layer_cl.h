@@ -30,7 +30,7 @@ public:
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
   virtual int ForwardCL();
-  inline void AssignOutputSize();
+  virtual int ForwardReshapeCL();
   void FinetuneKernel();
   int GenerateTopBlobs();
   int Fuse(Layer *next_layer);

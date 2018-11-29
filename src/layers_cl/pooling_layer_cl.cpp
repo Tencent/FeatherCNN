@@ -171,6 +171,39 @@ int PoolingLayerCL::ForwardCL() {
     return 0;
   }
 
+int PoolingLayerCL::ForwardReshapeCL() {
+    if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
+        this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
+        return this->ForwardCL();
+
+    bool set_kernel_arg_success = true;
+    this->input_height = this->_bottom_blobs[this->_bottom[0]]->height();
+    this->input_width = this->_bottom_blobs[this->_bottom[0]]->width();
+
+    AssignOutputSize();
+    if (this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
+                                      this->_top_blobs[this->_top[0]]->num(),
+                                      this->_top_blobs[this->_top[0]]->channels(),
+                                      this->output_height, this->output_width) == 2)
+    {
+        cl_mem output_mem = _top_blobs[_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &output_mem));
+    }
+
+    int param_idx = 3;
+    cl_mem input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+
+    SetWorkSize();
+    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    return this->ForwardCL();
+}
+
+
 void PoolingLayerCL::FinetuneKernel() {
     std::string cur_kname;
     std::string cur_kstr;
