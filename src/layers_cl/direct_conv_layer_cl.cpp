@@ -224,7 +224,42 @@ int DirectConvLayerCL::SetKernelParameters()
     }
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
-  }
+}
+
+int DirectConvLayerCL::ForwardReshapeCL()
+{
+
+    if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
+        this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
+        return this->ForwardCL();
+
+    bool set_kernel_arg_success = true;
+    this->input_height = this->_bottom_blobs[this->_bottom[0]]->height();
+    this->input_width = this->_bottom_blobs[this->_bottom[0]]->width();
+
+    AssignOutputSize();
+    if (this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
+                                      this->_top_blobs[this->_top[0]]->num(),
+                                      this->_top_blobs[this->_top[0]]->channels(),
+                                      this->output_height, this->output_width) == 2)
+    {
+        cl_mem output_mem = _top_blobs[_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_mem), &output_mem));
+    }
+
+    int param_idx = this->is_dw ? 5 : 6;
+    cl_mem input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
+    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+
+    SetWorkSize();
+    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    return this->ForwardCL();
+}
+
 
 int DirectConvLayerCL::ForwardCL()
 {
@@ -233,14 +268,6 @@ int DirectConvLayerCL::ForwardCL()
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
-    // if(group <=0)	group = 1;
-    // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
-    // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
-    // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
-    // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
-    // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
-    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
     int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel. %d", error_num);

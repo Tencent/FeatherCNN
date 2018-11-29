@@ -128,7 +128,7 @@ int Layer<Dtype>::GenerateTopBlobs()
     Blob<Dtype>* p_blob = new Blob<Dtype>();
     p_blob->CopyShape(_bottom_blobs[_bottom[0]]);
     p_blob->Alloc();
-    
+
     _top_blobs[_top[0]] = p_blob;
     return 0;
 }
@@ -323,6 +323,12 @@ int Layer<Dtype>::FineTuneGroupSize(const cl_kernel& kernel, const size_t& heigh
 
 template<class Dtype>
 int Layer<Dtype>::ForwardCL()
+{
+    return false;
+}
+
+template<class Dtype>
+int Layer<Dtype>::ForwardReshapeCL()
 {
     return false;
 }

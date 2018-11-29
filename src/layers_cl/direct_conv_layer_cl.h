@@ -31,6 +31,7 @@ public:
     int InitCL();
     virtual int SetWorkSize();
     virtual int ForwardCL();
+    virtual int ForwardReshapeCL();
     virtual int SetKernelParameters();
     void FinetuneKernel();
     inline void AssignOutputSize();

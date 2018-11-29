@@ -52,6 +52,8 @@ class Layer
         virtual int SetWorkSize();
 
         virtual int ForwardCL();
+
+        virtual int ForwardReshapeCL();
 #endif
 
         virtual int Fuse(Layer* next_layer);

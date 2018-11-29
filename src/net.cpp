@@ -23,8 +23,7 @@
 #include "net.h"
 #include "layer.h"
 #include "layers/input_layer.h"
-
-#include "log.h"
+//#include "log.h"
 
 #include "mempool.h"
 
@@ -32,7 +31,7 @@
 #include <cstring>
 
 //#define LAYER_TIMING
-//#define PRINT_SETUP_LOG
+#define PRINT_SETUP_LOG
 
 namespace feather
 {
@@ -45,6 +44,7 @@ Net::Net(size_t num_threads, DeviceType device_type)
     register_layer_creators();
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
     rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
+
 }
 
 
@@ -88,17 +88,17 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             const float *data = p_blob->data();
             memcpy(output_ptr, data, sizeof(float) * data_size);
 
-            // printf("cpu:\n");
-            // for (int i = 0; i < p_blob->channels(); ++i) {
-            //   for (int j = 0; j < p_blob->height(); ++j) {
-            //     for (int k = 0; k < p_blob->width(); ++k) {
-            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
-            //       printf("%f ", output_ptr[idx]);
-            //     }
-            //     printf("\n");
-            //   }
-            //   printf("\n");
-            // }
+            printf("cpu:\n");
+            for (int i = 0; i < p_blob->channels(); ++i) {
+              for (int j = 0; j < p_blob->height(); ++j) {
+                for (int k = 0; k < p_blob->width(); ++k) {
+                  int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+                  printf("%f ", output_ptr[idx]);
+                }
+                printf("\n");
+              }
+              printf("\n");
+            }
 
             break;
         }
@@ -112,17 +112,30 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             }
             const Blob<uint16_t> *p_blob = blob_map_cl[name];
             p_blob->ReadFromDeviceCHW(rt_param->command_queue(), output_ptr);
+            printf("gpu:\n");
+            for (int i = 0; i < p_blob->channels(); ++i) {
+              for (int j = 0; j < p_blob->height(); ++j) {
+                for (int k = 0; k < p_blob->width(); ++k) {
+                  int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+                  printf("%f ", output_ptr[idx]);
+                }
+                printf("\n");
+              }
+              printf("\n");
+            }
+
             // printf("gpu:\n");
-            // for (int i = 0; i < p_blob->channels(); ++i) {
-            //   for (int j = 0; j < p_blob->height(); ++j) {
-            //     for (int k = 0; k < p_blob->width(); ++k) {
-            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
-            //       printf("%f ", output_ptr[idx]);
-            //     }
-            //     printf("\n");
-            //   }
-            //   printf("\n");
-            // }
+            //  for (int i = 0; i < p_blob->channels(); ++i) {
+            //    for (int j = 0; j < 8; ++j) {
+            //      for (int k = 0; k < 8; ++k) {
+            //        int idx = (i * 8 + j) * 8 + k;
+            //        printf("%f ", output_ptr[idx]);
+            //      }
+            //      printf("\n");
+            //    }
+            //    printf("\n");
+            //  }
+
             break;
         }
 #else
@@ -215,7 +228,6 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
 
 int Net::Forward(float *input)
 {
-
     // InputLayer *input_layer = (InputLayer *)layers[0];
     // for (int i = 0; i < input_layer->input_size(); ++i)
     // {
@@ -312,22 +324,72 @@ int Net::Forward(float *input)
 
 int Net::Forward(float* input, int height, int width)
 {
-    InputLayer *input_layer = (InputLayer *)layers[0];
-    input_layer->Reshape(input_layer->input_name(0), height, width);
-    input_layer->CopyInput(input_layer->input_name(0), input);
-    for (int i = 1; i < layers.size(); ++i)
+
+    switch (rt_param->device_type()) {
+        case DeviceType::CPU:
+        {
+            InputLayer *input_layer = (InputLayer *)layers[0];
+            input_layer->Reshape(input_layer->input_name(0), height, width);
+            input_layer->CopyInput(input_layer->input_name(0), input);
+            break;
+        }
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+        {
+            InputLayerCL *input_layer = (InputLayerCL *)layers_cl[0];
+            input_layer->Reshape(input_layer->input_name(0), height, width);
+            input_layer->CopyInput(input_layer->input_name(0), input);
+            break;
+        }
+#else
+        LOGE("Please compile OpenCL to use device type GPU_CL.");
+        return -1;
+#endif
+        case DeviceType::GPU_GL:
+            LOGE("Not implemented yet");
+            return -1;
+        default:
+            LOGE("Unsupported device type");
+            return -1;
+    }
+
+    int layer_size;
+
+#ifdef FEATHER_OPENCL
+    layer_size = rt_param->device_type() == DeviceType::CPU ? layers.size() : layers_cl.size();
+#else
+    layer_size = layers.size();
+#endif
+
+    for (int i = 1; i < layer_size; ++i)
     {
+        // sleep(2);
 #ifdef LAYER_TIMING
         timespec tpstart, tpend;
+        LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-// LOGI("Forward layer%d:%s %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
-        layers[i]->ForwardReshape();
-#ifdef LAYER_TIMING
-        clock_gettime(CLOCK_MONOTONIC, &tpend);
-        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        LOGI("layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+        //LOGD("Forward layer%d:%s %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
+        // layers[i]->Forward();
+        switch (rt_param->device_type()) {
+            case DeviceType::CPU:
+                layers[i]->ForwardReshape();
+                break;
+            case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+                layers_cl[i]->ForwardReshapeCL();
+                break;
+#else
+                LOGE("Please compile OpenCL to use device type GPU_CL.");
+                return -1;
 #endif
+            case DeviceType::GPU_GL:
+                LOGE("Not implemented yet");
+                return -1;
+            default:
+                LOGE("Unsupported device type");
+                return -1;
+        }
     }
     return 0;
 }

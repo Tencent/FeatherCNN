@@ -15,8 +15,7 @@
 #include "feather_generated.h"
 #include "blob.h"
 #include "fp16/fp16.h"
-
-#include "booster/helper.h"
+#include "log.h"
 
 #include "common.h"
 
@@ -253,6 +252,30 @@ int Blob<Dtype>::FreeDevice()
     }
     return 0;
 }
+
+template<class Dtype>
+int Blob<Dtype>::ReshapeWithReallocDevice(cl_context context, size_t num, size_t channels, size_t height, size_t width)
+{
+    size_t old_size = this->height() * this->width();
+    size_t new_size = height * width;
+    this->_num      = num;
+    this->_channels = channels;
+    this->_height   = height;
+    this->_width    = width;
+
+    if (new_size > old_size)
+    {
+        this->FreeDevice();
+        if(this->AllocDevice(context, this->data_size_padded_c())) {
+            LOGE("reallocate cl memory failed.");
+            return -1;
+        }
+        return 2;
+    }
+    return 0;
+}
+
+
 #endif
 
 
