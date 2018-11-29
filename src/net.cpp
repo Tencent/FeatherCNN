@@ -88,17 +88,17 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             const float *data = p_blob->data();
             memcpy(output_ptr, data, sizeof(float) * data_size);
 
-            printf("cpu:\n");
-            for (int i = 0; i < p_blob->channels(); ++i) {
-              for (int j = 0; j < p_blob->height(); ++j) {
-                for (int k = 0; k < p_blob->width(); ++k) {
-                  int idx = (i * p_blob->height() + j) * p_blob->width() + k;
-                  printf("%f ", output_ptr[idx]);
-                }
-                printf("\n");
-              }
-              printf("\n");
-            }
+            // printf("cpu:\n");
+            // for (int i = 0; i < p_blob->channels(); ++i) {
+            //   for (int j = 0; j < p_blob->height(); ++j) {
+            //     for (int k = 0; k < p_blob->width(); ++k) {
+            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+            //       printf("%f ", output_ptr[idx]);
+            //     }
+            //     printf("\n");
+            //   }
+            //   printf("\n");
+            // }
 
             break;
         }
@@ -112,17 +112,18 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
             }
             const Blob<uint16_t> *p_blob = blob_map_cl[name];
             p_blob->ReadFromDeviceCHW(rt_param->command_queue(), output_ptr);
-            printf("gpu:\n");
-            for (int i = 0; i < p_blob->channels(); ++i) {
-              for (int j = 0; j < p_blob->height(); ++j) {
-                for (int k = 0; k < p_blob->width(); ++k) {
-                  int idx = (i * p_blob->height() + j) * p_blob->width() + k;
-                  printf("%f ", output_ptr[idx]);
-                }
-                printf("\n");
-              }
-              printf("\n");
-            }
+            
+            // printf("gpu:\n");
+            // for (int i = 0; i < p_blob->channels(); ++i) {
+            //   for (int j = 0; j < p_blob->height(); ++j) {
+            //     for (int k = 0; k < p_blob->width(); ++k) {
+            //       int idx = (i * p_blob->height() + j) * p_blob->width() + k;
+            //       printf("%f ", output_ptr[idx]);
+            //     }
+            //     printf("\n");
+            //   }
+            //   printf("\n");
+            // }
 
             // printf("gpu:\n");
             //  for (int i = 0; i < p_blob->channels(); ++i) {

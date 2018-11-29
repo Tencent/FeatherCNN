@@ -17,9 +17,55 @@
 #include "layer.h"
 #include "rt_param.h"
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <random>
+#include <sstream>
+#include <sys/system_properties.h>
 
 namespace feather
 {
+
+bool judge_android7_opencl()
+{
+    #include <sys/system_properties.h>
+    //libOpenCL.so
+    //android7.0 sdk api 24
+    char sdk[93] = "";
+    __system_property_get("ro.build.version.sdk", sdk);
+    //printf("sdk_version [%s]\n", sdk);
+    if (std::atoi(sdk) < 24) 
+    {
+        printf("find sdk [%d] < 24\n", std::atoi(sdk));
+        return true;
+    }
+
+    std::string libOpenCL_str = "libOpenCL.so";
+    std::vector<std::string> libraries_list;
+    libraries_list.push_back("/vendor/etc/public.libraries.txt");
+    libraries_list.push_back("/system/etc/public.libraries.txt");
+    for(int i = 0; i < libraries_list.size(); i++)
+    {
+        ifstream out;
+        std::string line;
+        //printf("file [%s]\n", libraries_list[i].c_str());
+        out.open(libraries_list[i].c_str());
+        while(!out.eof()){
+            std::getline(out, line);
+            //printf("line [%s]\n", line.c_str());
+            if(line.find(libOpenCL_str) != line.npos)
+            {
+                printf("find line [%s]\n", line.c_str());
+                return true;
+            }
+
+        }
+        out.close();
+    }
+    return false;
+}
+
 class Net
 {
     public:

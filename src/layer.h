@@ -30,6 +30,7 @@
 
 namespace feather
 {
+
 template<class Dtype>
 class Layer
 {
