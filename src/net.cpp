@@ -80,7 +80,7 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
         {
             if (blob_map.find(std::string(name)) == blob_map.end())
             {
-                LOGE("Cannot find blob %s\n", name.c_str());
+                LOGE("ExtractBlob CPU Cannot find blob %s\n", name.c_str());
                 return -1;
             }
             const Blob<float> *p_blob = blob_map[name];
@@ -107,7 +107,7 @@ int Net::ExtractBlob(float* output_ptr, std::string name)
         {
             if (blob_map_cl.find(std::string(name)) == blob_map_cl.end())
             {
-                LOGE("Cannot find blob %s\n", name.c_str());
+                LOGE("ExtractBlob GPU Cannot find blob %s\n", name.c_str());
                 return -1;
             }
             const Blob<uint16_t> *p_blob = blob_map_cl[name];
@@ -175,7 +175,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
         {
             if (blob_map.find(std::string(name)) == blob_map.end())
             {
-                LOGE("Cannot find blob %s\n", name.c_str());
+                LOGE("BlobDataSize CPU Cannot find blob %s\n", name.c_str());
                 return -1;
             }
             const Blob<float> *p_blob = blob_map[name];
@@ -187,7 +187,7 @@ int Net::GetBlobDataSize(size_t *data_size, std::string name)
         {
             if (blob_map_cl.find(std::string(name)) == blob_map_cl.end())
             {
-                LOGE("Cannot find blob %s\n", name.c_str());
+                LOGE("BlobDataSize GPU Cannot find blob %s\n", name.c_str());
                 return -1;
             }
             const Blob<uint16_t> *p_blob = blob_map_cl[name];
@@ -389,7 +389,7 @@ void Net::InitFromFile(FILE* fp)
     switch (rt_param->device_type())
     {
         case DeviceType::CPU:
-          this->InitFromBuffer(net_buffer);
+          this->InitFromBufferCPU(net_buffer);
           break;
         case DeviceType::GPU_CL:
 #ifdef FEATHER_OPENCL
@@ -446,7 +446,30 @@ int Net::RemoveLayer(Layer<float>* target_layer)
 	return 0;
 }
 
-bool Net::InitFromBuffer(const void *net_buffer)
+void Net::InitFromBuffer(const void *net_buffer)
+{
+    switch (rt_param->device_type())
+    {
+        case DeviceType::CPU:
+          this->InitFromBufferCPU(net_buffer);
+          break;
+        case DeviceType::GPU_CL:
+#ifdef FEATHER_OPENCL
+          this->InitFromBufferCL(net_buffer);
+#else
+          LOGE("Please compile OpenCL to use device type GPU_CL.");
+#endif
+          break;
+        case DeviceType::GPU_GL:
+          LOGE("Not implemented yet.");
+          break;
+        default:
+          LOGE("Have not supported yet.");
+          break;
+    }
+}
+
+bool Net::InitFromBufferCPU(const void *net_buffer)
 {
     //rt_param in the param list just to distinguish.
     const NetParameter *net_param = feather::GetNetParameter(net_buffer);

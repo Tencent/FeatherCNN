@@ -59,16 +59,10 @@ class RuntimeParameter
       }
       ~RuntimeParameter()
       {
-<<<<<<< Updated upstream
-        #ifdef FEATHER_OPENCL
-          delete _cl_runtime;
-        #endif
-=======
           #ifdef FEATHER_OPENCL
           if (_device_type == DeviceType::GPU_CL)
             delete _cl_runtime;
           #endif
->>>>>>> Stashed changes
       }
 
       CommonMemPool<Dtype> *common_mempool() const

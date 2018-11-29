@@ -29,7 +29,8 @@ class Net
         void InitFromPath(const char *model_path);
         void InitFromStringPath(std::string model_path);
         void InitFromFile(FILE *fp);
-        bool InitFromBuffer(const void *net_buffer);
+        void InitFromBuffer(const void *net_buffer);
+        bool InitFromBufferCPU(const void *net_buffer);
 
         int  Forward(float* input);
         int  Forward(float* input, int height, int width);
