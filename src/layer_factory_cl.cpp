@@ -32,32 +32,37 @@
 
 namespace feather
 {
-Layer<uint16_t> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *) new InputLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *) new InputLayerCL(layer_param, rt_param);
+}
+template <class Dtype>
+Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *) new DirectConvLayerCL(layer_param, rt_param);
 }
 
-Layer<uint16_t> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *) new DirectConvLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new PoolingLayerCL(layer_param, rt_param);
 }
-Layer<uint16_t> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *)new PoolingLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new ReluLayerCL(layer_param, rt_param);
+}
+template <class Dtype>
+Layer<Dtype> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *) new EltwiseLayerCL(layer_param, rt_param);
 }
 
-Layer<uint16_t> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<uint16_t> *)new ReluLayerCL(layer_param, rt_param);
-}
-
-Layer<uint16_t> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<uint16_t> *) new EltwiseLayerCL(layer_param, rt_param);
-}
-Layer<uint16_t> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<uint16_t> *)new InnerProductLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new InnerProductLayerCL(layer_param, rt_param);
 }
 
 void register_layer_creators_cl()

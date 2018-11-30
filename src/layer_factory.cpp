@@ -41,83 +41,116 @@
 
 namespace feather
 {
-Layer<float> *GetInputLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetInputLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<float> *)new InputLayer(layer_param, rt_param);
-}
-Layer<float> *GetConvolutionLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *) new ConvLayer(layer_param, rt_param);
-}
-Layer<float> *GetDepthwiseConvolutionLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new ConvLayer(layer_param, rt_param);
-}
-Layer<float> *GetBatchNormLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new BatchNormLayer(layer_param, rt_param);
-}
-Layer<float> *GetLRNLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new LRNLayer(layer_param, rt_param);
-}
-Layer<float> *GetConcatLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new ConcatLayer(layer_param, rt_param);
-}
-Layer<float> *GetDropoutLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new DropoutLayer(layer_param, rt_param);
-}
-Layer<float> *GetReluLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new ReluLayer(layer_param, rt_param);
-}
-Layer<float> *GetPReluLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new PReluLayer(layer_param, rt_param);
-}
-Layer<float> *GetScaleLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new ScaleLayer(layer_param, rt_param);
-}
-Layer<float> *GetSliceLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new SliceLayer(layer_param, rt_param);
-}
-Layer<float> *GetPoolingLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new PoolingLayer(layer_param, rt_param);
-}
-Layer<float> *GetEltwiseLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new EltwiseLayer(layer_param, rt_param);
-}
-Layer<float> *GetInterpLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new InterpLayer(layer_param, rt_param);
+    return (Layer<Dtype> *)new InputLayer(layer_param, rt_param);
 }
 
-Layer<float> *GetInnerProductLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetConvolutionLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<float> *)new InnerProductLayer(layer_param, rt_param);
-}
-Layer<float> *GetFilterLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new FilterLayer(layer_param, rt_param);
-}
-Layer<float> *GetFlattenLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new FlattenLayer(layer_param, rt_param);
-}
-Layer<float> *GetSoftmaxLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
-{
-    return (Layer<float> *)new SoftmaxLayer(layer_param, rt_param);
+    return (Layer<Dtype> *) new ConvLayer(layer_param, rt_param);
 }
 
-Layer<float> *GetReshapeLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+template <class Dtype>
+Layer<Dtype> *GetDepthwiseConvolutionLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<float> *)new ReshapeLayer(layer_param, rt_param);
+    return (Layer<Dtype> *)new ConvLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetBatchNormLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new BatchNormLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetLRNLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new LRNLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetConcatLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new ConcatLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetDropoutLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new DropoutLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetReluLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new ReluLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetPReluLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new PReluLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetScaleLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new ScaleLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetSliceLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new SliceLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetPoolingLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new PoolingLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetEltwiseLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new EltwiseLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetInterpLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new InterpLayer(layer_param, rt_param);
+}
+template <class Dtype>
+Layer<Dtype> *GetInnerProductLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new InnerProductLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetFilterLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new FilterLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetFlattenLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new FlattenLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetSoftmaxLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new SoftmaxLayer(layer_param, rt_param);
+}
+template <class Dtype>
+Layer<Dtype> *GetReshapeLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new ReshapeLayer(layer_param, rt_param);
 }
 
 void register_layer_creators()

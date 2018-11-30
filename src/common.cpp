@@ -52,4 +52,3 @@ void _mm_free(void* ptr)
         ptr = NULL;
     }
 }
-

@@ -29,11 +29,14 @@ using namespace std;
 
 namespace feather
 {
+template <class Dtype>
+class Layer;
 
+template <class Dtype>
 class LayerRegistryCL
 {
     public:
-        typedef Layer<uint16_t>* (*Creator)(const LayerParameter *, RuntimeParameter<float> *);
+        typedef Layer<Dtype>* (*Creator)(const LayerParameter *, RuntimeParameter<float> *);
         typedef std::map<string, Creator> CreatorRegistry;
 
         static CreatorRegistry &Registry()
@@ -50,7 +53,7 @@ class LayerRegistryCL
         }
 
         // Get a layer using a LayerParameter.
-        static Layer<uint16_t> *CreateLayer(const LayerParameter *param, RuntimeParameter<float> *rt_param)
+        static Layer<Dtype> *CreateLayer(const LayerParameter *param, RuntimeParameter<float> *rt_param)
         {
             const string &type = param->type()->str();
             CreatorRegistry &registry = Registry();
@@ -70,21 +73,21 @@ class LayerRegistryCL
         // static variables.
         LayerRegistryCL() {}
 };
-
+template <class Dtype>
 class LayerRegistererCL
 {
     public:
         LayerRegistererCL(const string &type,
-                        Layer<uint16_t> * (*creator)(const LayerParameter *, RuntimeParameter<float>*))
+                        Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<float>*))
         {
-            LayerRegistryCL::AddCreator(type, creator);
+            LayerRegistryCL<Dtype>::AddCreator(type, creator);
         }
 };
 
 void register_layer_creators_cl();
 
 #define REGISTER_LAYER_CREATOR_CL(type, creator) \
-    static LayerRegistererCL g_creator_f_##type(#type, creator);
+    static LayerRegistererCL<uint16_t> g_creator_f_##type(#type, creator);
 };
 
 #endif

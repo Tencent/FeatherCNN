@@ -89,7 +89,7 @@ class ConvLayer : public Layer<float>
 
         int Forward()
         {
-	        //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
+	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
             //_top_blobs[_top[0]]->PrintBlobInfo();
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
