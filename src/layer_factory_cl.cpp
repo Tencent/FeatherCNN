@@ -21,7 +21,8 @@
 #include "layer_factory_cl.h"
 
 #include "layer.h"
-// #include "layers_cl/input_layer.h"
+
+
 #include <layers_cl/input_layer_cl.h>
 #include <layers_cl/direct_conv_layer_cl.h>
 #include <layers_cl/pooling_layer_cl.h>
@@ -32,11 +33,13 @@
 
 namespace feather
 {
+    
 template <class Dtype>
 Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
     return (Layer<Dtype> *) new InputLayerCL(layer_param, rt_param);
 }
+
 template <class Dtype>
 Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
@@ -74,6 +77,7 @@ void register_layer_creators_cl()
     REGISTER_LAYER_CREATOR_CL(InnerProduct, GetInnerProductLayerCL);
     REGISTER_LAYER_CREATOR_CL(DepthwiseConvolution, GetConvolutionLayerCL);
     REGISTER_LAYER_CREATOR_CL(Eltwise, GetEltwiseLayerCL);
+
 }
 
 };

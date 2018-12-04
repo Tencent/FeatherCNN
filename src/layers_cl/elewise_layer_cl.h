@@ -52,8 +52,8 @@ public:
   }
 
 private:
-  size_t output_height;
-  size_t output_width;
+  uint32_t output_height;
+  uint32_t output_width;
 
   bool fuse_relu;
 

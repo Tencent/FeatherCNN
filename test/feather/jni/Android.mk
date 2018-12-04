@@ -10,7 +10,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := feather_test
 LOCAL_SRC_FILES := ../test_bin.cpp
-LOCAL_CPPFLAGS := -std=c++11 -Wall -fPIE
+LOCAL_CPPFLAGS := -std=c++11 -Wall -fPIE -fexceptions
 LOCAL_LDLIBS := -fopenmp -llog -fPIE -pie -latomic -L$(SYSROOT)/usr/lib
 LOCAL_STATIC_LIBRARIES := feather
 include $(BUILD_EXECUTABLE)

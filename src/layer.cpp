@@ -245,7 +245,7 @@ bool Layer<Dtype>::fusible() const
 template<class Dtype>
 int Layer<Dtype>::BuildOpenCLProgram()
 {
-    std::map<std::string, cl_program> cl_program_map;
+    std::map<std::string, cl::Program> cl_program_map;
     if (cl_kernel_names.size() != cl_kernel_symbols.size()){
       LOGE("program str and names size not match.");
       return -1;
@@ -259,7 +259,7 @@ int Layer<Dtype>::BuildOpenCLProgram()
             continue;
         }
 
-        cl_program cur_program;
+        cl::Program cur_program;
         std::string opt_str = "";
         for (auto &opt : this->build_options) {
           opt_str += " " + opt;
@@ -297,16 +297,18 @@ int Layer<Dtype>::SetWorkSize()
 }
 
 template<class Dtype>
-int Layer<Dtype>::FineTuneGroupSize(const cl_kernel& kernel, const size_t& height, const size_t& width)
+int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& height, const size_t& width)
 {
     //global_work_size HWC
     //local_work_size  HWC
-    size_t current_work_group_size;
-    if(clGetKernelWorkGroupInfo(kernel, rt_param->device(), CL_KERNEL_WORK_GROUP_SIZE,
-                                sizeof(size_t), &current_work_group_size, NULL)){
+    uint64_t current_work_group_size = 0;
+    cl_int error_num = rt_param->device().getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &current_work_group_size);
+    if (!checkSuccess(error_num))
+    {
         LOGE("Get kernel work group info failed. %s: %s", __FILE__, __LINE__);
         return -1;
-    };
+    }
+   
     while(local_work_size[0] * local_work_size[1] * local_work_size[2] > current_work_group_size){
         if(local_work_size[0] > 1){
             local_work_size[0] /= 2;

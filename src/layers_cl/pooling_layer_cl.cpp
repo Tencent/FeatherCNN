@@ -46,7 +46,6 @@ PoolingLayerCL::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParamet
     }
     // printf("kernel (%ld %ld) pad (%ld %ld) stride (%ld %ld) global_pooling %d\n",
     //     kernel_height, kernel_width, pad_height, pad_width, stride_height, stride_width, global_pooling);
-
     InitCL();
   }
 
@@ -75,9 +74,9 @@ int PoolingLayerCL::InitCL() {
     this->cl_kernel_symbols.push_back(kernel_str_16o16);
 
 
-    cl_kernel kernel;
+    cl::Kernel kernel;
     this->kernels.push_back(kernel);
-    cl_event event;
+    cl::Event event;
     this->events.push_back(event);
     return 0;
 }
@@ -87,30 +86,29 @@ int PoolingLayerCL::SetKernelParameters() {
     int error_num;
     bool set_kernel_arguments_success = true;
     int param_idx = 0;
-    kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create pooling OpenCL kernels[0]. ");
       return 1;
     }
 
-    cl_mem input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl_mem output_mem = this->_top_blobs[this->_top[0]]->data_cl();
-    int real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    uint32_t real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &real_channels));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_width));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_width));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->pad_height));
-    set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->pad_width));
-
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, real_channels));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_height));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_width));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_height));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_width));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->pad_height));
+    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->pad_width));
     if (!set_kernel_arguments_success) {
       LOGE("Failed setting pooling OpenCL kernels[0] arguments.");
       return 1;
@@ -125,51 +123,29 @@ int PoolingLayerCL::ForwardCL() {
     clFinish(this->rt_param->command_queue());
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
+#endif
 
-    // if(group <=0)	group = 1;
-    // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
-    // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
-    // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
-    // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
-    // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
-    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
-                    NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel. %d", error_num);
       return -1;
     }
 
-    clWaitForEvents(1, &events[0]);
+#ifdef TIMING_CL
+    events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
-    cl_ulong time_start, time_end;
-    double total_time;
-    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
-    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
-    total_time = time_end - time_start;
-    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
-
-    error_num = clReleaseEvent(events[0]);
-    if (!checkSuccess(error_num)) {
-        LOGE("Failed release event.");
-        return -1;
-    }
-
-#else
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
-                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the conv kernel. %d", error_num);
-      return -1;
-    }
+    double start_nanos_ = events[0].getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
 #endif
 
-
     return 0;
-  }
+}
 
 int PoolingLayerCL::ForwardReshapeCL() {
     if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
@@ -186,17 +162,17 @@ int PoolingLayerCL::ForwardReshapeCL() {
                                       this->_top_blobs[this->_top[0]]->channels(),
                                       this->output_height, this->output_width) == 2)
     {
-        cl_mem output_mem = _top_blobs[_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &output_mem));
+        cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(1, *output_mem));
     }
 
     int param_idx = 3;
-    cl_mem input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
 
     SetWorkSize();
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
@@ -236,7 +212,6 @@ int PoolingLayerCL::GenerateTopBlobs() {
     this->input_height = bottom_blob->height();
     this->input_width = bottom_blob->width();
     this->input_channels = bottom_blob->channels();
-
     AssignOutputSize();
     this->output_channels = this->input_channels;
     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);

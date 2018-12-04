@@ -24,8 +24,11 @@
 using namespace std;
 using namespace feather;
 
-//
-void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
+
+//#define Dtype float
+#define Dtype uint16_t
+
+void PrintBlobData(feather::Net<Dtype> *forward_net, std::string blob_name, int n)
 {
     size_t data_size;
     forward_net->GetBlobDataSize(&data_size, blob_name);
@@ -39,18 +42,17 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 
     for (int i = 0; i < len; ++i)
     {
-        printf("%f\n", arr[i]);
+        printf("%f ", arr[i]);
     }
+    puts("");
     free(arr);
 }
 
-void test(std::string model_path, std::string data_path, int loop, int num_threads)
+void test(std::string model_path, std::string output_name, int loop, DeviceType type = DeviceType::GPU_CL)
 {
     printf("++++++Start Loader++++++\n");
+    feather::Net<Dtype> forward_net(1, type);
 
-    feather::Net forward_net(num_threads, DeviceType::GPU_CL);
-    //forward_net.test_opencl();
-    // printf("done initialization\n");
     forward_net.InitFromPath(model_path.c_str());
 
     //size_t input_size = 224 * 224 * 3 ;
@@ -68,73 +70,51 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
       input[i] = count;
       count++;
     }
-    //
-    // // //TODO judge file size
-    // // size_t file_size = 0;
-    // // FILE* fp = fopen(data_path.c_str(), "rb+");
-    // // fseek(fp, 0, SEEK_END);
-    // // file_size = ftell(fp);
-    // // fseek(fp, 0, SEEK_SET);
-    // // if(file_size < input_size)
-    // // {
-	  // //   fprintf(stderr, "Loading input file smaller than specified size %zu\n", file_size);
-	  // //   exit(6);
-    // // }
-    // // size_t bytes = fread(input, sizeof(float), input_size, fp);
-    // // //assert(bytes == input_size * sizeof(float));
-    // // if(bytes < input_size)
-    // // {
-	  // //   fprintf(stderr, "Loading fewer bytes, expected %zu\n", file_size);
-	  // //   exit(6);
-    // // }
-    // // fclose(fp);
-    printf("forward begin\n");
+    printf("\n\n======   forward begin %s =====\n", type == DeviceType::CPU ? "cpu":"gpu_cl");
     for (int i = 0; i < loop; ++i)
     {
 
 	    timespec tpstart, tpend;
 	    clock_gettime(CLOCK_MONOTONIC, &tpstart);
 	    forward_net.Forward(input);
+
+        //PrintBlobData(&forward_net, "multibox_head/loc_0/bias_add:0", 10);
+        //PrintBlobData(&forward_net, "MobilenetV2/Conv/BatchNorm/Relu:0", 10);
+        //mobilev1/conv1/Conv2D:0
+        //tx_pose/stage1/branch1/conv5_5_CPM_L2/bias_add:0
+
+        PrintBlobData(&forward_net, output_name, 10);
+        
 	    clock_gettime(CLOCK_MONOTONIC, &tpend);
-	    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        //PrintBlobData(&forward_net, "tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0", 10);
 	    printf("Prediction costs %lfms\n", timedif / 1000.0);
 	    if (i > 0)
 		    time += timedif;
     }
-    printf("--------Average runtime %lfms------\n", time / (loop - 1) / 1000.0);
-    // //PrintBlobData(forward_net, "fc6", 0);
-    PrintBlobData(&forward_net, "tx_pose/stage1/branch1/conv5_5_CPM_L2/bias_add:0", 10);
-    // //PrintBlobData(forward_net, "data", 100);
-    // //printf("------------------------\n");
-    // // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/Conv/Conv2D:0", 20);
-    // // printf("------------------------\n");
-    // // PrintBlobData(forward_net, "FeatureExtractor/MobilenetV2/expanded_conv/depthwise/depthwise:0", 20);
-    // //printf("%f, %f\n", input[0], input[1]);
-    // //printf("%f, %f\n", input[300], input[301]);
-    // //printf("%f, %f\n", input[90000], input[90001]);
-    // //printf("%f, %f\n", input[90300], input[90301]);
-    // //printf("%f, %f\n", input[180000], input[180001]);
-    // //printf("%f, %f\n", input[180300], input[180301]);
-    // if (input)
-    // {
-    //     delete [] input;
-    //     input = NULL;
-    // }
-    // printf("ok so far\n");
-    // delete forward_net;
-    // printf("done...\n");
+    printf("\n\n======   forward end %s =====\n", type == DeviceType::CPU ? "cpu":"gpu_cl");
+    printf("--------Average runtime %lfms------\n", time / (loop) / 1000.0);
 }
+
+void gpu_cpu_test(std::string model_path, std::string output_name, int loop)
+{
+    //test(model_path, output_name, loop, DeviceType::CPU);
+    test(model_path, output_name, loop, DeviceType::GPU_CL);
+}
+
 int main(int argc, char* argv[])
 {
-    if (argc == 5)
+    if (argc == 4)
     {
-        size_t num_threads = atoi(argv[4]);
-        size_t loop = atoi(argv[3]);
-        test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+        size_t num_threads = 1;
+        size_t loop = atoi(argv[2]);
+        std::string model_path = std::string(argv[1]);
+        std::string output_name = std::string(argv[3]);
+        gpu_cpu_test(model_path, output_name, loop);
     }
     else
     {
-        fprintf(stderr, "Usage: ./testRun [feathermodel] [input_data] [loop_count] [num_threads]\n");
+        fprintf(stderr, "Usage: ./testRun [feathermodel] [loop_count] [output_name]\n");
         return 0;
     }
     return 0;

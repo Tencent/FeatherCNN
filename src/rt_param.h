@@ -23,8 +23,7 @@
 
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
-#include "CL/cl.h"
-#include "CL/cl_runtime.h"
+#include "CLHPP/clhpp_runtime.hpp"
 #endif
 
 enum DeviceType
@@ -44,7 +43,7 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new cl_feather::OpenCLRuntime();
+            _cl_runtime = new clhpp_feather::OpenCLRuntime(); 
         #endif
       }
       RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
@@ -54,15 +53,15 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new cl_feather::OpenCLRuntime();
+            _cl_runtime = new clhpp_feather::OpenCLRuntime(); 
         #endif
       }
       ~RuntimeParameter()
       {
-          #ifdef FEATHER_OPENCL
-          if (_device_type == DeviceType::GPU_CL)
+        #ifdef FEATHER_OPENCL
+          if(_device_type == DeviceType::GPU_CL)
             delete _cl_runtime;
-          #endif
+        #endif
       }
 
       CommonMemPool<Dtype> *common_mempool() const
@@ -81,15 +80,15 @@ class RuntimeParameter
       }
 
 #ifdef FEATHER_OPENCL
-      cl_context context() const
+      cl::Context context() const
       {
           return _cl_runtime->context();
       }
-      cl_command_queue command_queue() const
+      cl::CommandQueue command_queue() const
       {
           return _cl_runtime->command_queue();
       }
-      cl_device_id device() const
+      cl::Device device() const
       {
           return _cl_runtime->device();
       }
@@ -101,6 +100,6 @@ class RuntimeParameter
         DeviceType _device_type;
 
 #ifdef FEATHER_OPENCL
-        cl_feather::OpenCLRuntime *_cl_runtime;
+        clhpp_feather::OpenCLRuntime *_cl_runtime;
 #endif
 };

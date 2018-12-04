@@ -23,7 +23,7 @@
 #include "log.h"
 
 #ifdef FEATHER_OPENCL
-#include "CL/cl_common.h"
+#include "CLHPP/clhpp_common.hpp"
 #endif
 
 class StringTool

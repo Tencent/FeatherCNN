@@ -53,16 +53,13 @@ public:
   }
 
   ~InputLayerCL() {
-    int error_num;
-    error_num = clEnqueueUnmapMemObject(this->rt_param->command_queue(), this->_cl_img2d, this->_map_img, 0, NULL, NULL);
-    if (!checkSuccess(error_num)) {
-      LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
+    cl_int error_num;
+    error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_fimage, this->_map_fdata,
+                                             nullptr, nullptr);
+    if (!checkSuccess(error_num)){
+      LOGE("fatal error: Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
     }
 
-    error_num = clEnqueueUnmapMemObject(this->rt_param->command_queue(), this->_cl_fimage, this->_map_fdata, 0, NULL, NULL);
-    if (!checkSuccess(error_num)) {
-      LOGE("fatal error: Deconstructor Unmapping _cl_fimage objects failed.");
-    }
   }
 
   int InitCL();
@@ -83,17 +80,17 @@ public:
       int num = _top_blobs[name]->num();
       int channels = _top_blobs[name]->channels();
       if (_top_blobs[name]->ReshapeWithReallocDevice(this->rt_param->context(), num, channels, height, width) == 2) {
-          cl_mem layer_data_cl = _top_blobs[name]->data_cl();
-          set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &layer_data_cl));
+          cl::Buffer* layer_data_cl = _top_blobs[name]->data_cl();
+          set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(1, *layer_data_cl));
       }
       this->output_height = _top_blobs[name]->height();
       this->output_width = _top_blobs[name]->width();
 
       if (ResetInputAndArgs(num * channels * height * width) == 2) {
-          set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &this->_cl_fimage));
+          set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(0, this->_cl_fimage));
       }
-      set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 2, sizeof(cl_int), &this->output_height));
-      set_kernel_arguments_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_int), &this->output_width));
+      set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(2, this->output_height));
+      set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(3, this->output_width));
       if (!set_kernel_arguments_success) {
         LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
         return -1;
@@ -128,13 +125,13 @@ public:
   }
 
 private:
-  size_t output_height;
-  size_t output_width;
-  size_t output_channel;
-  size_t input_data_size;
+  uint32_t output_height;
+  uint32_t output_width;
+  uint32_t output_channel;
+  uint32_t input_data_size;
 
-  cl_mem _cl_img2d;
-  cl_mem _cl_fimage;
+  cl::Image2D _cl_img2d;
+  cl::Buffer _cl_fimage;
   float* _map_fdata;
   uint8_t* _map_img;
 };

@@ -44,9 +44,9 @@ int EltwiseLayerCL::InitCL() {
   this->cl_kernel_symbols.push_back(kernel_str_8o8);
   this->cl_kernel_symbols.push_back(kernel_str_16o16);
 
-  cl_kernel kernel;
+  cl::Kernel kernel;
   this->kernels.push_back(kernel);
-  cl_event event;
+  cl::Event event;
   this->events.push_back(event);
 
   return 0;
@@ -88,30 +88,30 @@ int EltwiseLayerCL::SetWorkSize() {
 
 int EltwiseLayerCL::SetKernelParameters() {
   int error_num;
-  int param_idx = 0;
 
-  kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+  kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
     LOGE("Failed to create Elementwise OpenCL kernels[0]. ");
     return -1;
   }
 
-  cl_mem input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-  cl_mem input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
-  cl_mem output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+  cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+  cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
+  cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
 
-  int output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+  uint32_t output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-  bool set_kernel_arg_success = true;
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem1));
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem2));
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
-  set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &output_channels));
+  bool set_kernel_arguments_success = true;
+  int param_idx = 0;
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem1));
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem2));
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_channels));
 
   FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
-  if (!set_kernel_arg_success) {
+  if (!set_kernel_arguments_success) {
     LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
     return -1;
   }
@@ -178,16 +178,16 @@ int EltwiseLayerCL::ForwardReshapeCL() {
                                       this->_top_blobs[this->_top[0]]->channels(),
                                       this->output_height, this->output_width) == 2)
     {
-        cl_mem output_mem = _top_blobs[_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 2, sizeof(cl_mem), &output_mem));
+        cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(2, *output_mem));
     }
 
-    cl_mem input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl_mem input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 0, sizeof(cl_mem), &input_mem1));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 1, sizeof(cl_mem), &input_mem2));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 3, sizeof(cl_int), &this->output_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], 4, sizeof(cl_int), &this->output_width));
+    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem1));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(1, *input_mem2));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(3, this->output_height));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(4, this->output_width));
 
     SetWorkSize();
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
@@ -196,44 +196,30 @@ int EltwiseLayerCL::ForwardReshapeCL() {
 
 int EltwiseLayerCL::ForwardCL() {
 #ifdef TIMING_CL
-    clFinish(this->rt_param->command_queue());
-    timespec tpstart, tpend;
-    clock_gettime(CLOCK_MONOTONIC, &tpstart);
-
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL,&events[0]);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the element wise kernel. %s", errorNumberToString(error_num).c_str());
-      return -1;
-    }
-
-  clWaitForEvents(1, &events[0]);
-  clock_gettime(CLOCK_MONOTONIC, &tpend);
-  double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, cl_kernel_names[0].c_str());
-
-  cl_ulong time_start, time_end;
-  double total_time;
-  clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
-  clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
-  total_time = time_end - time_start;
-  LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, cl_kernel_names[0].c_str());
-  /* if we wanna do something for event in future */
-  error_num = clReleaseEvent(events[0]);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed release event. %s", errorNumberToString(error_num).c_str());
-    return -1;
-  }
-
-#else
-  int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, global_work_size, local_work_size, 0, NULL, NULL);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed enqueuing the element wise kernel. %s", errorNumberToString(error_num).c_str());
-    return -1;
-  }
-
+  clFinish(this->rt_param->command_queue());
+  timespec tpstart, tpend;
+  clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
 
-  return 0;
+  int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+  if (!checkSuccess(error_num)) {
+    LOGE("Failed enqueuing the element wise kernel.");
+    return -1;
+  }
+
+#ifdef TIMING_CL
+  events[0].wait();
+  clock_gettime(CLOCK_MONOTONIC, &tpend);
+  double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
+  double start_nanos_ = events[0].getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
+  double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+  LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+#endif
+
 }
 
 }; // namespace feather

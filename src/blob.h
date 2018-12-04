@@ -20,7 +20,7 @@
 
 #ifdef FEATHER_OPENCL
 #include "CL/half.h"
-#include "CL/cl.h"
+#include "CLHPP/clhpp_common.hpp"
 #endif
 
 namespace feather
@@ -61,6 +61,9 @@ class Blob
         ~Blob()
         {
             Free();
+            #ifdef FEATHER_OPENCL
+                FreeDevice();
+            #endif
         }
 
         void Free();
@@ -133,7 +136,7 @@ class Blob
         }
 
 #ifdef FEATHER_OPENCL
-        cl_mem data_cl() const
+        cl::Buffer* data_cl() const 
         {
             return _data_cl;
         }
@@ -157,13 +160,13 @@ class Blob
         {
             return get_num_padding() * get_channels_padding() * _height * _width;
         }
-        int AllocDevice(cl_context context, size_t data_size);
+        int AllocDevice(cl::Context context, size_t data_size);
         int FreeDevice();
-        int ReshapeWithReallocDevice(cl_context context, size_t num, size_t channels, size_t height, size_t width);
+        int ReshapeWithReallocDevice(cl::Context context, size_t num, size_t channels, size_t height, size_t width);
 
-        int WriteToDevice(cl_command_queue queue, const Dtype* data, size_t data_size);
-        int ReadFromDevice(cl_command_queue queue, Dtype* data, size_t data_size) const;
-        int ReadFromDeviceCHW(cl_command_queue queue, float* data) const;
+        int WriteToDevice(cl::CommandQueue queue, const Dtype* data, size_t data_size);
+        int ReadFromDevice(cl::CommandQueue queue, Dtype* data, size_t data_size) const;
+        int ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const;
 #endif
 
     private:
@@ -171,7 +174,7 @@ class Blob
 
 #ifdef FEATHER_OPENCL
         /* Image2D in the near future */
-        cl_mem _data_cl;
+        cl::Buffer *_data_cl;
 #endif
         size_t _num;
         size_t _channels;

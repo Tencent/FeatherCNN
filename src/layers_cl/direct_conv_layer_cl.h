@@ -40,29 +40,29 @@ public:
 
 private:
     bool fuse_relu;
-    size_t in_channel_grp_size;
-    size_t out_channel_grp_size;
+    uint32_t in_channel_grp_size;
+    uint32_t out_channel_grp_size;
 
-    size_t input_channels;
-    size_t input_width;
-    size_t input_height;
+    uint32_t input_channels;
+    uint32_t input_width;
+    uint32_t input_height;
 
-    size_t output_channels;
-    size_t output_width;
-    size_t output_height;
+    uint32_t output_channels;
+    uint32_t output_width;
+    uint32_t output_height;
 
-    size_t kernel_width;
-    size_t kernel_height;
+    uint32_t kernel_width;
+    uint32_t kernel_height;
 
-    size_t stride_width;
-    size_t stride_height;
+    uint32_t stride_width;
+    uint32_t stride_height;
 
-    size_t padding_left;
-    size_t padding_right;
-    size_t padding_top;
-    size_t padding_bottom;
+    uint32_t padding_left;
+    uint32_t padding_right;
+    uint32_t padding_top;
+    uint32_t padding_bottom;
 
-    size_t group;
+    uint32_t group;
 
     bool is_dw;
 

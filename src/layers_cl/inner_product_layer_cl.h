@@ -36,11 +36,11 @@ public:
   int Fuse(Layer *next_layer);
 
 protected:
-  size_t input_width;
-  size_t input_height;
-  size_t channel_grp_size;
+  uint32_t input_width;
+  uint32_t input_height;
+  uint32_t channel_grp_size;
 
-  size_t output_channels;
+  uint32_t output_channels;
 
   uint16_t *kernel_data;
   uint16_t *bias_data;

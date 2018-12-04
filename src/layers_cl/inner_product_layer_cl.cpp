@@ -56,9 +56,9 @@ int InnerProductLayerCL::InitCL() {
     this->cl_kernel_symbols.push_back(kernel_str_8o8);
     this->cl_kernel_symbols.push_back(kernel_str_16o16);
 
-    cl_kernel kernel;
+    cl::Kernel kernel;
     this->kernels.push_back(kernel);
-    cl_event event;
+    cl::Event event;
     this->events.push_back(event);
 
     return 0;
@@ -69,24 +69,24 @@ int InnerProductLayerCL::SetKernelParameters() {
     bool set_kernel_arg_success = true;
     int param_idx = 0;
 
-    size_t b_channel_padding = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    uint32_t b_channel_padding = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
 
-    size_t w_num = this->_weight_blobs[0]->num();
-    size_t w_channel = this->_weight_blobs[0]->channels();
+    uint32_t w_num = this->_weight_blobs[0]->num();
+    uint32_t w_channel = this->_weight_blobs[0]->channels();
 
     //LOGI("%s ---- this->input_height: %d, this->input_width: %d, b_channel_padding: %d, w_num: %d, w_channel: %d",_top[0].c_str(), this->input_height, this->input_width, b_channel_padding, w_num, w_channel);
 
-    size_t real_weight_size = this->input_height * this->input_width * this->_weight_blobs[0]->get_num_padding() * b_channel_padding;
+    uint32_t real_weight_size = this->input_height * this->input_width * this->_weight_blobs[0]->get_num_padding() * b_channel_padding;
 
     this->_weight_blobs[0]->AllocDevice(this->rt_param->context(), real_weight_size);
 
     std::vector<uint16_t> weight_padding(real_weight_size, 0.0f);
 
-    size_t kernel_size = this->input_height * this->input_width * b_channel_padding;
-    size_t hw_size = this->input_height * this->input_width;
-    size_t num_channel_grp = b_channel_padding / this->channel_grp_size;
-    size_t c_grp_size = 1 /* this->channel_grp_size */;
-    size_t n_grp_size = this->channel_grp_size;
+    uint32_t kernel_size = this->input_height * this->input_width * b_channel_padding;
+    uint32_t hw_size = this->input_height * this->input_width;
+    uint32_t num_channel_grp = b_channel_padding / this->channel_grp_size;
+    uint32_t c_grp_size = 1 /* this->channel_grp_size */;
+    uint32_t n_grp_size = this->channel_grp_size;
 
     for (int n = 0; n < w_num; ++n) {
       for (int m = 0; m < w_channel; ++m) {
@@ -112,7 +112,7 @@ int InnerProductLayerCL::SetKernelParameters() {
     this->_weight_blobs[0]->Free();
 
     if (bias_term) {
-        size_t real_bias_size = this->_weight_blobs[0]->get_num_padding();
+        uint32_t real_bias_size = this->_weight_blobs[0]->get_num_padding();
         this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), real_bias_size);
         // float bias_padding[real_bias_size];
         // memset(bias_padding, 0.0f, real_bias_size * sizeof(float));
@@ -123,24 +123,26 @@ int InnerProductLayerCL::SetKernelParameters() {
     }
 
     /* build kernel */
-    kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    //kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create innerProduct OpenCL kernels[0]. ");
       return -1;
     }
 
-    cl_mem input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl_mem weight_mem = this->_weight_blobs[0]->data_cl();
-    cl_mem output_mem = this->_top_blobs[this->_top[0]]->data_cl();
-    int out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    int use_relu = fuse_relu;
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* weight_mem = this->_weight_blobs[0]->data_cl();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    uint32_t use_relu = fuse_relu;
 
-    cl_mem bias_mem;
+    cl::Buffer bias_mem;
     if (bias_term) {
-      bias_mem = _weight_blobs[1]->data_cl();
+      bias_mem = *_weight_blobs[1]->data_cl();
     } else {
       std::vector<uint16_t> bias_vec(out_real_channels, 0);
-      bias_mem = clCreateBuffer(this->rt_param->context(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+      bias_mem = cl::Buffer(this->rt_param->context(),
+                                  CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                   out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
       if (!checkSuccess(error_num)) {
         LOGE("Failed to create OpenCL buffers[%d]", error_num);
@@ -148,16 +150,15 @@ int InnerProductLayerCL::SetKernelParameters() {
       }
     }
 
-    //int channel_grp = in_real_channels / 4;
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &weight_mem));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &bias_mem));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &b_channel_padding));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
-    set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &use_relu));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, bias_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, b_channel_padding));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, use_relu));
 
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     if (!set_kernel_arg_success) {
@@ -173,41 +174,27 @@ int InnerProductLayerCL::ForwardCL() {
     clFinish(commandQueue);
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
+#endif
 
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
-                    NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+    int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+
     if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
+      LOGE("Failed enqueuing the inner product kernel.");
       return -1;
     }
 
-    clWaitForEvents(1, &events[0]);
+#ifdef TIMING_CL
+    events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
-
-    cl_ulong time_start, time_end;
-    double total_time;
-    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
-    clGetEventProfilingInfo(events[0], CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
-    total_time = time_end - time_start;
-    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), total_time / 1000000.0, kernel_names[0].c_str());
-
-    error_num = clReleaseEvent(events[0]);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed release event. %s", errorNumberToString(error_num).c_str());
-      return -1;
-    }
-
-#else
-    int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3,
-                    NULL, this->global_work_size, this->local_work_size, 0, NULL, NULL);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the inner product kernel. %s", errorNumberToString(error_num).c_str());
-      return -1;
-    }
+    double start_nanos_ = events[0].getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
 #endif
-
     return 0;
   }
 
@@ -225,8 +212,8 @@ int InnerProductLayerCL::ForwardReshapeCL() {
 void InnerProductLayerCL::FinetuneKernel() {
     std::string cur_kname;
     std::string cur_kstr;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    uint32_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    uint32_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
     int kernel_idx = 0, group_size = 4;
     if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
