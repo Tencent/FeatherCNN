@@ -35,6 +35,7 @@ class ConvLayer : public Layer<float>
               kernel_data(NULL),
               processed_kernel(NULL)
         {
+            this->_fusible = true;
             //From proto
             const ConvolutionParameter *conv_param_in = layer_param->convolution_param();
 
@@ -111,13 +112,26 @@ class ConvLayer : public Layer<float>
             return 0;
         }
 
-    protected:
-        booster::ConvBooster conv_booster;
-        booster::ConvParam   conv_param;
+        int Fuse(Layer *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                conv_param.activation = booster::ReLU;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
 
-        float *bias_data;
+          protected:
+            booster::ConvBooster conv_booster;
+            booster::ConvParam conv_param;
 
-        float *kernel_data;
-        float *processed_kernel;
+            float *bias_data;
+
+            float *kernel_data;
+            float *processed_kernel;
 };
 };
