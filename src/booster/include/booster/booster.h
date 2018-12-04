@@ -85,6 +85,7 @@ struct ConvParam{
         printf("-----Layer %s ConvParam----\n", layer_name);
         printf("Input CxHxW=(%d, %d, %d)\n", input_channels, input_h, input_w);
         printf("Output CxHxW=(%d, %d, %d)\n", output_channels, output_h, output_w);
+        printf("Group = %d\n", group);
         printf("Kernel HxW=(%d, %d)\n", kernel_h, kernel_w);
         printf("Stride HxW=(%d, %d)\n", stride_h, stride_w);
         printf("Paddings (%d %d %d %d)\n", pad_left, pad_bottom, pad_right, pad_top);
