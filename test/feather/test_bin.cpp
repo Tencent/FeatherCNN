@@ -27,8 +27,8 @@ using namespace feather;
 
 
 //#define Dtype float
-#define Dtype uint16_t
-
+//#define Dtype uint16_t
+template<typename Dtype>
 void PrintBlobData(feather::Net<Dtype> *forward_net, std::string blob_name, int n)
 {
     size_t data_size;
@@ -73,24 +73,62 @@ void DiffBlobData(feather::Net<uint16_t>* gpu_net, feather::Net<float>* cpu_net,
         }
         diff += (cur_diff > 1.f) ? cur_diff : 0;
     }
-    printf("diff %lf\n", diff);
+    printf("diff sum %lf\n", diff);
 }
 
-void test(std::string model_path, std::string output_name, int loop, DeviceType type = DeviceType::GPU_CL)
+template<typename Dtype>
+void test(std::string model_path, std::string output_name, int loop, DeviceType type)
+{
+    feather::Net<Dtype> forward_net(1, type);
+    forward_net.InitFromPath(model_path.c_str());
+    size_t input_size = 300 * 300 * 3 ;
+    float *input_cpu = new float[input_size * 20];
+    size_t count = 0;
+    double time = 0;
+    for(int i = 0; i < input_size; i++)
+    {
+       input_cpu[i] = (float)(count % 256);
+       count++;
+    }
+    
+    for(int i = 0; i < loop; i++)
+    {
+        timespec tpstart, tpend;
+        clock_gettime(CLOCK_MONOTONIC, &tpstart);
+        forward_net.Forward(input_cpu);
+
+        //PrintBlobData(&forward_net, "multibox_head/loc_0/bias_add:0", 10);
+        //PrintBlobData(&forward_net, "MobilenetV2/Conv/BatchNorm/Relu:0", 10);
+        //tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0
+
+        PrintBlobData(&forward_net, output_name, 10);
+        
+        clock_gettime(CLOCK_MONOTONIC, &tpend);
+        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        timedif = timedif /1000.0;
+        //PrintBlobData(&forward_net, "tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0", 10);
+        printf("Prediction costs %lfms\n", timedif);
+        if (i > 0)
+            time += timedif;
+    }
+
+    printf("--------Average runtime %lfms------\n", time / (loop-1));
+    free(input_cpu);
+
+}
+
+void testdiff(std::string model_path, std::string output_name)
 {
     printf("++++++Start Loader++++++\n");
-    feather::Net<Dtype> forward_net(1, type);
+    feather::Net<uint16_t> forward_net_gpu(1, DeviceType::GPU_CL);
+    feather::Net<float>    forward_net_cpu(1, DeviceType::CPU);
 
-    feather::Net<float> forward_net_cpu(1, DeviceType::CPU);
-
-    forward_net.InitFromPath(model_path.c_str());
-
+    forward_net_gpu.InitFromPath(model_path.c_str());
     forward_net_cpu.InitFromPath(model_path.c_str());
 
     //size_t input_size = 224 * 224 * 3 ;
     size_t input_size = 300 * 300 * 3 ;
     float *input_cpu = new float[input_size * 20];
-    float *input_gpu = new float[input_size * 20];
 
     size_t count = 0;
     double time = 0;
@@ -100,56 +138,27 @@ void test(std::string model_path, std::string output_name, int loop, DeviceType 
       input_cpu[i] = (float)(count % 256);
       count++;
     }
-    
-    const int input_img_size = 150 * 150;
-    const int input_channels = 3;
-    for(int c = 0; c < input_channels; ++c)
-    {
-        for(int i = 0; i < input_img_size; ++i)
-        {
-            input_gpu[i * input_channels + c] = input_cpu[c * input_img_size + i];
-        } 
-    }
 
-    printf("\n\n======   forward begin %s =====\n", type == DeviceType::CPU ? "cpu":"gpu_cl");
-    for (int i = 0; i < loop; ++i)
-    {
+    forward_net_gpu.Forward(input_cpu);
+    forward_net_cpu.Forward(input_cpu);
 
-        timespec tpstart, tpend;
-        clock_gettime(CLOCK_MONOTONIC, &tpstart);
-        forward_net.Forward(input_cpu);
+    //PrintBlobData(&forward_net, output_name, 10);
+    DiffBlobData(&forward_net_gpu, &forward_net_cpu, output_name);
 
-        forward_net_cpu.Forward(input_cpu);
-
-
-        //PrintBlobData(&forward_net, output_name, 10);
-
-        DiffBlobData(&forward_net, &forward_net_cpu, output_name);
-
-
-
-        clock_gettime(CLOCK_MONOTONIC, &tpend);
-        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        //PrintBlobData(&forward_net, "tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0", 10);
-        printf("Prediction costs %lfms\n", timedif / 1000.0);
-        if (i > 0)
-            time += timedif;
-    }
-    printf("\n\n======   forward end %s =====\n", type == DeviceType::CPU ? "cpu":"gpu_cl");
-    printf("--------Average runtime %lfms------\n", time / (loop) / 1000.0);
+    free(input_cpu);
 }
 
 void gpu_cpu_test(std::string model_path, std::string output_name, int loop)
 {
-    //test(model_path, output_name, loop, DeviceType::CPU);
-    test(model_path, output_name, loop, DeviceType::GPU_CL);
+    //test<float>(model_path, output_name, loop, DeviceType::CPU);
+    test<uint16_t>(model_path, output_name, loop, DeviceType::GPU_CL);
+    testdiff(model_path, output_name);
 }
 
 int main(int argc, char* argv[])
 {
     if (argc == 4)
     {
-        size_t num_threads = 1;
         size_t loop = atoi(argv[2]);
         std::string model_path = std::string(argv[1]);
         std::string output_name = std::string(argv[3]);

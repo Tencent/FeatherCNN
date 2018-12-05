@@ -220,6 +220,8 @@ int EltwiseLayerCL::ForwardCL() {
   LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
 #endif
 
+  return 0;
+
 }
 
 }; // namespace feather
