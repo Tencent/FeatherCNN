@@ -273,11 +273,11 @@ int ConvBooster::SelectAlgo(ConvParam* param)
         printf("DEPTHWISE\n");
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_h >= 8 && param->input_w >= 8)
     {
         this->algo = WINOGRADF63;
     }
-    else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3)
+    else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3 && param->stride_h > 1 && param->stride_w > 1)
     {
        this->algo = SGECONV;
     }
