@@ -231,6 +231,7 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
       }
     }
 
+
     error_num = queue.enqueueUnmapMemObject(*_data_cl, data_half,
                                              nullptr, nullptr);
     if (!checkSuccess(error_num)){

@@ -26,7 +26,7 @@ namespace feather {
 class InputLayerCL : public Layer<uint16_t> {
 public:
   InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-      : Layer<uint16_t>(layer_param, rt_param), _cl_fimage(NULL), _map_fdata(NULL), _cl_img2d(NULL), _map_img(NULL) {
+      : Layer<uint16_t>(layer_param, rt_param), _cl_fimage(NULL), _cl_img2d(NULL) {
     //From proto
     const InputParameter *input_param = layer_param->input_param();
     size_t input_num = VectorLength(input_param->name());
@@ -52,15 +52,7 @@ public:
     }
   }
 
-  ~InputLayerCL() {
-    cl_int error_num;
-    error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_fimage, this->_map_fdata,
-                                             nullptr, nullptr);
-    if (!checkSuccess(error_num)){
-      LOGE("fatal error: Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
-    }
-
-  }
+  ~InputLayerCL() {}
 
   int InitCL();
   int UintToDevice(const uint8_t* src_bgra);
@@ -132,7 +124,6 @@ private:
 
   cl::Image2D _cl_img2d;
   cl::Buffer _cl_fimage;
-  float* _map_fdata;
-  uint8_t* _map_img;
+
 };
 }; // namespace feather

@@ -36,8 +36,8 @@
                         return rt;                  \
                     }                               \
 
-//#define LAYER_TIMING
-//#define PRINT_SETUP_LOG
+#define LAYER_TIMING
+#define PRINT_SETUP_LOG
 
 namespace feather
 {
@@ -621,7 +621,6 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
         }
 
     }
-
     //Allocate for common mempool.
     rt_param->common_mempool()->Alloc();
     return true;

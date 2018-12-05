@@ -136,23 +136,24 @@ int InnerProductLayerCL::SetKernelParameters() {
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t use_relu = fuse_relu;
 
-    cl::Buffer bias_mem;
+    cl::Buffer * bias_mem;
     if (bias_term) {
-      bias_mem = *_weight_blobs[1]->data_cl();
+      bias_mem = _weight_blobs[1]->data_cl();
     } else {
       std::vector<uint16_t> bias_vec(out_real_channels, 0);
-      bias_mem = cl::Buffer(this->rt_param->context(),
-                                  CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+      bias_mem = new cl::Buffer(this->rt_param->context(),
+                                  CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
                                   out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
       if (!checkSuccess(error_num)) {
-        LOGE("Failed to create OpenCL buffers[%d]", error_num);
+        LOGE("Failed to create OpenCL buffers [%d]", error_num);
         return -1;
       }
+
     }
 
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, bias_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *bias_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, b_channel_padding));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
@@ -165,7 +166,6 @@ int InnerProductLayerCL::SetKernelParameters() {
       LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
       return 1;
     }
-
     return 0;
   }
 
@@ -174,7 +174,6 @@ int InnerProductLayerCL::ForwardCL() {
     clFinish(commandQueue);
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
 
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
         kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
@@ -185,7 +184,6 @@ int InnerProductLayerCL::ForwardCL() {
       return -1;
     }
 
-#ifdef TIMING_CL
     events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -194,7 +192,21 @@ int InnerProductLayerCL::ForwardCL() {
     double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
     double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
     LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+
+#else
+    int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the inner product kernel.");
+      return -1;
+    }
+
 #endif
+
+
+
     return 0;
   }
 

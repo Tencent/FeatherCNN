@@ -184,13 +184,14 @@ int DirectConvLayerCL::SetKernelParameters()
     cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
     uint32_t use_relu = fuse_relu;
 
-    cl::Buffer bias_mem;
+    cl::Buffer * bias_mem;
     if (bias_term) {
-      bias_mem = *_weight_blobs[1]->data_cl();
+      bias_mem = _weight_blobs[1]->data_cl();
     } else {
       std::vector<uint16_t> bias_vec(out_real_channels, 0);
-      bias_mem = cl::Buffer(this->rt_param->context(),
-                                CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+
+      bias_mem = new cl::Buffer(this->rt_param->context(),
+                                CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
                                 out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
       if (!checkSuccess(error_num)) {
         LOGE("Failed to create OpenCL buffers[%d]", error_num);
@@ -199,29 +200,9 @@ int DirectConvLayerCL::SetKernelParameters()
     }
 
 
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &input_mem));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &weight_mem));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &bias_mem));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_mem), &output_mem));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &in_real_channels));
-    // if (!this->is_dw){
-    //     set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &out_real_channels));
-    // }
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_height));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->input_width));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_height));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->output_width));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_height));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->kernel_width));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_height));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->stride_width));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->padding_top));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &this->padding_left));
-    // set_kernel_arg_success &= checkSuccess(clSetKernelArg(kernels[0], param_idx++, sizeof(cl_int), &use_relu));
-
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, bias_mem));
+    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *bias_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, in_real_channels));
     if (!this->is_dw)
@@ -287,16 +268,7 @@ int DirectConvLayerCL::ForwardCL()
     clFinish(this->rt_param->command_queue());
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
-    // if(group <=0)	group = 1;
-    // LOGI("Forward layer (GPU_CL) %s", this->name().c_str());
-    // LOGI("kernel (GPU_CL) %dx%d", kernel_height, kernel_width);
-    // LOGI("stride (GPU_CL) %d %d", stride_height, stride_width);
-    // LOGI("input (GPU_CL) %dx%d", input_height, input_width);
-    // LOGI("output (GPU_CL) %dx%d", output_height, output_width);
-    // LOGI("padding (GPU_CL) %d %d", padding_left, padding_top);
-    // LOGI("globalWorkSize (GPU_CL): %d, %d, %d", global_work_size[0], global_work_size[1], global_work_size[2]);
-    //int error_num = clEnqueueNDRangeKernel(this->rt_param->command_queue(), kernels[0], 3, NULL, this->global_work_size, this->local_work_size, 0, NULL,&events[0]);
+
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
         kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
         cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
@@ -304,8 +276,7 @@ int DirectConvLayerCL::ForwardCL()
       LOGE("Failed enqueuing the conv kernel.");
       return -1;
     }
-		
-#ifdef TIMING_CL
+
     events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -314,6 +285,16 @@ int DirectConvLayerCL::ForwardCL()
     double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
     double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
     LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+#else
+    int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+
+
 #endif
 
     return 0;

@@ -47,19 +47,11 @@ class Net
         int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);
         std::map<std::string, const Blob<Dtype> *> blob_map;
-// #ifdef FEATHER_OPENCL
-//         //int test_opencl();
-//         bool InitFromBufferCL(const void *net_buffer);
-//         int RemoveLayer(Layer<uint16_t>* layer);
-//         std::map<std::string, const Blob<uint16_t> *> blob_map_cl;
-// #endif
+
       private:
         bool CheckDtype();
         std::vector<Layer<Dtype>* > layers;
-// #ifdef FEATHER_OPENCL
-//         std::vector<Layer<uint16_t>* > layers_cl;
-//         // std::map<std::string, const Blob<uint16_t>* >  blob_map_cl;
-// #endif
+
         RuntimeParameter<float> *rt_param;
 };
 

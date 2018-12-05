@@ -199,7 +199,6 @@ int EltwiseLayerCL::ForwardCL() {
   clFinish(this->rt_param->command_queue());
   timespec tpstart, tpend;
   clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
 
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
         kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
@@ -209,7 +208,6 @@ int EltwiseLayerCL::ForwardCL() {
     return -1;
   }
 
-#ifdef TIMING_CL
   events[0].wait();
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
@@ -218,7 +216,17 @@ int EltwiseLayerCL::ForwardCL() {
   double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
   double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
   LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+#else
+    int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+          kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+          cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the element wise kernel.");
+      return -1;
+    }
+
 #endif
+
 
   return 0;
 
