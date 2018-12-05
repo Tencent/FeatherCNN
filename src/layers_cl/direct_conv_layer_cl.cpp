@@ -58,45 +58,38 @@ int DirectConvLayerCL::InitCL()
     this->cl_kernel_functions.push_back(func_name_conv);
     this->cl_kernel_functions.push_back(func_name_depthwise);
 
-    std::string kernel_name_4o4 = "clConvIn4o4";
-    auto it_source0 = booster::opencl_kernel_string_map.find("convBufferReformW4o4_1v1_grp1");
-    std::string kernel_str_4o4(it_source0->second.begin(), it_source0->second.end());
+    std::string kernel_name_conv = "conv_1v2_buffer";
+    auto it_source0 = booster::opencl_kernel_string_map.find("conv_1v2_buffer");
+    std::string kernel_str_conv(it_source0->second.begin(), it_source0->second.end());
 
-    std::string kernel_name_8o8 = "clConvIn8o8";
-    auto it_source1 = booster::opencl_kernel_string_map.find("convBufferReformW8o8_1v1_grp1");
-    std::string kernel_str_8o8(it_source1->second.begin(), it_source1->second.end());
+    std::string kernel_name_depthwise_conv = "depthwise_conv_1v1_buffer";
+    auto it_source1 = booster::opencl_kernel_string_map.find("depthwise_conv_1v1_buffer");
+    std::string kernel_str_depthwise_conv(it_source1->second.begin(), it_source1->second.end());
 
-    std::string kernel_name_4o4_depthwise = "clDepthconvIn4V4";
-    auto it_source3 = booster::opencl_kernel_string_map.find("depthwiseConvBuffer4o4_1v1_grp4");
-    std::string kernel_str_4o4_depthwise(it_source3->second.begin(),it_source3->second.end());
+    this->cl_kernel_names.push_back(kernel_name_conv);
+    this->cl_kernel_names.push_back(kernel_name_depthwise_conv);
 
-    std::string kernel_name_8o8_depthwise = "clDepthconvIn8V8";
-    auto it_source4 = booster::opencl_kernel_string_map.find("depthwiseConvBuffer8o8_1v1_grp8");
-    std::string kernel_str_8o8_depthwise(it_source4->second.begin(),it_source4->second.end());
-
-    // string kernel_name_16o16 = "clConvIn16o16";
-    // auto it_source2 = booster::opencl_kernel_string_map.find("convBufferReformW16o16_1v1_grp1");
-    // std::string kernel_str_16o16(it_source2->second.begin(), it_source2->second.end());
-
-    this->cl_kernel_names.push_back(kernel_name_4o4);
-    this->cl_kernel_names.push_back(kernel_name_8o8);
-
-    this->cl_kernel_names.push_back(kernel_name_4o4_depthwise);
-    this->cl_kernel_names.push_back(kernel_name_8o8_depthwise);
-    //this->cl_kernel_names.push_back(kernel_name_16o16);
-
-    this->cl_kernel_symbols.push_back(kernel_str_4o4);
-    this->cl_kernel_symbols.push_back(kernel_str_8o8);
-
-    this->cl_kernel_symbols.push_back(kernel_str_4o4_depthwise);
-    this->cl_kernel_symbols.push_back(kernel_str_8o8_depthwise);
-    //this->cl_kernel_symbols.push_back(kernel_str_16o16);
+    this->cl_kernel_symbols.push_back(kernel_str_conv);
+    this->cl_kernel_symbols.push_back(kernel_str_depthwise_conv);
 
     cl::Kernel kernel;
     this->kernels.push_back(kernel);
     cl::Event event;
     this->events.push_back(event);
     return 0;
+}
+
+void DirectConvLayerCL::SetBuildOptions() {
+    std::ostringstream ss;
+    ss << out_channel_grp_size;
+    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DDATA_TYPE=half");
+    if (bias_term) {
+      this->build_options.push_back("-DBIAS");
+    }
+    if (fuse_relu) {
+      this->build_options.push_back("-DUSE_RELU");
+    }
 }
 
 int DirectConvLayerCL::SetKernelParameters()
@@ -182,6 +175,7 @@ int DirectConvLayerCL::SetKernelParameters()
     cl::Buffer* input_mem = _bottom_blobs[_bottom[0]]->data_cl();
     cl::Buffer* weight_mem = _weight_blobs[0]->data_cl();
     cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
+<<<<<<< Updated upstream
     uint32_t use_relu = fuse_relu;
 
     cl::Buffer * bias_mem;
@@ -198,15 +192,24 @@ int DirectConvLayerCL::SetKernelParameters()
         return -1;
       }
     }
+=======
+>>>>>>> Stashed changes
 
 
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
+<<<<<<< Updated upstream
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *bias_mem));
+=======
+    if (bias_term) {
+      set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *_weight_blobs[1]->data_cl()));
+    }
+>>>>>>> Stashed changes
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, in_real_channels));
-    if (!this->is_dw)
+    if (!this->is_dw) {
       set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
+    }
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
@@ -217,7 +220,6 @@ int DirectConvLayerCL::SetKernelParameters()
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_width));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->padding_top));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->padding_left));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, use_relu));
 
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL kernels[0] arguments.");
@@ -308,14 +310,13 @@ void DirectConvLayerCL::FinetuneKernel()
     size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-    int kernel_idx = this->is_dw ? this->cl_kernel_names.size()-2 : 0, group_size = 4, func_idx = this->is_dw ? 1 : 0;
-
+    int group_size = 4;
     if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      kernel_idx = this->is_dw ? this->cl_kernel_names.size()-1 : 1;
       group_size = 8;
     }
 
-
+    int kernel_idx = this->is_dw ? 1 : 0;
+    int func_idx = this->is_dw ? 1 : 0;
     cur_kname = this->cl_kernel_names[kernel_idx];
     cur_kstr = this->cl_kernel_symbols[kernel_idx];
     cur_func = this->cl_kernel_functions[func_idx];
@@ -331,7 +332,7 @@ void DirectConvLayerCL::FinetuneKernel()
     this->cl_kernel_names.push_back(cur_kname);
     this->cl_kernel_symbols.push_back(cur_kstr);
     this->cl_kernel_functions.push_back(cur_func);
-  }
+}
 
 int DirectConvLayerCL::GenerateTopBlobs() {
     //Conv layer has and only has one bottom blob.
@@ -376,10 +377,10 @@ int DirectConvLayerCL::SetWorkSize()
     this->global_work_size[1] = (this->output_width / this->group_size_w  + !!(this->output_width % this->group_size_w)) * this->group_size_w;
     this->local_work_size[0] = this->group_size_h;
     this->local_work_size[1] = this->group_size_w;
-    // int work_size_w = this->globalWorkSize[1] / 2;
-    // if(work_size_w >= this->localWorkSize[1] && work_size_w % this->localWorkSize[1] == 0){
-    //   this->globalWorkSize[1] = work_size_w;
-    // }
+    int work_size_w = this->global_work_size[1] / 2;
+    if(work_size_w >= this->local_work_size[1] && work_size_w % this->local_work_size[1] == 0){
+      this->global_work_size[1] = work_size_w;
+    }
     if (this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
       this->local_work_size[2] = 4;
     } else {

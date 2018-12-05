@@ -35,26 +35,12 @@ InnerProductLayerCL::InnerProductLayerCL(const LayerParameter *layer_param, Runt
 int InnerProductLayerCL::InitCL() {
     std::string func_name = "inner_product";
     this->cl_kernel_functions.push_back(func_name);
-    std::string kernel_name_4o4 = "clInnerProduct4o4";
-    auto it_source1 = booster::opencl_kernel_string_map.find("innerProductBufferReformW4o4_grp1");
-    std::string kernel_str_4o4(it_source1->second.begin(),it_source1->second.end());
+    std::string kernel_name_inner_product = "inner_product_buffer";
+    auto it_source1 = booster::opencl_kernel_string_map.find("inner_product_buffer");
+    std::string kernel_str_inner_product(it_source1->second.begin(),it_source1->second.end());
 
-    std::string kernel_name_8o8 = "clInnerProduct8o8";
-    auto it_source2 = booster::opencl_kernel_string_map.find("innerProductBufferReformW8o8_grp1");
-    std::string kernel_str_8o8(it_source2->second.begin(),it_source2->second.end());
-
-    std::string kernel_name_16o16 = "clInnerProduct16o16";
-    auto it_source3 = booster::opencl_kernel_string_map.find("innerProductBufferReformW16o16_grp1");
-    std::string kernel_str_16o16(it_source3->second.begin(),it_source3->second.end());
-
-
-    this->cl_kernel_names.push_back(kernel_name_4o4);
-    this->cl_kernel_names.push_back(kernel_name_8o8);
-    this->cl_kernel_names.push_back(kernel_name_16o16);
-
-    this->cl_kernel_symbols.push_back(kernel_str_4o4);
-    this->cl_kernel_symbols.push_back(kernel_str_8o8);
-    this->cl_kernel_symbols.push_back(kernel_str_16o16);
+    this->cl_kernel_names.push_back(kernel_name_inner_product);
+    this->cl_kernel_symbols.push_back(kernel_str_inner_product);
 
     cl::Kernel kernel;
     this->kernels.push_back(kernel);
@@ -227,17 +213,15 @@ void InnerProductLayerCL::FinetuneKernel() {
     uint32_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     uint32_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-    int kernel_idx = 0, group_size = 4;
+    int group_size = 4;
     if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
-      kernel_idx = 2;
       group_size = 16;
     } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      kernel_idx = 1;
       group_size = 8;
     }
 
-    cur_kname = this->cl_kernel_names[kernel_idx];
-    cur_kstr = this->cl_kernel_symbols[kernel_idx];
+    cur_kname = this->cl_kernel_names[0];
+    cur_kstr = this->cl_kernel_symbols[0];
     this->global_work_size[2] = padded_output_c / group_size;
     this->channel_grp_size = group_size;
 
@@ -245,6 +229,11 @@ void InnerProductLayerCL::FinetuneKernel() {
     this->cl_kernel_symbols.clear();
     this->cl_kernel_names.push_back(cur_kname);
     this->cl_kernel_symbols.push_back(cur_kstr);
+
+    std::ostringstream ss;
+    ss << group_size;
+    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DDATA_TYPE=half");
   }
 
 int InnerProductLayerCL::GenerateTopBlobs() {

@@ -44,6 +44,8 @@ class Layer
         int TryFuse(Layer *next_layer);
 
 #ifdef FEATHER_OPENCL
+        virtual void SetBuildOptions() { };
+        
         int BuildOpenCLProgram();
 
         virtual int SetKernelParameters();

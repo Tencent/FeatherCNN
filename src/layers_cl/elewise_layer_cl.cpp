@@ -22,27 +22,13 @@ namespace feather {
 
 int EltwiseLayerCL::InitCL() {
   string func_name = "eltwise";
-
-  string kernel_name_4o4 = "clEltwise4o4";
-  auto it_source1 = booster::opencl_kernel_string_map.find("elewiseBuffer4o4");
-  std::string kernel_str_4o4(it_source1->second.begin(),it_source1->second.end());
-
-  string kernel_name_8o8 = "clEltwise8o8";
-  auto it_source2 = booster::opencl_kernel_string_map.find("elewiseBuffer8o8");
-  std::string kernel_str_8o8(it_source2->second.begin(),it_source2->second.end());
-
-  string kernel_name_16o16 = "clEltwise16o16";
-  auto it_source3 = booster::opencl_kernel_string_map.find("elewiseBuffer16o16");
-  std::string kernel_str_16o16(it_source3->second.begin(),it_source3->second.end());
-
+  string kernel_name_eltwise = "eltwise_buffer";
+  auto it_source = booster::opencl_kernel_string_map.find("eltwise_buffer");
+  std::string kernel_str_eltwise(it_source->second.begin(), it_source->second.end());
 
   this->cl_kernel_functions.push_back(func_name);
-  this->cl_kernel_names.push_back(kernel_name_4o4);
-  this->cl_kernel_names.push_back(kernel_name_8o8);
-  this->cl_kernel_names.push_back(kernel_name_16o16);
-  this->cl_kernel_symbols.push_back(kernel_str_4o4);
-  this->cl_kernel_symbols.push_back(kernel_str_8o8);
-  this->cl_kernel_symbols.push_back(kernel_str_16o16);
+  this->cl_kernel_names.push_back(kernel_name_eltwise);
+  this->cl_kernel_symbols.push_back(kernel_str_eltwise);
 
   cl::Kernel kernel;
   this->kernels.push_back(kernel);
@@ -125,21 +111,16 @@ void EltwiseLayerCL::FinetuneKernel() {
   size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
   size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-  int kernel_idx = 0, group_size = 4;
-
-  if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
-  {
-    kernel_idx = 1;
-    group_size = 8;
-  } else if (padded_input_c % 16 == 0 && padded_output_c % 8 == 16)
-  {
-    kernel_idx = 2;
+  int group_size = 4;
+  if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
     group_size = 16;
+  } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
+    group_size = 8;
   }
 
   this->global_work_size[2] = padded_output_c / group_size;
-  cur_kname = this->cl_kernel_names[kernel_idx];
-  cur_kstr = this->cl_kernel_symbols[kernel_idx];
+  cur_kname = this->cl_kernel_names[0];
+  cur_kstr = this->cl_kernel_symbols[0];
 
 
   // if (padded_output_c % 4 == 0 && padded_output_c % 8 != 0) {
@@ -162,6 +143,11 @@ void EltwiseLayerCL::FinetuneKernel() {
   cl_kernel_symbols.clear();
   cl_kernel_names.push_back(cur_kname);
   cl_kernel_symbols.push_back(cur_kstr);
+
+  std::ostringstream ss;
+  ss << group_size;
+  this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+  this->build_options.push_back("-DDATA_TYPE=half");
 }
 
 int EltwiseLayerCL::ForwardReshapeCL() {
@@ -227,9 +213,13 @@ int EltwiseLayerCL::ForwardCL() {
 
 #endif
 
+<<<<<<< Updated upstream
 
   return 0;
 
+=======
+  return 0;
+>>>>>>> Stashed changes
 }
 
 }; // namespace feather

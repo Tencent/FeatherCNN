@@ -598,6 +598,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               break;
             case DeviceType::GPU_CL:
 #ifdef FEATHER_OPENCL
+              layers[i]->SetBuildOptions();
               if (layers[i]->BuildOpenCLProgram())
               {
                   LOGE("Build layer programs failed");
