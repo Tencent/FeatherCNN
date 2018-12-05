@@ -58,8 +58,8 @@ int DirectConvLayerCL::InitCL()
     this->cl_kernel_functions.push_back(func_name_conv);
     this->cl_kernel_functions.push_back(func_name_depthwise);
 
-    std::string kernel_name_conv = "conv_1v2_buffer";
-    auto it_source0 = booster::opencl_kernel_string_map.find("conv_1v2_buffer");
+    std::string kernel_name_conv = "conv_1v1_buffer";
+    auto it_source0 = booster::opencl_kernel_string_map.find("conv_1v1_buffer");
     std::string kernel_str_conv(it_source0->second.begin(), it_source0->second.end());
 
     std::string kernel_name_depthwise_conv = "depthwise_conv_1v1_buffer";
@@ -354,10 +354,10 @@ int DirectConvLayerCL::SetWorkSize()
     this->global_work_size[1] = (this->output_width / this->group_size_w  + !!(this->output_width % this->group_size_w)) * this->group_size_w;
     this->local_work_size[0] = this->group_size_h;
     this->local_work_size[1] = this->group_size_w;
-    int work_size_w = this->global_work_size[1] / 2;
-    if(work_size_w >= this->local_work_size[1] && work_size_w % this->local_work_size[1] == 0){
-      this->global_work_size[1] = work_size_w;
-    }
+    // int work_size_w = this->global_work_size[1] / 2;
+    // if(work_size_w >= this->local_work_size[1] && work_size_w % this->local_work_size[1] == 0){
+    //   this->global_work_size[1] = work_size_w;
+    // }
     if (this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
       this->local_work_size[2] = 4;
     } else {

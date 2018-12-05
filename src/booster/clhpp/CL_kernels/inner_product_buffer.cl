@@ -2,20 +2,25 @@
 
 __kernel void inner_product(__global const DATA_TYPE* restrict input,
                             __global const DATA_TYPE* restrict weights,
+#ifdef BIAS
                             __global const DATA_TYPE* restrict bias,
+#endif
                             __global DATA_TYPE* restrict output,
                             __private const int input_channels,
                             __private const int output_channels,
                             __private const int input_height,
-                            __private const int input_width,
-                            __private const int use_relu) {
+                            __private const int input_width) {
   const int out_channel_idx = get_global_id(2) * CHANNEL_GROUP_SIZE;
 
   int in_val_idx = 0;
   int kernel_val_idx = mul24(out_channel_idx, mul24(mul24(input_height, input_width), input_channels));
 
   DATA_TYPEN in_val, kernel_val;
+#ifdef BIAS
   DATA_TYPEN out_val = VLOADN(0, &bias[out_channel_idx]);
+#else
+  DATA_TYPEN out_val = 0;
+#endif
   for (int in_height_idx = 0; in_height_idx != input_height; ++in_height_idx) {
     for (int in_width_idx = 0; in_width_idx != input_width; ++in_width_idx) {
 #pragma unroll
@@ -54,9 +59,9 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,
     }
   }
 
-  if (use_relu) {
-    out_val = fmax(out_val, (DATA_TYPEN)0);
-  }
+#if defined(USE_RELU)
+  out_val = fmax(out_val, (DATA_TYPEN)0);
+#endif
 
   VSTOREN(out_val, 0, &output[out_channel_idx]);
 }

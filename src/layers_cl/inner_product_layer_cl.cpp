@@ -48,7 +48,20 @@ int InnerProductLayerCL::InitCL() {
     this->events.push_back(event);
 
     return 0;
-  }
+}
+
+void InnerProductLayerCL::SetBuildOptions() {
+    std::ostringstream ss;
+    ss << channel_grp_size;
+    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DDATA_TYPE=half");
+    if (bias_term) {
+      this->build_options.push_back("-DBIAS");
+    }
+    if (fuse_relu) {
+      this->build_options.push_back("-DUSE_RELU");
+    }
+}
 
 int InnerProductLayerCL::SetKernelParameters() {
     int error_num;
@@ -122,30 +135,16 @@ int InnerProductLayerCL::SetKernelParameters() {
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t use_relu = fuse_relu;
 
-    cl::Buffer * bias_mem;
-    if (bias_term) {
-      bias_mem = _weight_blobs[1]->data_cl();
-    } else {
-      std::vector<uint16_t> bias_vec(out_real_channels, 0);
-      bias_mem = new cl::Buffer(this->rt_param->context(),
-                                  CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
-                                  out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
-      if (!checkSuccess(error_num)) {
-        LOGE("Failed to create OpenCL buffers [%d]", error_num);
-        return -1;
-      }
-
-    }
-
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *bias_mem));
+    if (bias_term) {
+      set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *_weight_blobs[1]->data_cl()));
+    }
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, b_channel_padding));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, use_relu));
 
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     if (!set_kernel_arg_success) {
@@ -191,8 +190,6 @@ int InnerProductLayerCL::ForwardCL() {
 
 #endif
 
-
-
     return 0;
   }
 
@@ -234,7 +231,7 @@ void InnerProductLayerCL::FinetuneKernel() {
     ss << group_size;
     this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
     this->build_options.push_back("-DDATA_TYPE=half");
-  }
+}
 
 int InnerProductLayerCL::GenerateTopBlobs() {
     const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];

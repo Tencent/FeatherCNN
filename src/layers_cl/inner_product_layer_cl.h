@@ -27,6 +27,7 @@ public:
   InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
   int InitCL();
+  virtual void SetBuildOptions();
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
   virtual int ForwardCL();
