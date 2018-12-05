@@ -359,7 +359,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clGetContextInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueue);
-  MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
+  //MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
   MACE_CL_ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
   MACE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
   MACE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapImage);

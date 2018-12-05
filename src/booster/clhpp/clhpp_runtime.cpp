@@ -87,10 +87,8 @@ namespace clhpp_feather{
         return -1;
     }
 
-    // use device[1] because that's a GPU; device[0] is the CPU
     bool gpu_detected = false;
     _device = std::make_shared<cl::Device>();
-    std::make_shared<cl::Device>();
     for (auto device : all_devices) {
       if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
         *_device = device;
@@ -102,7 +100,7 @@ namespace clhpp_feather{
         if (_opencl_version == OpenCLVersion::CL_VER_UNKNOWN) {
           return -1;
         }
-        LOGI("Using device: %s", _gpu_device_name.c_str());
+        LOGI("Using device_name: [%s], device_version [%s]", _gpu_device_name.c_str(), _gpu_device_version.c_str());
         break;
       }
     }
@@ -113,19 +111,23 @@ namespace clhpp_feather{
 
     //_context
     cl_command_queue_properties properties = 0;
+    properties |= CL_QUEUE_PROFILING_ENABLE;
 
     _context = std::shared_ptr<cl::Context>(
           new cl::Context({*_device}, nullptr, nullptr, nullptr, &err));
-    if(!checkSuccess(err))
+    if(!checkSuccess(err)) {
+      LOGE("new cl::Context error");
       return -1;
+    }
 
-    //_command_queue
     _command_queue = std::make_shared<cl::CommandQueue>(*_context,
                                                       *_device,
                                                       properties,
                                                       &err);
-    if(!checkSuccess(err))
+    if(!checkSuccess(err)){
+      LOGE("new cl::CommandQueue error");
       return -1;
+    }
 
     return 0;
 

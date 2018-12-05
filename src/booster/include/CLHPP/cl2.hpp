@@ -6698,7 +6698,7 @@ public:
         else {
             Device device = context.getInfo<CL_CONTEXT_DEVICES>()[0];
 
-#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200 && CL_HPP_MINIMUM_OPENCL_VERSION >= 200
             cl_queue_properties queue_properties[] = {
                 CL_QUEUE_PROPERTIES, properties, 0 };
             if ((properties & CL_QUEUE_ON_DEVICE) == 0) {
@@ -6793,7 +6793,7 @@ public:
             return;
         }
 
-#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200 && CL_HPP_MINIMUM_OPENCL_VERSION >= 200
         cl_queue_properties queue_properties[] = {
             CL_QUEUE_PROPERTIES, properties, 0 };
         if ((properties & CL_QUEUE_ON_DEVICE) == 0) {
@@ -6843,7 +6843,7 @@ public:
             return;
         }
 
-#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200 && CL_HPP_MINIMUM_OPENCL_VERSION >= 200
         cl_queue_properties queue_properties[] = {
             CL_QUEUE_PROPERTIES, static_cast<cl_queue_properties>(properties), 0 };
         object_ = ::clCreateCommandQueueWithProperties(
@@ -6877,7 +6877,7 @@ public:
     {
         cl_int error;
 
-#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200 && CL_HPP_MINIMUM_OPENCL_VERSION >= 200
         cl_queue_properties queue_properties[] = {
             CL_QUEUE_PROPERTIES, properties, 0 };
         object_ = ::clCreateCommandQueueWithProperties(
@@ -6910,7 +6910,7 @@ public:
     {
             cl_int error;
 
-#if CL_HPP_TARGET_OPENCL_VERSION >= 200
+#if CL_HPP_TARGET_OPENCL_VERSION >= 200 && CL_HPP_MINIMUM_OPENCL_VERSION >= 200
             cl_queue_properties queue_properties[] = {
                 CL_QUEUE_PROPERTIES, static_cast<cl_queue_properties>(properties), 0 };
             object_ = ::clCreateCommandQueueWithProperties(
