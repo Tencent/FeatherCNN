@@ -175,36 +175,13 @@ int DirectConvLayerCL::SetKernelParameters()
     cl::Buffer* input_mem = _bottom_blobs[_bottom[0]]->data_cl();
     cl::Buffer* weight_mem = _weight_blobs[0]->data_cl();
     cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
-<<<<<<< Updated upstream
-    uint32_t use_relu = fuse_relu;
-
-    cl::Buffer * bias_mem;
-    if (bias_term) {
-      bias_mem = _weight_blobs[1]->data_cl();
-    } else {
-      std::vector<uint16_t> bias_vec(out_real_channels, 0);
-
-      bias_mem = new cl::Buffer(this->rt_param->context(),
-                                CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                out_real_channels * sizeof(uint16_t), bias_vec.data(), &error_num);
-      if (!checkSuccess(error_num)) {
-        LOGE("Failed to create OpenCL buffers[%d]", error_num);
-        return -1;
-      }
-    }
-=======
->>>>>>> Stashed changes
 
 
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
-<<<<<<< Updated upstream
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *bias_mem));
-=======
     if (bias_term) {
       set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *_weight_blobs[1]->data_cl()));
     }
->>>>>>> Stashed changes
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, in_real_channels));
     if (!this->is_dw) {

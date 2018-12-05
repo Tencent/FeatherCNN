@@ -213,13 +213,7 @@ int EltwiseLayerCL::ForwardCL() {
 
 #endif
 
-<<<<<<< Updated upstream
-
   return 0;
-
-=======
-  return 0;
->>>>>>> Stashed changes
 }
 
 }; // namespace feather
