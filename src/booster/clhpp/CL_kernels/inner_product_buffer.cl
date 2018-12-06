@@ -1,13 +1,14 @@
 #include <common.h>
 
-__kernel void inner_product(__global const DATA_TYPE* restrict input,
-                            __global const DATA_TYPE* restrict weights,
+// N = 4, 8, or 16, which is the channel group size.
+__kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w, ic] */
+                            __global const DATA_TYPE* restrict weights, /* [oc/N, h, w, [ic, N, 1]] */
 #ifdef BIAS
-                            __global const DATA_TYPE* restrict bias,
+                            __global const DATA_TYPE* restrict bias,    /* [oc] */
 #endif
-                            __global DATA_TYPE* restrict output,
-                            __private const int input_channels,
-                            __private const int output_channels,
+                            __global DATA_TYPE* restrict output,        /* [oc] */
+                            __private const int input_channels,         /* a multiple of 4 */
+                            __private const int output_channels,        /* a multiple of 4 */
                             __private const int input_height,
                             __private const int input_width) {
   const int out_channel_idx = get_global_id(2) * N;

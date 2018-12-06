@@ -1,11 +1,12 @@
 #include <common.h>
 
-__kernel void eltwise(__global const DATA_TYPE* restrict input0,
-                      __global const DATA_TYPE* restrict input1,
-                      __global DATA_TYPE* restrict output,
+// N = 4, 8, or 16, which is the channel group size.
+__kernel void eltwise(__global const DATA_TYPE* restrict input0, /* [h, w, c] */
+                      __global const DATA_TYPE* restrict input1, /* [h, w, c] */
+                      __global DATA_TYPE* restrict output,       /* [h, w, c] */
                       __private const int height,
                       __private const int width,
-                      __private const int channels) {
+                      __private const int channels) {            /* a multiple of 4 */
   const int height_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   if (height_idx >= height || width_idx >= width) return;

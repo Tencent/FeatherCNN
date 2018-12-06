@@ -3,9 +3,10 @@
 #define HALF_MAX 0x1.ffcp15h
 #define MIN_VAL -HALF_MAX
 
-__kernel void pooling(__global const DATA_TYPE* restrict input,
-                      __global DATA_TYPE* restrict output,
-                      __private const int output_channels,
+// N = 4, 8, or 16, which is the channel group size.
+__kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] */
+                      __global DATA_TYPE* restrict output,      /* [oh, ow, c] */
+                      __private const int channels,             /* a multiple of 4 */
                       __private const int input_height,
                       __private const int input_width,
                       __private const int output_height,
@@ -37,10 +38,10 @@ __kernel void pooling(__global const DATA_TYPE* restrict input,
 #endif
 
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
-    const int in_val_base_idx = mad24(in_height_idx, mul24(input_width, output_channels), out_channel_idx);
-    const int in_val_beg = mad24(in_width_beg, output_channels, in_val_base_idx);
-    const int in_val_end = mad24(in_width_end, output_channels, in_val_base_idx);
-    for (int in_val_idx = in_val_beg; in_val_idx != in_val_end; in_val_idx += output_channels) {
+    const int in_val_base_idx = mad24(in_height_idx, mul24(input_width, channels), out_channel_idx);
+    const int in_val_beg = mad24(in_width_beg, channels, in_val_base_idx);
+    const int in_val_end = mad24(in_width_end, channels, in_val_base_idx);
+    for (int in_val_idx = in_val_beg; in_val_idx != in_val_end; in_val_idx += channels) {
 #ifdef AVE_POOLING
       out_val += VLOADN(0, &input[in_val_idx]);
 #else
@@ -53,6 +54,6 @@ __kernel void pooling(__global const DATA_TYPE* restrict input,
   out_val /= mul24((in_height_end - in_height_beg), (in_width_end - in_width_beg));
 #endif
 
-  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), output_channels, out_channel_idx);
+  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), channels, out_channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }
