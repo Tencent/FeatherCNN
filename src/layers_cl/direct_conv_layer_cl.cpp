@@ -79,17 +79,18 @@ int DirectConvLayerCL::InitCL()
     return 0;
 }
 
-void DirectConvLayerCL::SetBuildOptions() {
+int DirectConvLayerCL::SetBuildOptions() {
     std::ostringstream ss;
     ss << out_channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
     this->build_options.push_back("-DDATA_TYPE=half");
-    if (bias_term) {
+    if (this->bias_term) {
       this->build_options.push_back("-DBIAS");
     }
-    if (fuse_relu) {
+    if (this->fuse_relu) {
       this->build_options.push_back("-DUSE_RELU");
     }
+    return 0;
 }
 
 int DirectConvLayerCL::SetKernelParameters()
@@ -120,7 +121,9 @@ int DirectConvLayerCL::SetKernelParameters()
       for (int i = 0; i < w_num; ++i) {
         for (int j = 0; j < w_hw; ++j) {
           // int dst_idx = j * this->_weight_blobs[0]->get_num_padding() + i;
-          int dst_idx = (i / this->in_channel_grp_size * w_hw + j) * this->in_channel_grp_size + i % this->in_channel_grp_size;
+          int dst_idx = (i / this->in_channel_grp_size * w_hw + j)
+                        * this->in_channel_grp_size
+                        + i % this->in_channel_grp_size;
           int src_idx = i * w_hw + j;
           weight_padding[dst_idx] = this->kernel_data[src_idx];
         }

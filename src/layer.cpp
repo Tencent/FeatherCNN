@@ -283,6 +283,13 @@ int Layer<Dtype>::BuildOpenCLProgram()
 }
 
 template<class Dtype>
+int Layer<Dtype>::SetBuildOptions()
+{
+    //Base layer doesn't know settings.
+    return -1;
+}
+
+template<class Dtype>
 int Layer<Dtype>::SetKernelParameters()
 {
     //Base layer doesn't know settings.
@@ -308,7 +315,7 @@ int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& heig
         LOGE("Get kernel work group info failed. %s: %s", __FILE__, __LINE__);
         return -1;
     }
-   
+
     while(local_work_size[0] * local_work_size[1] * local_work_size[2] > current_work_group_size){
         if(local_work_size[0] > 1){
             local_work_size[0] /= 2;

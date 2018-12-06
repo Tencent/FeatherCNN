@@ -44,11 +44,11 @@ class Layer
         int TryFuse(Layer *next_layer);
 
 #ifdef FEATHER_OPENCL
-        virtual void SetBuildOptions() { };
-        
         int BuildOpenCLProgram();
 
         virtual int SetKernelParameters();
+
+        virtual int SetBuildOptions();
 
         int FineTuneGroupSize(const cl::Kernel& kernel, const size_t& height, const size_t& width);
 
@@ -111,14 +111,9 @@ class Layer
         std::vector<std::string> cl_kernel_names;
         std::vector<std::string> cl_kernel_symbols;
         std::vector<std::string> cl_kernel_functions;
-        
-        // std::vector<cl_program> cl_programs;
-        // std::vector<cl_kernel> kernels;
-        // std::vector<cl_event> events;
         std::vector<cl::Program> cl_programs;
         std::vector<cl::Kernel> kernels;
         std::vector<cl::Event> events;
-
         std::vector<std::string> build_options;
         size_t global_work_size[3];
         size_t local_work_size[3];

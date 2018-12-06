@@ -69,12 +69,6 @@ int InputLayerCL::ResetInputAndArgs(size_t data_size) {
     if (data_size > this->input_data_size)
     {
         cl_int error_num;
-        // error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_fimage, this->_map_fdata,
-        //                                          nullptr, nullptr);
-        // if (!checkSuccess(error_num)){
-        //   LOGE("fatal error: Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
-        //   return -1;
-        // }
 
         this->_cl_fimage = cl::Buffer(this->rt_param->context(),
                                   CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
@@ -84,14 +78,6 @@ int InputLayerCL::ResetInputAndArgs(size_t data_size) {
           return -1;
         }
 
-        // this->_map_fdata =
-        // (float*)this->rt_param->command_queue().enqueueMapBuffer(this->_cl_fimage, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-        //                        0, data_size * sizeof(float), nullptr, nullptr, &error_num);
-        //
-        // if (!checkSuccess(error_num)) {
-        //   LOGE("fatal error: WriteBuffer Mapping memory objects failed [%d].  %s: %d", error_num, __FILE__, __LINE__);
-        //   return -1;
-        // }
         flag = true;
 
     }

@@ -50,7 +50,7 @@ int InnerProductLayerCL::InitCL() {
     return 0;
 }
 
-void InnerProductLayerCL::SetBuildOptions() {
+int InnerProductLayerCL::SetBuildOptions() {
     std::ostringstream ss;
     ss << channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
@@ -61,6 +61,7 @@ void InnerProductLayerCL::SetBuildOptions() {
     if (fuse_relu) {
       this->build_options.push_back("-DUSE_RELU");
     }
+    return 0;
 }
 
 int InnerProductLayerCL::SetKernelParameters() {
