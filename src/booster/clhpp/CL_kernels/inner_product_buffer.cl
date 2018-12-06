@@ -61,7 +61,7 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w
   }
 
 #if defined(USE_RELU)
-  out_val = fmax(out_val, (DATA_TYPEN)0);
+  out_val = fmax(out_val, (DATA_TYPE)0);
 #endif
 
   VSTOREN(out_val, 0, &output[out_channel_idx]);

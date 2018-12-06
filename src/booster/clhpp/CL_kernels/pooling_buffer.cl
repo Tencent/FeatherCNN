@@ -32,7 +32,7 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   in_width_end = min(in_width_end, input_width);
 
 #ifdef AVE_POOLING
-  DATA_TYPEN out_val = (DATA_TYPEN)0;
+  DATA_TYPEN out_val = 0;
 #else
   DATA_TYPEN out_val = (DATA_TYPEN)(MIN_VAL);
 #endif
