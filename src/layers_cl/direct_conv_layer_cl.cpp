@@ -233,11 +233,18 @@ int DirectConvLayerCL::ForwardReshapeCL()
 
     int param_idx = this->is_dw ? 5 : 6;
     cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    LOGD("data_size 1 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem));
+    LOGD("data_size 2 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
+
+    if (!set_kernel_arg_success) {
+      LOGE("Failed setting conv OpenCL kernels[0] arguments.");
+      return 1;
+    }
 
     SetWorkSize();
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());

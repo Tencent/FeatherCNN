@@ -247,6 +247,7 @@ int Blob<Dtype>::FreeDevice()
 {
     if(this->_data_cl) {
         delete this->_data_cl;
+        this->_data_cl= NULL;
     }
     return 0;
 }

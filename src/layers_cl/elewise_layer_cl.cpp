@@ -166,6 +166,11 @@ int EltwiseLayerCL::ForwardReshapeCL() {
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(3, this->output_height));
     set_kernel_arg_success &= checkSuccess(kernels[0].setArg(4, this->output_width));
 
+    if (!set_kernel_arg_success) {
+      LOGE("Failed setting conv OpenCL kernels[0] arguments.");
+      return 1;
+    }
+
     SetWorkSize();
     FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return this->ForwardCL();
