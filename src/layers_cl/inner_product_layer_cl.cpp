@@ -53,7 +53,7 @@ int InnerProductLayerCL::InitCL() {
 void InnerProductLayerCL::SetBuildOptions() {
     std::ostringstream ss;
     ss << channel_grp_size;
-    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DN=" + ss.str());
     this->build_options.push_back("-DDATA_TYPE=half");
     if (bias_term) {
       this->build_options.push_back("-DBIAS");

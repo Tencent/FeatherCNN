@@ -25,7 +25,7 @@
 #define CMD_SIZE(cmd, size) CMD_SUFFIX_STR(cmd, size)
 
 #define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
-#define DATA_TYPEN VEC_DATA_TYPE(DATA_TYPE, CHANNEL_GROUP_SIZE)
+#define DATA_TYPEN VEC_DATA_TYPE(DATA_TYPE, N)
 #define OUT_DATA_TYPE4 VEC_DATA_TYPE(OUT_DATA_TYPE, 4)
 
 #define CONVERT_STR(value, type) convert_##type((value))
@@ -71,9 +71,9 @@
   CMD_TYPE(write_image, CMD_DATA_TYPE)(image, coord, value);
 
 #define VLOADN(offset, p) \
-  CMD_SIZE(vload, CHANNEL_GROUP_SIZE)(offset, p)
+  CMD_SIZE(vload, N)(offset, p)
 #define VSTOREN(data, offset, p) \
-  CMD_SIZE(vstore, CHANNEL_GROUP_SIZE)(data, offset, p)
+  CMD_SIZE(vstore, N)(data, offset, p)
 
 #define VSTORE4(data, output, offset)         \
   CHECK_OUT_OF_RANGE_FOR_BUFFER((offset) + 3) \

@@ -19,7 +19,7 @@ __kernel void pooling(__global const DATA_TYPE* restrict input,
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_idx = get_global_id(2) * CHANNEL_GROUP_SIZE;
+  const int out_channel_idx = get_global_id(2) * N;
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;

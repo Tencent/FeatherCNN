@@ -1,13 +1,13 @@
 #include <common.h>
 
-__kernel void convolution(__global const DATA_TYPE* restrict input,   /* [h, w, c] */
-                          __global const DATA_TYPE* restrict weights, /* [cout/4, h, w, [cin, 4, 1]] */
+__kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw, ic] */
+                          __global const DATA_TYPE* restrict weights, /* [oc/N, kh, kw, [ic, N, 1]] */
 #ifdef BIAS
-                          __global const DATA_TYPE* restrict bias,    /* cout */
+                          __global const DATA_TYPE* restrict bias,    /* [oc] */
 #endif
-                          __global DATA_TYPE* restrict output,
-                          __private const int input_channels,
-                          __private const int output_channels,
+                          __global DATA_TYPE* restrict output,        /* [oh, ow, oc] */
+                          __private const int input_channels,         /* a multiple of 4 */
+                          __private const int output_channels,        /* a multiple of 4 */
                           __private const int input_height,
                           __private const int input_width,
                           __private const int output_height,
@@ -21,13 +21,13 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [h, w, 
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_idx = get_global_id(2) * CHANNEL_GROUP_SIZE;
+  const int out_channel_idx = get_global_id(2) * N;
 
   const int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   const int in_height_end = in_height_beg + kernel_height;
   const int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
   const int in_width_end = in_width_beg + kernel_width;
-  const int kernel_width_size = input_channels * CHANNEL_GROUP_SIZE;
+  const int kernel_width_size = input_channels * N;
   const int kernel_height_size = mul24(kernel_width, kernel_width_size);
   int kernel_val_idx = mul24(out_channel_idx, mul24(mul24(kernel_height, kernel_width), input_channels));
 
@@ -52,24 +52,24 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [h, w, 
 
       const int in_val_beg = mad24(in_width_idx, input_channels, in_val_base_width_idx);
       const int in_val_end = in_val_beg + input_channels;
-      for (int in_val_idx = in_val_beg; in_val_idx < in_val_end; in_val_idx += CHANNEL_GROUP_SIZE) {
+      for (int in_val_idx = in_val_beg; in_val_idx < in_val_end; in_val_idx += N) {
         in_val = VLOADN(0, &input[in_val_idx]);
 
-#define LOAD_KERNEL_AND_CALC(i)                                \
+#define LOAD_KERNEL_AND_CALC(i)                           \
         kernel_val = VLOADN(0, &weights[kernel_val_idx]); \
-        out_val = mad(in_val.s##i, kernel_val, out_val);       \
-        kernel_val_idx += CHANNEL_GROUP_SIZE;
+        out_val = mad(in_val.s##i, kernel_val, out_val);  \
+        kernel_val_idx += N;
 
         LOAD_KERNEL_AND_CALC(0);
         LOAD_KERNEL_AND_CALC(1);
         LOAD_KERNEL_AND_CALC(2);
         LOAD_KERNEL_AND_CALC(3);
-#if CHANNEL_GROUP_SIZE == 8 || CHANNEL_GROUP_SIZE == 16
+#if N == 8 || N == 16
         LOAD_KERNEL_AND_CALC(4);
         LOAD_KERNEL_AND_CALC(5);
         LOAD_KERNEL_AND_CALC(6);
         LOAD_KERNEL_AND_CALC(7);
-#if CHANNEL_GROUP_SIZE == 16
+#if N == 16
         LOAD_KERNEL_AND_CALC(8);
         LOAD_KERNEL_AND_CALC(9);
         LOAD_KERNEL_AND_CALC(a);

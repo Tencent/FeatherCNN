@@ -20,13 +20,13 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_idx = get_global_id(2) * CHANNEL_GROUP_SIZE;
+  const int out_channel_idx = get_global_id(2) * N;
 
   const int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   const int in_height_end = in_height_beg + kernel_height;
   const int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
   const int in_width_end = in_width_beg + kernel_width;
-  const int kernel_height_size = kernel_width * CHANNEL_GROUP_SIZE;
+  const int kernel_height_size = kernel_width * N;
   int kernel_val_idx = mul24(out_channel_idx, mul24(kernel_height, kernel_width));
 
   DATA_TYPEN in_val, kernel_val;
@@ -43,7 +43,7 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,
 
     int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), input_channels, out_channel_idx);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end;
-         ++in_width_idx, in_val_idx += input_channels, kernel_val_idx += CHANNEL_GROUP_SIZE) {
+         ++in_width_idx, in_val_idx += input_channels, kernel_val_idx += N) {
       if (in_width_idx < 0 || in_width_idx >= input_width) continue;
 
       in_val = VLOADN(0, &input[in_val_idx]);

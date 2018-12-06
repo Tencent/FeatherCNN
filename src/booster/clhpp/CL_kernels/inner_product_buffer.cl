@@ -10,7 +10,7 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,
                             __private const int output_channels,
                             __private const int input_height,
                             __private const int input_width) {
-  const int out_channel_idx = get_global_id(2) * CHANNEL_GROUP_SIZE;
+  const int out_channel_idx = get_global_id(2) * N;
 
   int in_val_idx = 0;
   int kernel_val_idx = mul24(out_channel_idx, mul24(mul24(input_height, input_width), input_channels));
@@ -24,25 +24,25 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,
   for (int in_height_idx = 0; in_height_idx != input_height; ++in_height_idx) {
     for (int in_width_idx = 0; in_width_idx != input_width; ++in_width_idx) {
 #pragma unroll
-      for (int in_channel_idx = 0; in_channel_idx < input_channels; in_channel_idx += CHANNEL_GROUP_SIZE) {
+      for (int in_channel_idx = 0; in_channel_idx < input_channels; in_channel_idx += N) {
         in_val = VLOADN(0, &input[in_val_idx]);
-        in_val_idx += CHANNEL_GROUP_SIZE;
+        in_val_idx += N;
         
 #define LOAD_KERNEL_AND_CALC(i)                           \
         kernel_val = VLOADN(0, &weights[kernel_val_idx]); \
         out_val = mad(in_val.s##i, kernel_val, out_val);  \
-        kernel_val_idx += CHANNEL_GROUP_SIZE;
+        kernel_val_idx += N;
 
         LOAD_KERNEL_AND_CALC(0);
         LOAD_KERNEL_AND_CALC(1);
         LOAD_KERNEL_AND_CALC(2);
         LOAD_KERNEL_AND_CALC(3);
-#if CHANNEL_GROUP_SIZE == 8 || CHANNEL_GROUP_SIZE == 16
+#if N == 8 || N == 16
         LOAD_KERNEL_AND_CALC(4);
         LOAD_KERNEL_AND_CALC(5);
         LOAD_KERNEL_AND_CALC(6);
         LOAD_KERNEL_AND_CALC(7);
-#if CHANNEL_GROUP_SIZE == 16
+#if N == 16
         LOAD_KERNEL_AND_CALC(8);
         LOAD_KERNEL_AND_CALC(9);
         LOAD_KERNEL_AND_CALC(a);

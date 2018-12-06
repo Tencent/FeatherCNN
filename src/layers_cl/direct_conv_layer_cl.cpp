@@ -82,7 +82,7 @@ int DirectConvLayerCL::InitCL()
 void DirectConvLayerCL::SetBuildOptions() {
     std::ostringstream ss;
     ss << out_channel_grp_size;
-    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DN=" + ss.str());
     this->build_options.push_back("-DDATA_TYPE=half");
     if (bias_term) {
       this->build_options.push_back("-DBIAS");

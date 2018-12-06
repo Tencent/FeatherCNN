@@ -202,7 +202,7 @@ void PoolingLayerCL::FinetuneKernel() {
     }
     std::ostringstream ss;
     ss << group_size;
-    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->build_options.push_back("-DN=" + ss.str());
     this->build_options.push_back("-DDATA_TYPE=half");
   }
 
