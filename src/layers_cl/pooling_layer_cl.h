@@ -27,6 +27,7 @@ public:
     PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
     int InitCL();
+    virtual int SetBuildOptions();
     virtual int SetKernelParameters();
     virtual int ForwardCL();
     virtual int SetWorkSize();

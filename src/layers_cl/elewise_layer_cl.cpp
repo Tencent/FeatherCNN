@@ -38,6 +38,14 @@ int EltwiseLayerCL::InitCL() {
   return 0;
 }
 
+int EltwiseLayerCL::SetBuildOptions() {
+  std::ostringstream ss;
+  ss << this->channel_grp_size;
+  this->build_options.push_back("-DN=" + ss.str());
+  this->build_options.push_back("-DDATA_TYPE=half");
+  return 0;
+}
+
 int EltwiseLayerCL::GenerateTopBlobs() {
   assert(this->_bottom.size() == 2);
   assert(this->_bottom_blobs.size() == 2);
@@ -121,33 +129,16 @@ void EltwiseLayerCL::FinetuneKernel() {
   this->global_work_size[2] = padded_output_c / group_size;
   cur_kname = this->cl_kernel_names[0];
   cur_kstr = this->cl_kernel_symbols[0];
+  this->channel_grp_size = group_size;
 
 
-  // if (padded_output_c % 4 == 0 && padded_output_c % 8 != 0) {
-  //   cur_kname = cl_kernel_names[0];
-  //   cur_kstr = cl_kernel_symbols[0];
-  //   this->global_work_size[2] = padded_output_c / 4;
-  // } else {
-  //   if (padded_output_c % 8 == 0 && padded_output_c % 16 != 0) {
-  //     cur_kname = cl_kernel_names[1];
-  //     cur_kstr = cl_kernel_symbols[1];
-  //     this->global_work_size[2] = padded_output_c / 8;
-  //   } else {
-  //     cur_kname = cl_kernel_names[2];
-  //     cur_kstr = cl_kernel_symbols[2];
-  //     this->global_work_size[2] = padded_output_c / 16;
-  //   }
-  // }
 
   cl_kernel_names.clear();
   cl_kernel_symbols.clear();
   cl_kernel_names.push_back(cur_kname);
   cl_kernel_symbols.push_back(cur_kstr);
 
-  std::ostringstream ss;
-  ss << group_size;
-  this->build_options.push_back("-DN=" + ss.str());
-  this->build_options.push_back("-DDATA_TYPE=half");
+
 }
 
 int EltwiseLayerCL::ForwardReshapeCL() {
