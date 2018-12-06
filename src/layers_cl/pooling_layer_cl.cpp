@@ -56,6 +56,25 @@ int PoolingLayerCL::InitCL() {
     return 0;
 }
 
+int PoolingLayerCL::SetBuildOptions() {
+  std::string ave_opt = "-DAVE_POOLING";
+  switch (this->method) {
+    case PoolingParameter_::PoolMethod_MAX_:
+      break;
+    case PoolingParameter_::PoolMethod_AVE:
+      this->build_options.push_back(ave_opt);
+      break;
+    default:
+      LOGE("Unsupported pool method\n");
+      break;
+  }
+  std::ostringstream ss;
+  ss << this->channel_grp_size;
+  this->build_options.push_back("-DN=" + ss.str());
+  this->build_options.push_back("-DDATA_TYPE=half");
+  return 0;
+}
+
 
 int PoolingLayerCL::SetKernelParameters() {
     int error_num;
@@ -189,21 +208,7 @@ void PoolingLayerCL::FinetuneKernel() {
     this->cl_kernel_names.push_back(cur_kname);
     this->cl_kernel_symbols.push_back(cur_kstr);
 
-    std::string ave_opt = "-DAVE_POOLING";
-    switch (this->method) {
-      case PoolingParameter_::PoolMethod_MAX_:
-        break;
-      case PoolingParameter_::PoolMethod_AVE:
-        this->build_options.push_back(ave_opt);
-        break;
-      default:
-        LOGE("Unsupported pool method\n");
-        break;
-    }
-    std::ostringstream ss;
-    ss << group_size;
-    this->build_options.push_back("-DN=" + ss.str());
-    this->build_options.push_back("-DDATA_TYPE=half");
+
   }
 
 int PoolingLayerCL::GenerateTopBlobs() {

@@ -35,6 +35,7 @@ public:
 
   int InitCL();
   int GenerateTopBlobs();
+  virtual int SetBuildOptions();
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
   virtual int ForwardReshapeCL();
@@ -54,7 +55,7 @@ public:
 private:
   uint32_t output_height;
   uint32_t output_width;
-
+  size_t channel_grp_size;
   bool fuse_relu;
 
 };
