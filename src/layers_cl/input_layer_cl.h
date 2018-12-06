@@ -60,6 +60,7 @@ public:
   int RunKernel(int type);
 
   virtual int SetWorkSize();
+  virtual int SetBuildOptions();
   virtual int SetKernelParameters();
   int ResetInputAndArgs(size_t data_size);
 

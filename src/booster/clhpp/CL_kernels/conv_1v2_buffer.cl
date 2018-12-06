@@ -90,8 +90,8 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw
   }
 
 #if defined(USE_RELU)
-  out_val0 = fmax(out_val0, (DATA_TYPEN)0);
-  out_val1 = fmax(out_val1, (DATA_TYPEN)0);
+  out_val0 = fmax(out_val0, (DATA_TYPE)0);
+  out_val1 = fmax(out_val1, (DATA_TYPE)0);
 #endif
 
   int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), output_channels, out_channel_idx);

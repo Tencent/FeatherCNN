@@ -232,6 +232,25 @@
 
 #include <cstring>
 
+// Compiler specific weak linking
+#ifndef CL_WEAK_ATTRIB_PREFIX
+// C++17: use inline variables/functions
+#if __cplusplus >= 201703L
+#define CL_USE_INLINE
+#endif
+
+#ifdef CL_USE_INLINE
+#define CL_WEAK_ATTRIB_PREFIX inline
+#define CL_WEAK_ATTRIB_SUFFIX
+#elif _WIN32
+#define CL_WEAK_ATTRIB_PREFIX __declspec(selectany)
+#define CL_WEAK_ATTRIB_SUFFIX
+#else // GCC, CLANG, etc.
+#define CL_WEAK_ATTRIB_PREFIX
+#define CL_WEAK_ATTRIB_SUFFIX __attribute__((weak))
+#endif // CL_USE_INLINE
+
+#endif // CL_WEAK_ATTRIB_PREFIX
 
 /*! \namespace cl
  *
@@ -1233,15 +1252,20 @@ inline cl_int getInfoHelper(Func f, cl_uint name, STRING_CLASS* param, long)
         return err;
     }
 
-    // std::string has a constant data member
-    // a char vector does not
-    VECTOR_CLASS<char> value(required);
-    err = f(name, required, value.data(), NULL);
-    if (err != CL_SUCCESS) {
-        return err;
+    if (required > 0) {
+        // std::string has a constant data member
+        // a char vector does not
+        VECTOR_CLASS<char> value(required);
+        err = f(name, required, value.data(), NULL);
+        if (err != CL_SUCCESS) {
+            return err;
+        }
+        if (param) {
+            param->assign(value.begin(), value.end() - 1u);
+        }
     }
-    if (param) {
-        param->assign(value.begin(), value.end());
+    else if (param) {
+        param->assign("");
     }
 #endif
     return CL_SUCCESS;
@@ -1332,6 +1356,8 @@ inline cl_int getInfoHelper(Func f, cl_uint name, T* param, int, typename T::cl_
     F(cl_device_info, CL_DEVICE_MEM_BASE_ADDR_ALIGN, cl_uint) \
     F(cl_device_info, CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE, cl_uint) \
     F(cl_device_info, CL_DEVICE_SINGLE_FP_CONFIG, cl_device_fp_config) \
+    F(cl_device_info, CL_DEVICE_DOUBLE_FP_CONFIG, cl_device_fp_config) \
+    F(cl_device_info, CL_DEVICE_HALF_FP_CONFIG, cl_device_fp_config) \
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHE_TYPE, cl_device_mem_cache_type) \
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE, cl_uint)\
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, cl_ulong) \
@@ -1429,8 +1455,6 @@ inline cl_int getInfoHelper(Func f, cl_uint name, T* param, int, typename T::cl_
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT, cl_uint) \
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE, cl_uint) \
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF, cl_uint) \
-    F(cl_device_info, CL_DEVICE_DOUBLE_FP_CONFIG, cl_device_fp_config) \
-    F(cl_device_info, CL_DEVICE_HALF_FP_CONFIG, cl_device_fp_config) \
     F(cl_device_info, CL_DEVICE_HOST_UNIFIED_MEMORY, cl_bool) \
     F(cl_device_info, CL_DEVICE_OPENCL_C_VERSION, STRING_CLASS) \
     \
@@ -2812,24 +2836,14 @@ inline Device Device::getDefault(cl_int * err)
     return device;
 }
 
+#ifdef CL_HPP_CPP11_ATOMICS_SUPPORTED
+CL_WEAK_ATTRIB_PREFIX std::atomic<int> CL_WEAK_ATTRIB_SUFFIX Context::default_initialized_;
+#else // !CL_HPP_CPP11_ATOMICS_SUPPORTED
+CL_WEAK_ATTRIB_PREFIX volatile int CL_WEAK_ATTRIB_SUFFIX Context::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
+#endif // !CL_HPP_CPP11_ATOMICS_SUPPORTED
 
-#ifdef _WIN32
-#ifdef CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) std::atomic<int> Context::default_initialized_;
-#else // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) volatile int Context::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
-#endif // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) Context Context::default_;
-__declspec(selectany) volatile cl_int Context::default_error_ = CL_SUCCESS;
-#else // !_WIN32
-#ifdef CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) std::atomic<int> Context::default_initialized_;
-#else // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) volatile int Context::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
-#endif // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) Context Context::default_;
-__attribute__((weak)) volatile cl_int Context::default_error_ = CL_SUCCESS;
-#endif // !_WIN32
+CL_WEAK_ATTRIB_PREFIX Context CL_WEAK_ATTRIB_SUFFIX Context::default_;
+CL_WEAK_ATTRIB_PREFIX volatile cl_int CL_WEAK_ATTRIB_SUFFIX Context::default_error_ = CL_SUCCESS;
 
 /*! \brief Class interface for cl_event.
  *
@@ -5760,6 +5774,7 @@ public:
 
         return err;
     }
+#if defined(CL_VERSION_1_1)
 
     cl_int enqueueReadBufferRect(
         const Buffer& buffer,
@@ -5875,6 +5890,7 @@ public:
 
         return err;
     }
+#endif //if defined(CL_VERSION_1_1)
 
 #if defined(CL_VERSION_1_2)
     /**
@@ -6242,7 +6258,7 @@ public:
      */
     cl_int enqueueMarkerWithWaitList(
         const VECTOR_CLASS<Event> *events = 0,
-        Event *event = 0)
+        Event *event = 0) const
     {
         cl_event tmp;
         cl_int err = detail::errHandler(
@@ -6272,7 +6288,7 @@ public:
      */
     cl_int enqueueBarrierWithWaitList(
         const VECTOR_CLASS<Event> *events = 0,
-        Event *event = 0)
+        Event *event = 0) const
     {
         cl_event tmp;
         cl_int err = detail::errHandler(
@@ -6298,7 +6314,7 @@ public:
         cl_mem_migration_flags flags,
         const VECTOR_CLASS<Event>* events = NULL,
         Event* event = NULL
-        )
+        ) const
     {
         cl_event tmp;
         
@@ -6585,23 +6601,14 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *PFN_clEnqueueReleaseD3D10ObjectsKHR)(
     }
 };
 
-#ifdef _WIN32
 #ifdef CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) std::atomic<int> CommandQueue::default_initialized_;
+CL_WEAK_ATTRIB_PREFIX std::atomic<int> CL_WEAK_ATTRIB_SUFFIX CommandQueue::default_initialized_;
 #else // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) volatile int CommandQueue::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
+CL_WEAK_ATTRIB_PREFIX volatile int CL_WEAK_ATTRIB_SUFFIX CommandQueue::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
 #endif // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__declspec(selectany) CommandQueue CommandQueue::default_;
-__declspec(selectany) volatile cl_int CommandQueue::default_error_ = CL_SUCCESS;
-#else // !_WIN32
-#ifdef CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) std::atomic<int> CommandQueue::default_initialized_;
-#else // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) volatile int CommandQueue::default_initialized_ = __DEFAULT_NOT_INITIALIZED;
-#endif // !CL_HPP_CPP11_ATOMICS_SUPPORTED
-__attribute__((weak)) CommandQueue CommandQueue::default_;
-__attribute__((weak)) volatile cl_int CommandQueue::default_error_ = CL_SUCCESS;
-#endif // !_WIN32
+
+CL_WEAK_ATTRIB_PREFIX CommandQueue CL_WEAK_ATTRIB_SUFFIX CommandQueue::default_;
+CL_WEAK_ATTRIB_PREFIX volatile cl_int CL_WEAK_ATTRIB_SUFFIX CommandQueue::default_error_ = CL_SUCCESS;
 
 template< typename IteratorType >
 Buffer::Buffer(

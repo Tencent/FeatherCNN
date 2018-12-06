@@ -58,6 +58,7 @@ int DirectConvLayerCL::InitCL()
     this->cl_kernel_functions.push_back(func_name_conv);
     this->cl_kernel_functions.push_back(func_name_depthwise);
 
+
     std::string kernel_name_conv = "conv_1v1_buffer";
     auto it_source0 = booster::opencl_kernel_string_map.find("conv_1v1_buffer");
     std::string kernel_str_conv(it_source0->second.begin(), it_source0->second.end());

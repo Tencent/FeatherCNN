@@ -4,25 +4,15 @@ namespace feather {
 
 int InputLayerCL::InitCL()
 {
-    std::string kernel_name1 = "clNormalInit";
     std::string func_name1  = "init1O4";
-    auto it_source1 = booster::opencl_kernel_string_map.find("inputBufferFloat");
+    std::string kernel_name1 = "clNormalInit";
+    auto it_source1 = booster::opencl_kernel_string_map.find("input_buffer");
     std::string kernel_str1(it_source1->second.begin(),it_source1->second.end());
+
     std::string func_name2 = "init1O42D";
     std::string kernel_name2 = "clNormalInit2D";
     auto it_source2 = booster::opencl_kernel_string_map.find("inputImage");
     std::string kernel_str2(it_source2->second.begin(),it_source2->second.end());
-
-    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
-    size_t channels = layer_blob->channels();
-    if (channels < 1 || channels > 4) {
-        LOGE("unsupported channel size: %d", channels);
-        return -1;
-    }
-    std::ostringstream ss;
-    ss << channels;
-    this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
-
 
     this->cl_kernel_functions.push_back(func_name1);
     this->cl_kernel_functions.push_back(func_name2);
@@ -84,6 +74,21 @@ int InputLayerCL::ResetInputAndArgs(size_t data_size) {
     this->input_data_size = data_size;
     return flag ? 2 : 0;
 
+}
+
+int InputLayerCL::SetBuildOptions() {
+    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+    size_t input_channels = layer_blob->channels();
+    if (input_channels < 1 || input_channels > 4) {
+        LOGE("unsupported input_channels[%d]", input_channels);
+        return -1;
+    }
+    std::ostringstream ss;
+    ss << input_channels;
+    this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
+    this->build_options.push_back("-DDATA_TYPE=half");
+
+    return 0;
 }
 
 int InputLayerCL::SetKernelParameters() {

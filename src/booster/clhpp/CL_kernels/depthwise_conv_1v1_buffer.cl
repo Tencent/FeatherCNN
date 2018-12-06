@@ -7,7 +7,7 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
                                     __global const DATA_TYPE* restrict bias,    /* [c] */
 #endif
                                     __global DATA_TYPE* restrict output,        /* [oh, ow, c] */
-                                    __private const int input_channels,         /* a multiple of 4 */
+                                    __private const int channels,               /* a multiple of 4 */
                                     __private const int input_height,
                                     __private const int input_width,
                                     __private const int output_height,
@@ -42,9 +42,9 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
       continue;
     }
 
-    int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), input_channels, out_channel_idx);
+    int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), channels, out_channel_idx);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end;
-         ++in_width_idx, in_val_idx += input_channels, kernel_val_idx += N) {
+         ++in_width_idx, in_val_idx += channels, kernel_val_idx += N) {
       if (in_width_idx < 0 || in_width_idx >= input_width) continue;
 
       in_val = VLOADN(0, &input[in_val_idx]);
@@ -57,6 +57,6 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   out_val = fmax(out_val, (DATA_TYPEN)0);
 #endif
 
-  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), input_channels, out_channel_idx);
+  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), channels, out_channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }
