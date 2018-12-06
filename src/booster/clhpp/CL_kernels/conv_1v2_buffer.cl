@@ -1,5 +1,6 @@
 #include <common.h>
 
+// N = 4, 8, or 16, which is the channel group size. 
 __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw, ic] */
                           __global const DATA_TYPE* restrict weights, /* [oc/N, kh, kw, [ic, N, 1]] */
 #ifdef BIAS

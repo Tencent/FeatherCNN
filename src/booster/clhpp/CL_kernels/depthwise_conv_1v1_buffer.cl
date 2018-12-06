@@ -1,12 +1,13 @@
 #include <common.h>
 
-__kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,
-                                    __global const DATA_TYPE* restrict weights,
+// N = 4, 8, or 16, which is the channel group size. 
+__kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   /* [ih, iw, c] */
+                                    __global const DATA_TYPE* restrict weights, /* [c/N, kh, kw, [N, 1]] */
 #ifdef BIAS
-                                    __global const DATA_TYPE* restrict bias,
+                                    __global const DATA_TYPE* restrict bias,    /* [c] */
 #endif
-                                    __global DATA_TYPE* restrict output,
-                                    __private const int input_channels,
+                                    __global DATA_TYPE* restrict output,        /* [oh, ow, c] */
+                                    __private const int input_channels,         /* a multiple of 4 */
                                     __private const int input_height,
                                     __private const int input_width,
                                     __private const int output_height,
