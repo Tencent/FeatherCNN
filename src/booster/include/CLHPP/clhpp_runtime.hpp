@@ -51,22 +51,40 @@ public:
 
   cl::Context &context() const
   {
-      return *_context;
+    return *_context;
   }
   cl::CommandQueue &command_queue() const
   {
-      return *_command_queue;
+    return *_command_queue;
   }
   cl::Device &device() const
   {
-      return *_device;
+    return *_device;
   }
+
+  std::string FeatherOpenclVersion() {
+    return _feather_opencl_version; 
+  }
+  std::string GpuDeviceName() {
+    return _gpu_device_name;
+  }
+  std::string GpuDeviceVersion() {
+    return _gpu_device_version;
+  }
+  void PrintOpenCLInfo() {
+     LOGI("----OpenCLInfo----");
+     LOGI("[DeviceName]:           [%s]", this->GpuDeviceName().c_str());
+     LOGI("[DeviceVersion]:        [%s]", this->GpuDeviceVersion().c_str());
+     LOGI("[FeatherOpenclVersion]: [%s]", this->FeatherOpenclVersion().c_str());
+  }
+
 
 private:
   OpenCLVersion _opencl_version;
   GPUType _gpu_type;
   std::string _gpu_device_name;
   std::string _gpu_device_version;
+  std::string _feather_opencl_version = "1.1.0";
 
   std::shared_ptr<cl::Context> _context;
   std::shared_ptr<cl::Device> _device;

@@ -53,7 +53,7 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new clhpp_feather::OpenCLRuntime(); 
+            _cl_runtime = new clhpp_feather::OpenCLRuntime();
         #endif
       }
       ~RuntimeParameter()
