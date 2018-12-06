@@ -36,8 +36,8 @@
                         return rt;                  \
                     }                               \
 
-#define LAYER_TIMING
-#define PRINT_SETUP_LOG
+//#define LAYER_TIMING
+//#define PRINT_SETUP_LOG
 
 namespace feather
 {

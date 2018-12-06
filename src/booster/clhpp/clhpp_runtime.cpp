@@ -59,6 +59,7 @@ namespace clhpp_feather{
 
   OpenCLRuntime::OpenCLRuntime() {
     OpenCLProbe();
+    PrintOpenCLInfo();
   }
   OpenCLRuntime::~OpenCLRuntime() {
     _command_queue->finish();
