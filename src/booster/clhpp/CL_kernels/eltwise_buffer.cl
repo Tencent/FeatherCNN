@@ -10,7 +10,8 @@ __kernel void eltwise(__global const DATA_TYPE* restrict input0, /* [h, w, c] */
   const int height_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   if (height_idx >= height || width_idx >= width) return;
-  const int channel_idx = get_global_id(2) * N;
+  const int out_channel_group_idx = get_global_id(2);
+  const int out_channel_idx = mul24(out_channel_group_idx, N);
 
   int val_idx = mad24(mad24(height_idx, width, width_idx), channels, channel_idx);
   DATA_TYPEN in_val0 = VLOADN(0, &input0[val_idx]);
