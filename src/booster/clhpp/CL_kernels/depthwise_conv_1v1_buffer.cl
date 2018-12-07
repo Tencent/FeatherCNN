@@ -23,12 +23,27 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
   const int out_channel_idx = get_global_id(2) * N;
 
-  const int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
-  const int in_height_end = in_height_beg + kernel_height;
-  const int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
-  const int in_width_end = in_width_beg + kernel_width;
-  const int kernel_height_size = kernel_width * N;
-  int kernel_val_idx = mul24(out_channel_idx, mul24(kernel_height, kernel_width));
+  int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
+  int in_height_end = in_height_beg + kernel_height;
+  const int in_height_beg_gap = select(0, -in_height_beg, in_height_beg < 0);
+  in_height_beg = max(0, in_height_beg);
+  in_height_end = min(in_height_end, input_height);
+
+  int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
+  int in_width_end = in_width_beg + kernel_width;
+  const int in_width_beg_gap = select(0, -in_width_beg, in_width_beg < 0);
+  const int in_width_end_gap = select(0, in_width_end - input_width, in_width_end > input_width);
+  in_width_beg = max(0, in_width_beg);
+  in_width_end = min(in_width_end, input_width);
+
+  const int kernel_width_size = N;
+  const int kernel_height_size = mul24(kernel_width, kernel_width_size);
+  const int kernel_height_beg_gap_size = mul24(in_height_beg_gap, kernel_height_size);
+  const int kernel_width_beg_gap_size = mul24(in_width_beg_gap, kernel_width_size);
+  const int kernel_width_end_gap_size = mul24(in_width_end_gap, kernel_width_size);
+  int kernel_val_idx = mad24(out_channel_idx, 
+                             mul24(kernel_height, kernel_width),
+                             kernel_height_beg_gap_size);
 
   DATA_TYPEN in_val, kernel_val;
 #ifdef BIAS
@@ -37,20 +52,17 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   DATA_TYPEN out_val = 0;
 #endif
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
-    if (in_height_idx < 0 || in_height_idx >= input_height) {
-      kernel_val_idx += kernel_height_size;
-      continue;
-    }
+    kernel_val_idx += kernel_width_beg_gap_size;
 
     int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), channels, out_channel_idx);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end;
          ++in_width_idx, in_val_idx += channels, kernel_val_idx += N) {
-      if (in_width_idx < 0 || in_width_idx >= input_width) continue;
-
       in_val = VLOADN(0, &input[in_val_idx]);
       kernel_val = VLOADN(0, &weights[kernel_val_idx]);
       out_val += in_val * kernel_val;
     }
+
+    kernel_val_idx += kernel_width_end_gap_size;
   }
 
 #if defined(USE_RELU)
