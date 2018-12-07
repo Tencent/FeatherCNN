@@ -1,6 +1,8 @@
 #include "CLHPP/clhpp_common.hpp"
 
+
 using namespace std;
+
 
 const std::string OpenCLErrorToString(cl_int error) {
   switch (error) {
@@ -131,20 +133,157 @@ const std::string OpenCLErrorToString(cl_int error) {
   }
 }
 
-inline bool checkSuccess(cl_int error_num)
+bool fileIsExists(std::string fileAddress)
 {
-    if (error_num != CL_SUCCESS)
-    {
-        cerr << "OpenCL error: " << error_num << " " << OpenCLErrorToString(error_num) << endl;
-        return false;
-    }
-    return true;
+  ifstream f(fileAddress.c_str());
+  return f.good();
+}
+
+bool dirIsExists(std::string dirAddress)
+{
+  if(opendir(dirAddress.c_str()) == NULL)
+    return false;
+  return true;
+}
+
+bool dirCreate(std::string dirAddress)
+{
+  LOGE("dirCreate %s", dirAddress.c_str());
+  if(!dirIsExists(dirAddress))
+    mkdir(dirAddress.c_str(), 0775);
+  return dirIsExists(dirAddress);
+}
+
+bool checkSuccess(cl_int error_num)
+{
+  if (error_num != CL_SUCCESS)
+  {
+      LOGE("OpenCL error: %s", OpenCLErrorToString(error_num).c_str() );
+      return false;
+  }
+  return true;
 }
 
 int buildProgramFromSource(const cl::Context& context,
                            const cl::Device & device,
                            cl::Program& program,
-                           const string& kernel_code, string build_opts)
+                           const std::string& kernel_code,
+                           std::string build_opts, 
+                           std::string kernelAddr)
+{
+  cl_int error_num;
+  cl::Program::Sources sources;
+  sources.push_back(kernel_code);
+  program = cl::Program(context, sources);
+  build_opts += " -cl-mad-enable -cl-fast-relaxed-math";
+  error_num = program.build({device}, build_opts.c_str());
+
+  if (!checkSuccess(error_num)) {
+    if (program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+      LOGE("Program build log: %s", build_log.c_str());
+    }
+    LOGE("Build program from source failed\n");
+    return -1;
+  }
+
+  // Keep built program binary
+  LOGI("keep build program in [%s]", kernelAddr.c_str());
+  size_t binarySize;
+  error_num = clGetProgramInfo(program(), CL_PROGRAM_BINARY_SIZES, sizeof(size_t), &binarySize, NULL);
+  if(!checkSuccess(error_num)) {
+    LOGE("Get program info binary size failed");
+    return 0;
+  }
+  unsigned char* binaryPtr = (unsigned char*) malloc(binarySize);
+  error_num = clGetProgramInfo(program(), CL_PROGRAM_BINARIES,
+                                 binarySize, &binaryPtr, NULL);
+  if(!checkSuccess(error_num)) {
+    LOGE("Get program info binary str failed");
+    return 0;
+  }
+  FILE* binaryF = fopen(kernelAddr.c_str(), "w");
+  if(binaryF == NULL) {
+    LOGE("fopen w file %s %d error", kernelAddr.c_str(), binarySize);
+    return 0;
+  }
+  fwrite(binaryPtr, binarySize, 1, binaryF);
+  fclose(binaryF);
+  free(binaryPtr);
+  //LOGE("fopen w file %s %d success", kernelAddr.c_str(), binarySize);
+  return 0;
+}
+
+int buildProgramFromPrecompiledBinary( const cl::Context& context,
+                                       const cl::Device & device,
+                                       cl::Program& program,
+                                       const std::string& kernel_code,
+                                       std::string build_opts, 
+                                       std::string kernelAddr)
+{
+  if(!fileIsExists(kernelAddr))
+    return -1;
+  FILE* binaryF = fopen(kernelAddr.c_str(), "r");
+  if(binaryF == NULL) {
+    LOGE("fopen r file %s error", kernelAddr.c_str());
+    return -1;
+  }
+  fseek(binaryF, 0, SEEK_END);
+  size_t kernelSize = ftell(binaryF);
+  fseek(binaryF, 0, SEEK_SET);
+  unsigned char* kernelCode = (unsigned char *)malloc(kernelSize);
+  if (fread(kernelCode, 1, kernelSize, binaryF) < kernelSize) {
+      LOGE("fread r file %s %d error", kernelAddr.c_str(), kernelSize);
+      return -1;
+  }
+  fclose(binaryF);
+
+  std::vector<unsigned char> content(
+        reinterpret_cast<unsigned char const *>(kernelCode),
+        reinterpret_cast<unsigned char const *>(kernelCode) + kernelSize);
+
+  cl_int error_num;
+  program = cl::Program(context, {device}, {content});
+
+  build_opts += " -cl-mad-enable -cl-fast-relaxed-math";
+  error_num = program.build({device}, build_opts.c_str());
+  if (!checkSuccess(error_num)) {
+    if (program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+      LOGE("Program Pre build log: %s", build_log.c_str());
+    }
+    return -1;
+  }
+  free(kernelCode);
+  return 0;
+}
+
+int buildProgram( const cl::Context& context,
+                  const cl::Device & device,
+                  cl::Program& program,
+                  const std::string& kernel_code,
+                  std::string build_opts, 
+                  std::string kernelAddr) 
+{
+  kernelAddr = g_pre_kernel_dir + kernelAddr;
+  int ret = 0;
+  ret = buildProgramFromPrecompiledBinary(context, device, program, kernel_code, build_opts, kernelAddr);
+  if (ret != 0) {
+    ret = buildProgramFromSource(context, device, program, kernel_code, build_opts, kernelAddr);
+    return ret;
+  }
+  return 0;
+}
+
+int buildProgramFromSource(const cl::Context& context,
+                           const cl::Device & device,
+                           cl::Program& program,
+                           const std::string& kernel_code,
+                           std::string build_opts)
 {
     cl_int error_num;
     cl::Program::Sources sources;
@@ -205,3 +344,5 @@ int buildProgramFromSource(const cl::Context& context,
     // }
     // return 0;
 }
+
+

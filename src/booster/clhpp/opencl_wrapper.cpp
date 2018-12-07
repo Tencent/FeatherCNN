@@ -149,6 +149,10 @@ class OpenCLLibrary final {
                                                        const unsigned char **,
                                                        cl_int *,
                                                        cl_int *);
+
+  using clCreateProgramWithBuiltInKernelsFunc = 
+      cl_program (*) (cl_context, cl_uint, const cl_device_id *, const char *, cl_int *);
+
   using clRetainContextFunc = cl_int (*)(cl_context context);
   using clGetContextInfoFunc =
       cl_int (*)(cl_context, cl_context_info, size_t, void *, size_t *);
@@ -225,6 +229,7 @@ class OpenCLLibrary final {
   MACE_CL_DEFINE_FUNC_PTR(clRetainContext);
   MACE_CL_DEFINE_FUNC_PTR(clGetContextInfo);
   MACE_CL_DEFINE_FUNC_PTR(clCreateProgramWithBinary);
+MACE_CL_DEFINE_FUNC_PTR(clCreateProgramWithBuiltInKernels);
   MACE_CL_DEFINE_FUNC_PTR(clCreateCommandQueue);
   MACE_CL_DEFINE_FUNC_PTR(clCreateCommandQueueWithProperties);
   MACE_CL_DEFINE_FUNC_PTR(clReleaseCommandQueue);
@@ -358,6 +363,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clRetainContext);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetContextInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
+MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBuiltInKernels);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueue);
 MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
   MACE_CL_ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
@@ -586,6 +592,25 @@ clCreateProgramWithBinary(cl_context context,
     return nullptr;
   }
 }
+
+//add clCreateProgramWithBuiltInKernels by piaoyi
+// CL_API_ENTRY cl_program
+// clCreateProgramWithBuiltInKernels(cl_context            context,
+//                                   cl_uint               num_devices,
+//                                   const cl_device_id *  device_list,
+//                                   const char *          kernel_names,
+//                                   cl_int *              errcode_ret) CL_API_SUFFIX__VERSION_1_0
+// {
+//   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateProgramWithBuiltInKernels;
+//   if (func != nullptr) {
+//     //MACE_LATENCY_LOGGER(3, "clCreateProgramWithBuiltInKernels");
+//     return func(context, num_devices, device_list, kernel_names, errcode_ret);
+//   } else {
+//     if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+//     return nullptr;
+//   }
+// }
+
 
 CL_API_ENTRY cl_int clGetProgramInfo(cl_program program,
                                      cl_program_info param_name,

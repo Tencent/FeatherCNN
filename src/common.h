@@ -30,6 +30,7 @@ class StringTool
 {
     public:
         static void SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts);
+        static void RelaceString(std::string &input, const std::string &delim, const std::string& repstr);
 };
 
 
