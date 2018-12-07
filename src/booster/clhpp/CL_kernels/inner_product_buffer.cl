@@ -11,7 +11,8 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w
                             __private const int output_channels,        /* a multiple of 4 */
                             __private const int input_height,
                             __private const int input_width) {
-  const int out_channel_idx = get_global_id(2) * N;
+  const int out_channel_group_idx = get_global_id(2);
+  const int out_channel_idx = mul24(out_channel_group_idx, N);
 
   int in_val_idx = 0;
   int kernel_val_idx = mul24(out_channel_idx, mul24(mul24(input_height, input_width), input_channels));
@@ -25,7 +26,7 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w
   for (int in_height_idx = 0; in_height_idx != input_height; ++in_height_idx) {
     for (int in_width_idx = 0; in_width_idx != input_width; ++in_width_idx) {
 #pragma unroll
-      for (int in_channel_idx = 0; in_channel_idx < input_channels; in_channel_idx += N) {
+      for (int in_channel_idx = 0; in_channel_idx != input_channels; in_channel_idx += N) {
         in_val = VLOADN(0, &input[in_val_idx]);
         in_val_idx += N;
         
