@@ -22,13 +22,15 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_idx = get_global_id(2) * N;
+  const int out_channel_group_idx = get_global_id(2);
+  const int out_channel_idx = mul24(out_channel_group_idx, N);
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;
   const int in_height_beg_gap = select(0, -in_height_beg, in_height_beg < 0);
   in_height_beg = max(0, in_height_beg);
   in_height_end = min(in_height_end, input_height);
+  const int in_height_size = mul24(input_width, input_channels);
 
   int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
   int in_width_end = in_width_beg + kernel_width;
@@ -42,8 +44,8 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw
   const int kernel_height_beg_gap_size = mul24(in_height_beg_gap, kernel_height_size);
   const int kernel_width_beg_gap_size = mul24(in_width_beg_gap, kernel_width_size);
   const int kernel_width_end_gap_size = mul24(in_width_end_gap, kernel_width_size);
-  int kernel_val_idx = mad24(out_channel_idx, 
-                             mul24(mul24(kernel_height, kernel_width), input_channels),
+  int kernel_val_idx = mad24(out_channel_group_idx, 
+                             mul24(kernel_height, kernel_height_size),
                              kernel_height_beg_gap_size);
 
   DATA_TYPEN in_val, kernel_val;
@@ -55,11 +57,11 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
     kernel_val_idx += kernel_width_beg_gap_size;
 
-    const int in_val_base_width_idx = mul24(mul24(in_height_idx, input_width), input_channels);
+    const int in_val_base_idx = mul24(in_height_idx, in_height_size);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end; ++in_width_idx) {
-      const int in_val_beg = mad24(in_width_idx, input_channels, in_val_base_width_idx);
+      const int in_val_beg = mad24(in_width_idx, input_channels, in_val_base_idx);
       const int in_val_end = in_val_beg + input_channels;
-      for (int in_val_idx = in_val_beg; in_val_idx < in_val_end; in_val_idx += N) {
+      for (int in_val_idx = in_val_beg; in_val_idx != in_val_end; in_val_idx += N) {
         in_val = VLOADN(0, &input[in_val_idx]);
 
 #define LOAD_KERNEL_AND_CALC(i)                           \
@@ -99,6 +101,8 @@ __kernel void convolution(__global const DATA_TYPE* restrict input,   /* [ih, iw
   out_val = fmax(out_val, (DATA_TYPE)0);
 #endif
 
-  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), output_channels, out_channel_idx);
+  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
+                          output_channels, 
+                          out_channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }
