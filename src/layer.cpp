@@ -264,8 +264,20 @@ int Layer<Dtype>::BuildOpenCLProgram()
         for (auto &opt : this->build_options) {
           opt_str += " " + opt;
         }
-        if (buildProgramFromSource(this->rt_param->context(), this->rt_param->device(), cur_program, this->cl_kernel_symbols[i], opt_str)){
-            LOGE("Build program from source failed.");
+
+        std::string kernelAddr = this->_name + "_" + this->cl_kernel_names[i] + ".bin";
+        //LOGI("kernelAddr [%s]", kernelAddr.c_str());
+        StringTool::RelaceString(kernelAddr, "/", "_");
+        StringTool::RelaceString(kernelAddr, ":", "_");
+        //LOGI("kernelAddr [%s]", kernelAddr.c_str());
+
+        if (buildProgram(  this->rt_param->context(), 
+                           this->rt_param->device(),
+                           cur_program,
+                           this->cl_kernel_symbols[i],
+                           opt_str,
+                           kernelAddr) ) {
+            LOGE("Build program failed.");
             return -1;
         }
 

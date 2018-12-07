@@ -8,10 +8,14 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include "CLHPP/cl2_head.hpp"
 #include "log.h"
 
+const std::string g_pre_kernel_dir = "/sdcard/feather_cl/";
 
 /**
  * \brief Convert OpenCL error numbers to their string form.
@@ -27,7 +31,35 @@ const std::string OpenCLErrorToString(cl_int errorNumber);
  * \return False if errorNumber != CL_SUCCESS, true otherwise.
  */
 bool checkSuccess(cl_int errorNumber);
+bool fileIsExists(std::string fileAddress);
+bool dirIsExists(std::string dirAddress);
+bool dirCreate(std::string dirAddress);
 
-int buildProgramFromSource(const cl::Context& context, const cl::Device& device, cl::Program& program,
-                            const std::string& kernel_code, std::string build_opts);
+int buildProgramFromSource(const cl::Context& context,
+                           const cl::Device& device,
+                           cl::Program& program,
+                           const std::string& kernel_code,
+                           std::string build_opts);
+
+int buildProgramFromSource(const cl::Context& context,
+                           const cl::Device & device,
+                           cl::Program& program,
+                           const std::string& kernel_code,
+                           std::string build_opts, 
+                           std::string kernelAddr);
+
+int buildProgramFromPrecompiledBinary( const cl::Context& context,
+                                       const cl::Device & device,
+                                       cl::Program& program,
+                                       const std::string& kernel_code,
+                                       std::string build_opts, 
+                                       std::string kernelAddr);
+
+int buildProgram( const cl::Context& context,
+                  const cl::Device & device,
+                  cl::Program& program,
+                  const std::string& kernel_code,
+                  std::string build_opts, 
+                  std::string kernelAddr);
+
 #endif

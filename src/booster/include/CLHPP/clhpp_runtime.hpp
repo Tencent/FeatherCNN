@@ -11,6 +11,8 @@
 
 #include "CLHPP/clhpp_common.hpp"
 
+extern const std::string g_pre_kernel_dir;
+
 namespace clhpp_feather {
 
 enum GPUType {

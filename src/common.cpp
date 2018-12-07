@@ -52,3 +52,26 @@ void _mm_free(void* ptr)
         ptr = NULL;
     }
 }
+
+void StringTool::SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
+{
+    for (char *s = strtok((char *)input.data(), (char *)delim.data()); s; s = strtok(NULL, (char *)delim.data()))
+    {
+        if (s != NULL)
+        {
+            parts.push_back(s);
+        }
+    }
+}
+
+void StringTool::RelaceString(std::string &input, const std::string &delim, const std::string& repstr)
+{
+    size_t pos = input.find(delim);
+    while( pos != std::string::npos)
+    {
+        // Replace this occurrence of Sub String
+        input.replace(pos, delim.size(), repstr);
+        // Get the next occurrence from the current position
+        pos = input.find(delim, pos + delim.size());
+    }
+}

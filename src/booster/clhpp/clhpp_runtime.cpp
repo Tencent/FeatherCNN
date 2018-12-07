@@ -19,6 +19,7 @@ typedef cl_uint cl_priority_hint;
 using namespace std;
 
 
+
 namespace clhpp_feather{
 
   GPUType ParseGPUType(const std::string &device_name) {
@@ -60,6 +61,8 @@ namespace clhpp_feather{
   OpenCLRuntime::OpenCLRuntime() {
     OpenCLProbe();
     PrintOpenCLInfo();
+
+    dirCreate(g_pre_kernel_dir);
   }
   OpenCLRuntime::~OpenCLRuntime() {
     _command_queue->finish();
