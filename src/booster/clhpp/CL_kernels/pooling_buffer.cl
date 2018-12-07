@@ -20,27 +20,31 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_idx = get_global_id(2) * N;
+  const int out_channel_group_idx = get_global_id(2);
+  const int out_channel_idx = mul24(out_channel_group_idx, N);
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;
-  int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
-  int in_width_end = in_width_beg + kernel_width;
   in_height_beg = max(0, in_height_beg);
   in_height_end = min(in_height_end, input_height);
+  const int in_height_size = mul24(input_width, input_channels);
+
+  int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
+  int in_width_end = in_width_beg + kernel_width;
   in_width_beg = max(0, in_width_beg);
   in_width_end = min(in_width_end, input_width);
+  const int in_width_beg_channels = mul24(in_width_beg, channels);
+  const int in_width_end_channels = mul24(in_width_end, channels);
 
 #ifdef AVE_POOLING
   DATA_TYPEN out_val = 0;
 #else
   DATA_TYPEN out_val = (DATA_TYPEN)(MIN_VAL);
 #endif
-
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
-    const int in_val_base_idx = mad24(in_height_idx, mul24(input_width, channels), out_channel_idx);
-    const int in_val_beg = mad24(in_width_beg, channels, in_val_base_idx);
-    const int in_val_end = mad24(in_width_end, channels, in_val_base_idx);
+    const int in_val_base_idx = mad24(in_height_idx, in_height_size, out_channel_idx);
+    const int in_val_beg = in_val_base_idx + in_width_beg_channels;
+    const int in_val_end = in_val_base_idx + in_width_end_channels;
     for (int in_val_idx = in_val_beg; in_val_idx != in_val_end; in_val_idx += channels) {
 #ifdef AVE_POOLING
       out_val += VLOADN(0, &input[in_val_idx]);
@@ -54,6 +58,8 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   out_val /= mul24((in_height_end - in_height_beg), (in_width_end - in_width_beg));
 #endif
 
-  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), channels, out_channel_idx);
+  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
+                          channels, 
+                          out_channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }
