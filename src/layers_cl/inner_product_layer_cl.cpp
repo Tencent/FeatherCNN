@@ -164,27 +164,36 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters() {
 template <class Dtype>
 int InnerProductLayerCL<Dtype>::ForwardCL() {
 #ifdef TIMING_CL
-    clFinish(commandQueue);
+    this->rt_param->command_queue().finish();
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
+    // int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+    //     kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+    //     cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->events[0]);
 
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the inner product kernel.");
       return -1;
     }
-
-    events[0].wait();
+    this->events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
-    double start_nanos_ = events[0].getProfilingInfo<CL_PROFILING_COMMAND_START>();
-    double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
-    double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
-    LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
+    
+    cl::Event profileEvent = this->events[0];
+    double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
+    double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
+    double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    double stop_nanos_   = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    double submit_kerel_time = (submit_nanos_ - queued_nanos_) / 1000.0 / 1000.0;
+    double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
+    double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+    LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
+     this->name().c_str(), this->cl_kernel_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(

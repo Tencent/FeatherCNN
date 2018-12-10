@@ -274,6 +274,7 @@ int Layer<Dtype>::BuildOpenCLProgram()
         StringTool::RelaceString(kernelAddr, "/", "_");
         StringTool::RelaceString(kernelAddr, ":", "_");
         //LOGI("kernelAddr [%s]", kernelAddr.c_str());
+        //kernelAddr = "no_save";
 
         if (buildProgram(  this->rt_param->context(), 
                            this->rt_param->device(),

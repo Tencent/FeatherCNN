@@ -172,8 +172,11 @@ int InputLayerCL<Dtype>::SetKernelParameters() {
 
 template <class Dtype>
 int InputLayerCL<Dtype>::FloatToDevice(const float* input_data) {
-  // Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
-  // size_t data_size = layer_blob->data_size();
+#ifdef TIMING_CL
+  this->rt_param->command_queue().finish();
+  timespec tpstart, tpend;
+  clock_gettime(CLOCK_MONOTONIC, &tpstart);
+
   cl_int error_num;
   float* map_data =
     (float*)this->rt_param->command_queue().enqueueMapBuffer(this->_cl_fimage, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
@@ -191,57 +194,122 @@ int InputLayerCL<Dtype>::FloatToDevice(const float* input_data) {
     LOGE("fatal error: Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
   }
 
+  this->rt_param->command_queue().finish();
+  clock_gettime(CLOCK_MONOTONIC, &tpend);
+  double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+  LOGI("[%s] FloatToDevice Execution time in %lf ms\n", this->name().c_str(), timedif / 1000.0);
+
+#else
+  cl_int error_num;
+  float* map_data =
+    (float*)this->rt_param->command_queue().enqueueMapBuffer(this->_cl_fimage, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                           0, this->input_data_size * sizeof(float), nullptr, nullptr, &error_num);
+  if (!checkSuccess(error_num)) {
+    LOGE("fatal error: WriteBuffer Mapping memory objects failed [%d].  %s: %d", error_num, __FILE__, __LINE__);
+    return -1;
+  }
+
+  memcpy(map_data, input_data, this->input_data_size * sizeof(float));
+
+  error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_fimage, map_data,
+                                           nullptr, nullptr);
+  if (!checkSuccess(error_num)){
+    LOGE("fatal error: Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
+  }
+
+#endif
   return 0;
 }
 
 template <class Dtype>
 int InputLayerCL<Dtype>::UintToDevice(const uint8_t* src_bgra) {
-  // Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
-  // size_t data_size = layer_blob->data_size();
-    int error_num;
-    std::vector<size_t> mapped_image_pitch(2);
-    std::array<size_t, 3> origin = {0, 0, 0};
-    std::array<size_t, 3> region = { static_cast<size_t>(this->output_width), static_cast<size_t>(this->output_height), 1 };
-    uint8_t* map_data = reinterpret_cast<uint8_t*>(this->rt_param->command_queue().enqueueMapImage(
-        this->_cl_img2d, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
-        mapped_image_pitch.data(), mapped_image_pitch.data() + 1, nullptr,
-        nullptr, &error_num));
-    if (!checkSuccess(error_num)) {
-      LOGE("fatal error: mapping _cl_img2d objects failed. %s: %d", error_num, __FILE__, __LINE__);
-    }
+#ifdef TIMING_CL
+  this->rt_param->command_queue().finish();
+  timespec tpstart, tpend;
+  clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
-    memcpy(map_data, src_bgra, this->input_data_size);
+  int error_num;
+  std::vector<size_t> mapped_image_pitch(2);
+  std::array<size_t, 3> origin = {0, 0, 0};
+  std::array<size_t, 3> region = { static_cast<size_t>(this->output_width), static_cast<size_t>(this->output_height), 1 };
+  uint8_t* map_data = reinterpret_cast<uint8_t*>(this->rt_param->command_queue().enqueueMapImage(
+      this->_cl_img2d, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
+      mapped_image_pitch.data(), mapped_image_pitch.data() + 1, nullptr,
+      nullptr, &error_num));
+  if (!checkSuccess(error_num)) {
+    LOGE("fatal error: mapping _cl_img2d objects failed. %s: %d", error_num, __FILE__, __LINE__);
+  }
 
-    error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_img2d, map_data, nullptr, nullptr);
-    if (!checkSuccess(error_num)) {
-      LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
-    }
+  memcpy(map_data, src_bgra, this->input_data_size);
+
+  error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_img2d, map_data, nullptr, nullptr);
+  if (!checkSuccess(error_num)) {
+    LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
+  }
+
+  this->rt_param->command_queue().finish();
+  clock_gettime(CLOCK_MONOTONIC, &tpend);
+  double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+  LOGI("[%s] UintToDevice Execution time in %lf ms\n", this->name().c_str(), timedif / 1000.0);
+
+#else
+  int error_num;
+  std::vector<size_t> mapped_image_pitch(2);
+  std::array<size_t, 3> origin = {0, 0, 0};
+  std::array<size_t, 3> region = { static_cast<size_t>(this->output_width), static_cast<size_t>(this->output_height), 1 };
+  uint8_t* map_data = reinterpret_cast<uint8_t*>(this->rt_param->command_queue().enqueueMapImage(
+      this->_cl_img2d, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
+      mapped_image_pitch.data(), mapped_image_pitch.data() + 1, nullptr,
+      nullptr, &error_num));
+  if (!checkSuccess(error_num)) {
+    LOGE("fatal error: mapping _cl_img2d objects failed. %s: %d", error_num, __FILE__, __LINE__);
+  }
+
+  memcpy(map_data, src_bgra, this->input_data_size);
+
+  error_num = this->rt_param->command_queue().enqueueUnmapMemObject(this->_cl_img2d, map_data, nullptr, nullptr);
+  if (!checkSuccess(error_num)) {
+    LOGE("fatal error: Deconstructor Unmapping _cl_img2d objects failed.");
+  }
+
+#endif
   return 0;
 }
 
 template <class Dtype>
 int InputLayerCL<Dtype>::RunKernel(int type) {
 #ifdef TIMING_CL
-    clFinish(commandQueue);
+    this->rt_param->command_queue().finish();
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
+  // int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
+  //       kernels[type], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+  //       cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[type], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+        this->kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->events[0]);
+
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the normalinit kernel.");
     return -1;
   }
 
-  events[0].wait();
+  this->events[0].wait();
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, kernel_names[0].c_str());
-  double start_nanos_ = events[0].getProfilingInfo<CL_PROFILING_COMMAND_START>();
-  double stop_nanos_  = events[0].getProfilingInfo<CL_PROFILING_COMMAND_END>();
-  double kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
-  LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
+  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
+  
+  cl::Event profileEvent = this->events[0];
+  double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
+  double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
+  double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  double stop_nanos_   = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+  double submit_kerel_time = (submit_nanos_ - queued_nanos_) / 1000.0 / 1000.0;
+  double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
+  double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+  LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
+   this->name().c_str(), this->cl_kernel_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(

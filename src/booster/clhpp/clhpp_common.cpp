@@ -269,6 +269,9 @@ int buildProgram( const cl::Context& context,
                   std::string build_opts, 
                   std::string kernelAddr) 
 {
+  if(kernelAddr == "no_save")
+    return buildProgramFromSource(context, device, program, kernel_code, build_opts);
+
   kernelAddr = g_pre_kernel_dir + kernelAddr;
   int ret = 0;
   ret = buildProgramFromPrecompiledBinary(context, device, program, kernel_code, build_opts, kernelAddr);
