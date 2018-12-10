@@ -15,7 +15,8 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w
   const int out_channel_idx = mul24(out_channel_group_idx, N);
 
   int in_val_idx = 0;
-  int kernel_val_idx = mul24(out_channel_idx, mul24(mul24(input_height, input_width), input_channels));
+  int kernel_val_idx = mul24(out_channel_idx, 
+                             mul24(mul24(input_height, input_width), input_channels));
 
   DATA_TYPEN in_val, kernel_val;
 #ifdef BIAS

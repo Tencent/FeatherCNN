@@ -27,7 +27,7 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   int in_height_end = in_height_beg + kernel_height;
   in_height_beg = max(0, in_height_beg);
   in_height_end = min(in_height_end, input_height);
-  const int in_height_size = mul24(input_width, input_channels);
+  const int in_height_size = mul24(input_width, channels);
 
   int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
   int in_width_end = in_width_beg + kernel_width;
