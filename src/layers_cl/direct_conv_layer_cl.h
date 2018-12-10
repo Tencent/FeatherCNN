@@ -24,7 +24,9 @@
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-class DirectConvLayerCL : public Layer<uint16_t> {
+
+template <class Dtype>
+class DirectConvLayerCL: public Layer<Dtype> {
 public:
   DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
@@ -37,7 +39,7 @@ public:
     void FinetuneKernel();
     inline void AssignOutputSize();
     int GenerateTopBlobs();
-    int Fuse(Layer *next_layer);
+    int Fuse(Layer<Dtype> *next_layer);
 
 private:
     bool fuse_relu;
@@ -69,8 +71,8 @@ private:
 
     bool bias_term;
 
-    uint16_t *kernel_data;
-    uint16_t *bias_data;
+    Dtype *kernel_data;
+    Dtype *bias_data;
 
 };
 }; // namespace feather

@@ -2,7 +2,8 @@
 
 namespace feather {
 
-int InputLayerCL::InitCL()
+template <class Dtype>
+int InputLayerCL<Dtype>::InitCL()
 {
     std::string func_name1  = "init1O4";
     std::string kernel_name1 = "clNormalInit";
@@ -31,8 +32,9 @@ int InputLayerCL::InitCL()
     return 0;
 }
 
-int InputLayerCL::SetWorkSize() {
-    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+template <class Dtype>
+int InputLayerCL<Dtype>::SetWorkSize() {
+    Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
     size_t output_channels = layer_blob->channels();
 
     if (this->output_height >= 32) this->group_size_h = 16;
@@ -43,8 +45,8 @@ int InputLayerCL::SetWorkSize() {
     this->global_work_size[1] = (this->output_width  / this->group_size_w + !!(this->output_width  % this->group_size_w)) * this->group_size_w;
     this->global_work_size[2] = output_channels / layer_blob->channel_grp() + !!(output_channels % layer_blob->channel_grp());
 
-    this->local_work_size[0] = group_size_h;
-    this->local_work_size[1] = group_size_w;
+    this->local_work_size[0] = this->group_size_h;
+    this->local_work_size[1] = this->group_size_w;
     if (this->global_work_size[2] > layer_blob->channel_grp() && this->global_work_size[2] % layer_blob->channel_grp() == 0) {
       this->local_work_size[2] = 4;
     } else {
@@ -54,7 +56,8 @@ int InputLayerCL::SetWorkSize() {
     return 0;
 }
 
-int InputLayerCL::ResetInputAndArgs(size_t data_size) {
+template <class Dtype>
+int InputLayerCL<Dtype>::ResetInputAndArgs(size_t data_size) {
     bool flag = false;
     if (data_size > this->input_data_size)
     {
@@ -76,8 +79,9 @@ int InputLayerCL::ResetInputAndArgs(size_t data_size) {
 
 }
 
-int InputLayerCL::SetBuildOptions() {
-    Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+template <class Dtype>
+int InputLayerCL<Dtype>::SetBuildOptions() {
+    Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
     size_t input_channels = layer_blob->channels();
     if (input_channels < 1 || input_channels > 4) {
         LOGE("unsupported input_channels[%d]", input_channels);
@@ -86,18 +90,22 @@ int InputLayerCL::SetBuildOptions() {
     std::ostringstream ss;
     ss << input_channels;
     this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
-    this->build_options.push_back("-DDATA_TYPE=half");
+    if(std::is_same<Dtype, uint16_t>::value)
+      this->build_options.push_back("-DDATA_TYPE=half");
+    else
+      this->build_options.push_back("-DDATA_TYPE=float");
 
     return 0;
 }
 
-int InputLayerCL::SetKernelParameters() {
+template <class Dtype>
+int InputLayerCL<Dtype>::SetKernelParameters() {
 
   int error_num;
   size_t data_size;
   bool set_kernel_arguments_success = true;
   int param_idx = 0;
-  Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
+  Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
 
 
   SetWorkSize();
@@ -128,10 +136,10 @@ int InputLayerCL::SetKernelParameters() {
   this->input_data_size = data_size;
 
   cl::Buffer* layer_data_cl = layer_blob->data_cl();
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->_cl_fimage));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->_cl_fimage));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *layer_data_cl));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_width));
 
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
@@ -148,23 +156,22 @@ int InputLayerCL::SetKernelParameters() {
     return -1;
   }
 
-
-
   param_idx = 0;
-  set_kernel_arguments_success &= checkSuccess(kernels[1].setArg(param_idx++, this->_cl_img2d));
-  set_kernel_arguments_success &= checkSuccess(kernels[1].setArg(param_idx++, *layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(kernels[1].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(kernels[1].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, this->_cl_img2d));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, *layer_data_cl));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, output_width));
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting normalinit OpenCL kernels[1] arguments. %s: %s", __FILE__, __LINE__);
     return -1;
   }
-  FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
-  FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
+  this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+  this->FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
   return 0;
 }
 
-int InputLayerCL::FloatToDevice(const float* input_data) {
+template <class Dtype>
+int InputLayerCL<Dtype>::FloatToDevice(const float* input_data) {
   // Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
   // size_t data_size = layer_blob->data_size();
   cl_int error_num;
@@ -187,7 +194,8 @@ int InputLayerCL::FloatToDevice(const float* input_data) {
   return 0;
 }
 
-int InputLayerCL::UintToDevice(const uint8_t* src_bgra) {
+template <class Dtype>
+int InputLayerCL<Dtype>::UintToDevice(const uint8_t* src_bgra) {
   // Blob<uint16_t>* layer_blob = this->_top_blobs[this->_top[0]];
   // size_t data_size = layer_blob->data_size();
     int error_num;
@@ -211,7 +219,8 @@ int InputLayerCL::UintToDevice(const uint8_t* src_bgra) {
   return 0;
 }
 
-int InputLayerCL::RunKernel(int type) {
+template <class Dtype>
+int InputLayerCL<Dtype>::RunKernel(int type) {
 #ifdef TIMING_CL
     clFinish(commandQueue);
     timespec tpstart, tpend;
@@ -236,8 +245,8 @@ int InputLayerCL::RunKernel(int type) {
 
 #else
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[type], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+        this->kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the normalinit kernel.");
     return -1;
@@ -247,4 +256,8 @@ int InputLayerCL::RunKernel(int type) {
 
     return 0;
 }
+
+template class InputLayerCL<float>;
+template class InputLayerCL<uint16_t>;
+
 }; // namespace feather

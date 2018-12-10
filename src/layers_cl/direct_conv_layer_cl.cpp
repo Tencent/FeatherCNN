@@ -15,10 +15,12 @@
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-                        : fuse_relu(false), Layer<uint16_t>(layer_param, rt_param)
+
+template <class Dtype>
+DirectConvLayerCL<Dtype>::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+                        : fuse_relu(false), Layer<Dtype>(layer_param, rt_param)
 {
-    _fusible = true;
+    this->_fusible = true;
     const ConvolutionParameter *conv_param = layer_param->convolution_param();
     this->bias_term = conv_param->bias_term();
 
@@ -51,7 +53,8 @@ DirectConvLayerCL::DirectConvLayerCL(const LayerParameter *layer_param, RuntimeP
     InitCL();
 }
 
-int DirectConvLayerCL::InitCL()
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::InitCL()
 {
     std::string func_name_conv = "convolution";
     std::string func_name_depthwise = "convolution_depthwise";
@@ -80,11 +83,17 @@ int DirectConvLayerCL::InitCL()
     return 0;
 }
 
-int DirectConvLayerCL::SetBuildOptions() {
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
     ss << out_channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
-    this->build_options.push_back("-DDATA_TYPE=half");
+    //this->build_options.push_back("-DDATA_TYPE=half");
+    if(std::is_same<Dtype, uint16_t>::value)
+      this->build_options.push_back("-DDATA_TYPE=half");
+    else
+      this->build_options.push_back("-DDATA_TYPE=float");
+
     if (this->bias_term) {
       this->build_options.push_back("-DBIAS");
     }
@@ -94,7 +103,8 @@ int DirectConvLayerCL::SetBuildOptions() {
     return 0;
 }
 
-int DirectConvLayerCL::SetKernelParameters()
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::SetKernelParameters()
 {
     int error_num;
     int param_idx = 0;
@@ -116,7 +126,7 @@ int DirectConvLayerCL::SetKernelParameters()
       real_weight_size = this->_weight_blobs[0]->data_size_padded_nc();
     }
     this->_weight_blobs[0]->AllocDevice(this->rt_param->context(), real_weight_size);
-    std::vector<uint16_t> weight_padding(real_weight_size, 0);
+    std::vector<Dtype> weight_padding(real_weight_size, 0);
 
     if (this->is_dw) {
       for (int i = 0; i < w_num; ++i) {
@@ -162,56 +172,56 @@ int DirectConvLayerCL::SetKernelParameters()
 
     if (bias_term) {
       this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), out_real_channels);
-      std::vector<uint16_t> bias_padding(out_real_channels, 0);
-      memcpy(bias_padding.data(), this->bias_data, this->output_channels * sizeof(uint16_t));
+      std::vector<Dtype> bias_padding(out_real_channels, 0);
+      memcpy(bias_padding.data(), this->bias_data, this->output_channels * sizeof(Dtype));
       this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), out_real_channels);
       this->_weight_blobs[1]->Free();
     }
 
     //kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
-    kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create conv OpenCL kernels[0]. ");
       return 1;
     }
 
 
-    cl::Buffer* input_mem = _bottom_blobs[_bottom[0]]->data_cl();
-    cl::Buffer* weight_mem = _weight_blobs[0]->data_cl();
-    cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
+    cl::Buffer* input_mem  = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* weight_mem = this->_weight_blobs[0]->data_cl();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
 
 
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *weight_mem));
     if (bias_term) {
-      set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *_weight_blobs[1]->data_cl()));
+      set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *this->_weight_blobs[1]->data_cl()));
     }
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, in_real_channels));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, in_real_channels));
     if (!this->is_dw) {
-      set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
+      set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, out_real_channels));
     }
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->padding_top));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->padding_left));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->kernel_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->kernel_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->stride_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->stride_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->padding_top));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->padding_left));
 
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL kernels[0] arguments.");
       return 1;
     }
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
 }
 
-
-int DirectConvLayerCL::ForwardReshapeCL()
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::ForwardReshapeCL()
 {
 
     if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
@@ -228,31 +238,32 @@ int DirectConvLayerCL::ForwardReshapeCL()
                                       this->_top_blobs[this->_top[0]]->channels(),
                                       this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(3, *output_mem));
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(3, *output_mem));
     }
 
     int param_idx = this->is_dw ? 5 : 6;
     cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     LOGD("data_size 1 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(0, *input_mem));
     LOGD("data_size 2 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_width));
 
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL kernels[0] arguments.");
       return 1;
     }
 
-    SetWorkSize();
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->SetWorkSize();
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return this->ForwardCL();
 }
 
-int DirectConvLayerCL::ForwardCL()
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::ForwardCL()
 {
 #ifdef TIMING_CL
     clFinish(this->rt_param->command_queue());
@@ -277,8 +288,8 @@ int DirectConvLayerCL::ForwardCL()
     LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel.");
       return -1;
@@ -290,7 +301,8 @@ int DirectConvLayerCL::ForwardCL()
     return 0;
   }
 
-void DirectConvLayerCL::FinetuneKernel()
+template <class Dtype>
+void DirectConvLayerCL<Dtype>::FinetuneKernel()
 {
     std::string cur_kname;
     std::string cur_kstr;
@@ -322,10 +334,11 @@ void DirectConvLayerCL::FinetuneKernel()
     this->cl_kernel_functions.push_back(cur_func);
 }
 
-int DirectConvLayerCL::GenerateTopBlobs() {
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::GenerateTopBlobs() {
     //Conv layer has and only has one bottom blob.
 
-    const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
+    const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
     this->input_width = bottom_blob->width();
     this->input_height = bottom_blob->height();
@@ -341,7 +354,7 @@ int DirectConvLayerCL::GenerateTopBlobs() {
         this->output_channels = this->group;
         this->is_dw = true;
     }
-     this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
+     this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->output_channels, this->output_height, this->output_width);
      this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     FinetuneKernel();
@@ -350,13 +363,15 @@ int DirectConvLayerCL::GenerateTopBlobs() {
     return 0;
 }
 
-inline void DirectConvLayerCL:: AssignOutputSize()
+template <class Dtype>
+inline void DirectConvLayerCL<Dtype>:: AssignOutputSize()
 {
     this->output_width = (this->input_width + this->padding_left + this->padding_right - this->kernel_width) / this->stride_width + 1;
     this->output_height = (this->input_height + this->padding_top + this->padding_bottom - this->kernel_height) / this->stride_height + 1;
 }
 
-int DirectConvLayerCL::SetWorkSize()
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::SetWorkSize()
 {
     if (this->output_width > 32) this->group_size_w = 16;
     if (this->output_height > 32) this->group_size_h = 16;
@@ -377,14 +392,19 @@ int DirectConvLayerCL::SetWorkSize()
     return 0;
 }
 
-int DirectConvLayerCL::Fuse(Layer *next_layer)
+
+template <class Dtype>
+int DirectConvLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
 {
-    if (next_layer->type().compare("ReLU") == 0) {
-      fuse_relu = true;
-      return 1;
-    } else {
-      return 0;
-    }
+  if (next_layer->type().compare("ReLU") == 0) {
+    fuse_relu = true;
+    return 1;
+  } else {
+    return 0;
   }
+}
+
+template class DirectConvLayerCL<float>;
+template class DirectConvLayerCL<uint16_t>;
 
 }; // namespace feather

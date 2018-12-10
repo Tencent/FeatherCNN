@@ -37,35 +37,35 @@ namespace feather
 template <class Dtype>
 Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *) new InputLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *) new InputLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
 Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *) new DirectConvLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *) new DirectConvLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
 Layer<Dtype> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *)new PoolingLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new PoolingLayerCL<Dtype>(layer_param, rt_param);
 }
 template <class Dtype>
 Layer<Dtype> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *)new ReluLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new ReluLayerCL<Dtype>(layer_param, rt_param);
 }
 template <class Dtype>
 Layer<Dtype> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *) new EltwiseLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *) new EltwiseLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
 Layer<Dtype> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *)new InnerProductLayerCL(layer_param, rt_param);
+    return (Layer<Dtype> *)new InnerProductLayerCL<Dtype>(layer_param, rt_param);
 }
 
 void register_layer_creators_cl()

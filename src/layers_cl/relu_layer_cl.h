@@ -19,6 +19,8 @@
 
 namespace feather
 {
+
+template <class Dtype>
 class ReluLayerCL : public Layer<uint16_t>
 {
     public:

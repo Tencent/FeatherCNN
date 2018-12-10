@@ -87,7 +87,8 @@ class LayerRegistererCL
 void register_layer_creators_cl();
 
 #define REGISTER_LAYER_CREATOR_CL(type, creator) \
-    static LayerRegistererCL<uint16_t> g_creator_f_##type(#type, creator);
+    static LayerRegistererCL<uint16_t> g_creator_f_##type(#type, creator); \
+    static LayerRegistererCL<float> g_creator_f2_##type(#type, creator);
 };
 
 #endif

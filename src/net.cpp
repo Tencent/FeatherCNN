@@ -32,7 +32,7 @@
 
 #define CHECK_TYPE(rt) if (!CheckDtype())           \
                     {                               \
-                        LOGE("Dtype check failed. Please use uint16_t for GPU_CL and float for CPU"); \
+                        LOGE("Dtype check failed. Please use uint16_t or float for GPU_CL; float for CPU"); \
                         return rt;                  \
                     }                               \
 
@@ -47,7 +47,7 @@ bool Net<Dtype>::CheckDtype()
 {
     if (rt_param->device_type() == DeviceType::GPU_CL) {
 #ifdef FEATHER_OPENCL
-      return std::is_same<Dtype, uint16_t>::value;
+      return std::is_same<Dtype, uint16_t>::value | std::is_same<Dtype, float>::value;
 #else
       LOGE("Please compile with FEATHER_OPENCL on to use GPU_CL type");
       return false;
@@ -103,7 +103,7 @@ int Net<Dtype>::ExtractBlob(float* output_ptr, std::string name)
         {
             const size_t data_size = p_blob->data_size();
             const Dtype *data = p_blob->data();
-            memcpy(output_ptr, data, sizeof(float) * data_size);
+            memcpy(output_ptr, data, sizeof(Dtype) * data_size);
             break;
         }
         case DeviceType::GPU_CL:
@@ -178,7 +178,7 @@ int Net<Dtype>::Forward(float *input)
         case DeviceType::GPU_CL:
 #ifdef FEATHER_OPENCL
         {
-            InputLayerCL *input_layer = (InputLayerCL *)layers[0];
+            InputLayerCL<Dtype> *input_layer = (InputLayerCL<Dtype> *)layers[0];
             for (int i = 0; i < input_layer->input_size(); ++i)
             {
                 //LOGI("%s", input_layer->input_name(i).c_str());
@@ -262,7 +262,7 @@ int Net<Dtype>::Forward(float* input, int height, int width)
         case DeviceType::GPU_CL:
 #ifdef FEATHER_OPENCL
         {
-            InputLayerCL *input_layer = (InputLayerCL *)layers[0];
+            InputLayerCL<Dtype> *input_layer = (InputLayerCL<Dtype> *)layers[0];
             input_layer->Reshape(input_layer->input_name(0), height, width);
             input_layer->CopyInput(input_layer->input_name(0), input);
             break;
@@ -289,8 +289,6 @@ int Net<Dtype>::Forward(float* input, int height, int width)
         LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-        //LOGD("Forward layer%d:%s %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
-        // layers[i]->Forward();
         switch (rt_param->device_type()) {
             case DeviceType::CPU:
                 layers[i]->ForwardReshape();

@@ -16,9 +16,15 @@
 
 namespace feather
 {
-int ReluLayerCL::ForwardCL()
+
+template <class Dtype>
+int ReluLayerCL<Dtype>::ForwardCL()
 {
     LOGI("No need to implement relu layer in GPU");
     return 0;
 }
+
+template class ReluLayerCL<float>;
+template class ReluLayerCL<uint16_t>;
+
 };

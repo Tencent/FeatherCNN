@@ -22,7 +22,9 @@
 #include <vector>
 
 namespace feather {
-class InnerProductLayerCL : public Layer<uint16_t> {
+
+template <class Dtype>
+class InnerProductLayerCL : public Layer<Dtype> {
 public:
   InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
@@ -34,7 +36,7 @@ public:
   virtual int ForwardReshapeCL();
   void FinetuneKernel();
   int GenerateTopBlobs();
-  int Fuse(Layer *next_layer);
+  int Fuse(Layer<Dtype> *next_layer);
 
 protected:
   uint32_t input_width;
@@ -43,8 +45,8 @@ protected:
 
   uint32_t output_channels;
 
-  uint16_t *kernel_data;
-  uint16_t *bias_data;
+  Dtype *kernel_data;
+  Dtype *bias_data;
 
   bool bias_term;
 

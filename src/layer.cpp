@@ -266,6 +266,10 @@ int Layer<Dtype>::BuildOpenCLProgram()
         }
 
         std::string kernelAddr = this->_name + "_" + this->cl_kernel_names[i] + ".bin";
+        if(std::is_same<Dtype, uint16_t>::value)
+            kernelAddr = "half_" + kernelAddr;
+        else
+            kernelAddr = "float_" + kernelAddr;
         //LOGI("kernelAddr [%s]", kernelAddr.c_str());
         StringTool::RelaceString(kernelAddr, "/", "_");
         StringTool::RelaceString(kernelAddr, ":", "_");

@@ -24,11 +24,13 @@
 
 namespace feather {
 //#define USE_LEGACY_SGEMM
-class EltwiseLayerCL : public Layer<uint16_t> {
+
+template <class Dtype>
+class EltwiseLayerCL: public Layer<Dtype> {
 public:
   EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
-      : Layer<uint16_t>(layer_param, rt_param) {
-    _fusible = true;
+      : Layer<Dtype>(layer_param, rt_param) {
+    this->_fusible = true;
     fuse_relu = false;
     InitCL();
   }
@@ -42,7 +44,7 @@ public:
   void FinetuneKernel();
   virtual int ForwardCL();
 
-  int Fuse(Layer *next_layer) {
+  int Fuse(Layer<Dtype> *next_layer) {
     if (next_layer->type().compare("ReLU") == 0) {
       printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
       fuse_relu = true;

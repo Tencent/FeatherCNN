@@ -22,7 +22,9 @@
 #include <limits>
 
 namespace feather {
-class PoolingLayerCL : public Layer<uint16_t> {
+
+template <class Dtype>
+class PoolingLayerCL : public Layer<Dtype> {
 public:
     PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 

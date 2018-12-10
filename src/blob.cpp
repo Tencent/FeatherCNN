@@ -213,9 +213,9 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
 {
     cl_int error_num;
     size_t data_size = this->data_size_padded_c();
-    uint16_t *data_half =
-      (uint16_t*)(queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                             0, data_size * sizeof(uint16_t), nullptr, nullptr, &error_num) );
+    Dtype *data_half =
+      (Dtype*)(queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                             0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num) );
     if (!checkSuccess(error_num))
     {
       LOGE("fatal error: ReadBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
@@ -227,7 +227,11 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
       for (int j = 0; j < _height * _width; ++j) {
         int dst_idx = i * _height * _width + j;
         int src_idx = j * this->get_channels_padding() + i;
-        data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
+        if(std::is_same<Dtype, uint16_t>::value)
+            data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
+        else
+            data[dst_idx] = data_half[src_idx];
+
       }
     }
 

@@ -19,8 +19,8 @@ using namespace std;
 
 namespace feather {
 
-
-int EltwiseLayerCL::InitCL() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::InitCL() {
   string func_name = "eltwise";
   string kernel_name_eltwise = "eltwise_buffer";
   auto it_source = booster::opencl_kernel_string_map.find("eltwise_buffer");
@@ -38,19 +38,24 @@ int EltwiseLayerCL::InitCL() {
   return 0;
 }
 
-int EltwiseLayerCL::SetBuildOptions() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::SetBuildOptions() {
   std::ostringstream ss;
   ss << this->channel_grp_size;
   this->build_options.push_back("-DN=" + ss.str());
-  this->build_options.push_back("-DDATA_TYPE=half");
+  if(std::is_same<Dtype, uint16_t>::value)
+      this->build_options.push_back("-DDATA_TYPE=half");
+  else
+      this->build_options.push_back("-DDATA_TYPE=float");
   return 0;
 }
 
-int EltwiseLayerCL::GenerateTopBlobs() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::GenerateTopBlobs() {
   assert(this->_bottom.size() == 2);
   assert(this->_bottom_blobs.size() == 2);
   assert(this->_bottom_blobs[this->_bottom[0]]->data_size() == this->_bottom_blobs[this->_bottom[1]]->data_size());
-  Blob<uint16_t>* p_blob = new Blob<uint16_t>();
+  Blob<Dtype>* p_blob = new Blob<Dtype>();
   p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
   p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
   this->output_height = p_blob->height();
@@ -64,7 +69,8 @@ int EltwiseLayerCL::GenerateTopBlobs() {
   return 0;
 }
 
-int EltwiseLayerCL::SetWorkSize() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::SetWorkSize() {
     if (this->output_width > 32) this->group_size_w = 16;
     if (this->output_height > 32) this->group_size_h = 16;
     this->global_work_size[0] = (this->output_height / this->group_size_h + !!(this->output_height % this->group_size_h)) * this->group_size_h;
@@ -80,10 +86,11 @@ int EltwiseLayerCL::SetWorkSize() {
     return 0;
 }
 
-int EltwiseLayerCL::SetKernelParameters() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::SetKernelParameters() {
   int error_num;
 
-  kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+  this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
     LOGE("Failed to create Elementwise OpenCL kernels[0]. ");
     return -1;
@@ -97,14 +104,14 @@ int EltwiseLayerCL::SetKernelParameters() {
 
   bool set_kernel_arguments_success = true;
   int param_idx = 0;
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem1));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem2));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_width));
-  set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, output_channels));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem1));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem2));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *output_mem));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_channels));
 
-  FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+  this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
     return -1;
@@ -113,10 +120,11 @@ int EltwiseLayerCL::SetKernelParameters() {
   return 0;
 }
 
-void EltwiseLayerCL::FinetuneKernel() {
+template <class Dtype>
+void EltwiseLayerCL<Dtype>::FinetuneKernel() {
   string cur_kname;
   string cur_kstr;
-  size_t padded_input_c = _bottom_blobs[_bottom[0]]->get_channels_padding();
+  size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
   size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
   int group_size = 4;
@@ -131,17 +139,15 @@ void EltwiseLayerCL::FinetuneKernel() {
   cur_kstr = this->cl_kernel_symbols[0];
   this->channel_grp_size = group_size;
 
-
-
-  cl_kernel_names.clear();
-  cl_kernel_symbols.clear();
-  cl_kernel_names.push_back(cur_kname);
-  cl_kernel_symbols.push_back(cur_kstr);
-
+  this->cl_kernel_names.clear();
+  this->cl_kernel_symbols.clear();
+  this->cl_kernel_names.push_back(cur_kname);
+  this->cl_kernel_symbols.push_back(cur_kstr);
 
 }
 
-int EltwiseLayerCL::ForwardReshapeCL() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::ForwardReshapeCL() {
     if (this->output_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
         this->output_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
@@ -155,28 +161,29 @@ int EltwiseLayerCL::ForwardReshapeCL() {
                                       this->_top_blobs[this->_top[0]]->channels(),
                                       this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(2, *output_mem));
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(2, *output_mem));
     }
 
     cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem1));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(1, *input_mem2));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(3, this->output_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(4, this->output_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(0, *input_mem1));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(1, *input_mem2));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(3, this->output_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(4, this->output_width));
 
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL kernels[0] arguments.");
       return 1;
     }
 
-    SetWorkSize();
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->SetWorkSize();
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return this->ForwardCL();
 }
 
-int EltwiseLayerCL::ForwardCL() {
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::ForwardCL() {
 #ifdef TIMING_CL
   clFinish(this->rt_param->command_queue());
   timespec tpstart, tpend;
@@ -200,8 +207,8 @@ int EltwiseLayerCL::ForwardCL() {
   LOGI("[%s] Execution time in kernel: %0.5f ms with %s\n", this->name().c_str(), kerel_time, kernel_names[0].c_str());
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-          kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-          cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+          this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+          cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the element wise kernel.");
       return -1;
@@ -211,5 +218,8 @@ int EltwiseLayerCL::ForwardCL() {
 
   return 0;
 }
+
+template class EltwiseLayerCL<float>;
+template class EltwiseLayerCL<uint16_t>;
 
 }; // namespace feather

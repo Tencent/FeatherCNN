@@ -18,10 +18,11 @@
 
 namespace feather {
 
-PoolingLayerCL::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+template <class Dtype>
+PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
       : stride_height(1),
         stride_width(1),
-        Layer<uint16_t>(layer_param, rt_param) {
+        Layer<Dtype>(layer_param, rt_param) {
     const PoolingParameter *pooling_param = layer_param->pooling_param();
     this->kernel_height = pooling_param->kernel_h();
     this->kernel_width = pooling_param->kernel_w();
@@ -38,7 +39,8 @@ PoolingLayerCL::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParamet
     InitCL();
   }
 
-int PoolingLayerCL::InitCL() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::InitCL() {
     std::string func_name = "pooling";
     this->cl_kernel_functions.push_back(func_name);
     std::string kernel_name_pooling = "pooling_buffer";
@@ -56,7 +58,8 @@ int PoolingLayerCL::InitCL() {
     return 0;
 }
 
-int PoolingLayerCL::SetBuildOptions() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::SetBuildOptions() {
   std::string ave_opt = "-DAVE_POOLING";
   switch (this->method) {
     case PoolingParameter_::PoolMethod_MAX_:
@@ -71,16 +74,19 @@ int PoolingLayerCL::SetBuildOptions() {
   std::ostringstream ss;
   ss << this->channel_grp_size;
   this->build_options.push_back("-DN=" + ss.str());
-  this->build_options.push_back("-DDATA_TYPE=half");
+  if(std::is_same<Dtype, uint16_t>::value)
+    this->build_options.push_back("-DDATA_TYPE=half");
+  else
+    this->build_options.push_back("-DDATA_TYPE=float");
   return 0;
 }
 
-
-int PoolingLayerCL::SetKernelParameters() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::SetKernelParameters() {
     int error_num;
     bool set_kernel_arguments_success = true;
     int param_idx = 0;
-    kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create pooling OpenCL kernels[0]. ");
       return 1;
@@ -90,29 +96,30 @@ int PoolingLayerCL::SetKernelParameters() {
     cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
     uint32_t real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, real_channels));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_height));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->kernel_width));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_height));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->stride_width));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->pad_height));
-    set_kernel_arguments_success &= checkSuccess(kernels[0].setArg(param_idx++, this->pad_width));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, real_channels));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_width));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->kernel_height));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->kernel_width));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->stride_height));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->stride_width));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->pad_height));
+    set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->pad_width));
     if (!set_kernel_arguments_success) {
       LOGE("Failed setting pooling OpenCL kernels[0] arguments.");
       return 1;
     }
 
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
   }
 
-int PoolingLayerCL::ForwardCL() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::ForwardCL() {
 #ifdef TIMING_CL
     clFinish(this->rt_param->command_queue());
     timespec tpstart, tpend;
@@ -138,8 +145,8 @@ int PoolingLayerCL::ForwardCL() {
 #else
 
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the pooling kernel. %d", error_num);
       return -1;
@@ -152,7 +159,8 @@ int PoolingLayerCL::ForwardCL() {
     return 0;
 }
 
-int PoolingLayerCL::ForwardReshapeCL() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
     if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
         this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
@@ -167,17 +175,17 @@ int PoolingLayerCL::ForwardReshapeCL() {
                                       this->_top_blobs[this->_top[0]]->channels(),
                                       this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = _top_blobs[_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(1, *output_mem));
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(1, *output_mem));
     }
 
     int param_idx = 3;
     cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *input_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->output_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(0, *input_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_width));
 
 
     if (!set_kernel_arg_success) {
@@ -185,12 +193,12 @@ int PoolingLayerCL::ForwardReshapeCL() {
       return 1;
     }
     SetWorkSize();
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return this->ForwardCL();
 }
 
-
-void PoolingLayerCL::FinetuneKernel() {
+template <class Dtype>
+void PoolingLayerCL<Dtype>::FinetuneKernel() {
     std::string cur_kname;
     std::string cur_kstr;
     size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
@@ -216,15 +224,16 @@ void PoolingLayerCL::FinetuneKernel() {
 
   }
 
-int PoolingLayerCL::GenerateTopBlobs() {
+template <class Dtype>
+int PoolingLayerCL<Dtype>::GenerateTopBlobs() {
     //Only accept a single bottom blob.
-    const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
+    const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
     this->input_height = bottom_blob->height();
     this->input_width = bottom_blob->width();
     this->input_channels = bottom_blob->channels();
     AssignOutputSize();
     this->output_channels = this->input_channels;
-    this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, this->output_height, this->output_width);
+    this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->output_channels, this->output_height, this->output_width);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
     FinetuneKernel();
     SetWorkSize();
@@ -232,7 +241,8 @@ int PoolingLayerCL::GenerateTopBlobs() {
     return 0;
 }
 
-inline void PoolingLayerCL::AssignOutputSize()
+template <class Dtype>
+inline void PoolingLayerCL<Dtype>::AssignOutputSize()
 {
   if (this->global_pooling) {
     this->kernel_height = this->input_height;
@@ -246,7 +256,8 @@ inline void PoolingLayerCL::AssignOutputSize()
   }
 }
 
-int PoolingLayerCL::SetWorkSize()
+template <class Dtype>
+int PoolingLayerCL<Dtype>::SetWorkSize()
 {
     if (this->output_width > 32) this->group_size_w = 16;
     if (this->output_height > 32) this->group_size_h = 16;
@@ -262,5 +273,7 @@ int PoolingLayerCL::SetWorkSize()
     return 0;
 }
 
+template class PoolingLayerCL<float>;
+template class PoolingLayerCL<uint16_t>;
 
 }; // namespace feather

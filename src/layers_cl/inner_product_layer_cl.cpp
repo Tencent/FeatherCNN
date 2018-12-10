@@ -16,8 +16,9 @@
 
 namespace feather {
 
-InnerProductLayerCL::InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-      : fuse_relu(false), Layer<uint16_t>(layer_param, rt_param) {
+template <class Dtype>
+InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+      : fuse_relu(false), Layer<Dtype>(layer_param, rt_param) {
     const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
     bias_term = inner_product_param->bias_term();
     this->output_channels = this->_weight_blobs[0]->num();
@@ -27,12 +28,13 @@ InnerProductLayerCL::InnerProductLayerCL(const LayerParameter *layer_param, Runt
       assert(this->_weight_blobs.size() == 2);
       this->bias_data = this->_weight_blobs[1]->data();
     }
-    _fusible = true;
+    this->_fusible = true;
 
     InitCL();
   }
 
-int InnerProductLayerCL::InitCL() {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::InitCL() {
     std::string func_name = "inner_product";
     this->cl_kernel_functions.push_back(func_name);
     std::string kernel_name_inner_product = "inner_product_buffer";
@@ -50,11 +52,16 @@ int InnerProductLayerCL::InitCL() {
     return 0;
 }
 
-int InnerProductLayerCL::SetBuildOptions() {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
     ss << channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
-    this->build_options.push_back("-DDATA_TYPE=half");
+    if(std::is_same<Dtype, uint16_t>::value)
+      this->build_options.push_back("-DDATA_TYPE=half");
+    else
+      this->build_options.push_back("-DDATA_TYPE=float");
+
     if (bias_term) {
       this->build_options.push_back("-DBIAS");
     }
@@ -64,7 +71,8 @@ int InnerProductLayerCL::SetBuildOptions() {
     return 0;
 }
 
-int InnerProductLayerCL::SetKernelParameters() {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::SetKernelParameters() {
     int error_num;
     bool set_kernel_arg_success = true;
     int param_idx = 0;
@@ -80,7 +88,7 @@ int InnerProductLayerCL::SetKernelParameters() {
 
     this->_weight_blobs[0]->AllocDevice(this->rt_param->context(), real_weight_size);
 
-    std::vector<uint16_t> weight_padding(real_weight_size, 0.0f);
+    std::vector<Dtype> weight_padding(real_weight_size, 0.0f);
 
     uint32_t kernel_size = this->input_height * this->input_width * b_channel_padding;
     uint32_t hw_size = this->input_height * this->input_width;
@@ -114,17 +122,15 @@ int InnerProductLayerCL::SetKernelParameters() {
     if (bias_term) {
         uint32_t real_bias_size = this->_weight_blobs[0]->get_num_padding();
         this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), real_bias_size);
-        // float bias_padding[real_bias_size];
-        // memset(bias_padding, 0.0f, real_bias_size * sizeof(float));
-        std::vector<uint16_t> bias_padding(real_bias_size, 0);
-        memcpy(bias_padding.data(), bias_data, w_num * sizeof(uint16_t));
+        std::vector<Dtype> bias_padding(real_bias_size, 0);
+        memcpy(bias_padding.data(), bias_data, w_num * sizeof(Dtype));
         this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), real_bias_size);
         this->_weight_blobs[1]->Free();
     }
 
     /* build kernel */
     //kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
-    kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
       LOGE("Failed to create innerProduct OpenCL kernels[0]. ");
       return -1;
@@ -136,18 +142,18 @@ int InnerProductLayerCL::SetKernelParameters() {
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t use_relu = fuse_relu;
 
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *input_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *weight_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *weight_mem));
     if (bias_term) {
-      set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *_weight_blobs[1]->data_cl()));
+      set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *this->_weight_blobs[1]->data_cl()));
     }
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *output_mem));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, b_channel_padding));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, out_real_channels));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, b_channel_padding));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, out_real_channels));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
 
-    FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     if (!set_kernel_arg_success) {
       LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
       return 1;
@@ -155,7 +161,8 @@ int InnerProductLayerCL::SetKernelParameters() {
     return 0;
   }
 
-int InnerProductLayerCL::ForwardCL() {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::ForwardCL() {
 #ifdef TIMING_CL
     clFinish(commandQueue);
     timespec tpstart, tpend;
@@ -181,8 +188,8 @@ int InnerProductLayerCL::ForwardCL() {
 
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-        cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, nullptr);
+        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
 
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the inner product kernel.");
@@ -194,7 +201,8 @@ int InnerProductLayerCL::ForwardCL() {
     return 0;
   }
 
-int InnerProductLayerCL::ForwardReshapeCL() {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::ForwardReshapeCL() {
     if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
         this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
@@ -205,7 +213,8 @@ int InnerProductLayerCL::ForwardReshapeCL() {
     }
 }
 
-void InnerProductLayerCL::FinetuneKernel() {
+template <class Dtype>
+void InnerProductLayerCL<Dtype>::FinetuneKernel() {
     std::string cur_kname;
     std::string cur_kstr;
     uint32_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
@@ -231,14 +240,14 @@ void InnerProductLayerCL::FinetuneKernel() {
     std::ostringstream ss;
     ss << group_size;
     this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
-    this->build_options.push_back("-DDATA_TYPE=half");
 }
 
-int InnerProductLayerCL::GenerateTopBlobs() {
-    const Blob<uint16_t> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::GenerateTopBlobs() {
+    const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
     this->input_width = bottom_blob->width();
     this->input_height = bottom_blob->height();
-    this->_top_blobs[this->_top[0]] = new Blob<uint16_t>(1, this->output_channels, 1, 1);
+    this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->output_channels, 1, 1);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
 
@@ -249,7 +258,8 @@ int InnerProductLayerCL::GenerateTopBlobs() {
     return 0;
 }
 
-int InnerProductLayerCL::SetWorkSize()
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::SetWorkSize()
 {
     this->global_work_size[0] = 1;
     this->global_work_size[1] = 1;
@@ -260,7 +270,8 @@ int InnerProductLayerCL::SetWorkSize()
     return 0;
 }
 
-int InnerProductLayerCL::Fuse(Layer *next_layer) {
+template <class Dtype>
+int InnerProductLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer) {
     if (next_layer->type().compare("ReLU") == 0) {
       fuse_relu = true;
       return 1;
@@ -268,5 +279,8 @@ int InnerProductLayerCL::Fuse(Layer *next_layer) {
       return 0;
     }
   }
+
+template class InnerProductLayerCL<float>;
+template class InnerProductLayerCL<uint16_t>;
 
 }; // namespace feather
