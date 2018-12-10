@@ -64,7 +64,7 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
       out_val = mad(in_val, kernel_val, out_val);
 
       in_val_idx += channels;
-      kernel_val_idx += N
+      kernel_val_idx += N;
     }
 
     kernel_val_idx += kernel_width_end_gap_size;
