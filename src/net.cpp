@@ -36,7 +36,8 @@
                         return rt;                  \
                     }                               \
 
-#define LAYER_TIMING
+//#define LAYER_TIMING
+#define LAYER_INPUT_TIMING
 //#define PRINT_SETUP_LOG
 
 
@@ -578,7 +579,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
     }
 
     //Rebuild blob map
-#ifdef LAYER_TIMING
+#ifdef LAYER_INPUT_TIMING
     timespec tpstart, tpend;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
@@ -627,7 +628,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
 
     }
 
-#ifdef LAYER_TIMING
+#ifdef LAYER_INPUT_TIMING
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGD("Net Layer Init spent %lfms\n", timedif / 1000.0);
