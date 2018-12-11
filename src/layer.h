@@ -31,6 +31,8 @@
 namespace feather
 {
 
+//#define TIMING_CL
+    
 template<class Dtype>
 class Layer
 {

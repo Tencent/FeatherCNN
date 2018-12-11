@@ -36,8 +36,9 @@
                         return rt;                  \
                     }                               \
 
-//#define LAYER_TIMING
+#define LAYER_TIMING
 //#define PRINT_SETUP_LOG
+
 
 namespace feather
 {
@@ -577,6 +578,11 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
     }
 
     //Rebuild blob map
+#ifdef LAYER_TIMING
+    timespec tpstart, tpend;
+    clock_gettime(CLOCK_MONOTONIC, &tpstart);
+#endif
+
     blob_map.clear();
     for (int i = 0; i < layers.size(); ++i)
     {
@@ -620,6 +626,13 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
         }
 
     }
+
+#ifdef LAYER_TIMING
+    clock_gettime(CLOCK_MONOTONIC, &tpend);
+    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+    LOGD("Net Layer Init spent %lfms\n", timedif / 1000.0);
+#endif
+
     //Allocate for common mempool.
     rt_param->common_mempool()->Alloc();
     return true;
