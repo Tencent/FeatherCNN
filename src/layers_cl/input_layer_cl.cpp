@@ -83,10 +83,6 @@ template <class Dtype>
 int InputLayerCL<Dtype>::SetBuildOptions() {
     Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
     size_t input_channels = layer_blob->channels();
-    if (input_channels < 1 || input_channels > 4) {
-        LOGE("unsupported input_channels[%d]", input_channels);
-        return -1;
-    }
     std::ostringstream ss;
     ss << input_channels;
     this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
@@ -100,7 +96,6 @@ int InputLayerCL<Dtype>::SetBuildOptions() {
 
 template <class Dtype>
 int InputLayerCL<Dtype>::SetKernelParameters() {
-
   int error_num;
   size_t data_size;
   bool set_kernel_arguments_success = true;
