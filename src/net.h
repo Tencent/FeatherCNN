@@ -26,6 +26,9 @@
 
 namespace feather
 {
+
+bool judge_android7_opencl();
+
 template<class Dtype>
 class Net
 {
