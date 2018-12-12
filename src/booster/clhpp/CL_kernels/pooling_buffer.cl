@@ -1,7 +1,6 @@
 #include <common.h>
 
 #define HALF_MAX 0x1.ffcp15h
-#define MIN_VAL -HALF_MAX
 
 // N = 4, 8, or 16, which is the channel group size.
 __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] */

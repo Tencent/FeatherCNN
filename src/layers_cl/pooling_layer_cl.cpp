@@ -63,18 +63,25 @@ int PoolingLayerCL<Dtype>::SetBuildOptions() {
   std::string ave_opt = "-DAVE_POOLING";
   switch (this->method) {
     case PoolingParameter_::PoolMethod_MAX_:
+      if (std::is_same<Dtype, uint16_t>::value)
+        this->build_options.push_back("-DMIN_VAL=-HALF_MAX");
+      else
+        this->build_options.push_back("-DMIN_VAL=-FLT_MAX");
+
       break;
     case PoolingParameter_::PoolMethod_AVE:
       this->build_options.push_back(ave_opt);
+
       break;
     default:
       LOGE("Unsupported pool method\n");
+
       break;
   }
   std::ostringstream ss;
   ss << this->channel_grp_size;
   this->build_options.push_back("-DN=" + ss.str());
-  if(std::is_same<Dtype, uint16_t>::value)
+  if (std::is_same<Dtype, uint16_t>::value)
     this->build_options.push_back("-DDATA_TYPE=half");
   else
     this->build_options.push_back("-DDATA_TYPE=float");
