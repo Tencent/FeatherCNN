@@ -280,6 +280,7 @@ int ConvBooster::SetFuncs()
         this->GetBufferSize = DEPTHWISE_GetBufferSize;
         this->Init = DEPTHWISE_Init;
         this->Forward = DEPTHWISE_Forward;
+        return 0;
     default:
         LOGE("This algo is not supported on AVX2.");
         this->GetBufferSize = NULL;
