@@ -50,36 +50,68 @@ bool judge_android7_opencl()
     //android7.0 sdk api 24
     char sdk[93] = "";
     __system_property_get("ro.build.version.sdk", sdk);
-    //printf("sdk_version [%s]\n", sdk);
     if (std::atoi(sdk) < 24) 
     {
-        printf("find sdk [%d] < 24\n", std::atoi(sdk));
+        LOGI("[device] sdk [%d] < 24\n", std::atoi(sdk));
         return true;
     }
+
+    bool flage = false;
     std::string lib_name1 = "libOpenCL.so";
     std::string lib_name2 = "libGLES_mali.so";
-    std::vector<std::string> libraries_list;
-    libraries_list.push_back("/vendor/etc/public.libraries.txt");
-    libraries_list.push_back("/system/etc/public.libraries.txt");
+    std::vector<std::string> libraries_list = {
+        "/vendor/etc/public.libraries.txt",
+        "/system/etc/public.libraries.txt",
+    };
     for(int i = 0; i < libraries_list.size(); i++)
     {
         std::ifstream out;
         std::string line;
-        //printf("file [%s]\n", libraries_list[i].c_str());
         out.open(libraries_list[i].c_str());
         while(!out.eof()){
             std::getline(out, line);
-            //printf("line [%s]\n", line.c_str());
             if(line.find(lib_name1) != line.npos || line.find(lib_name2) != line.npos)
             {
-                printf("find line [%s]\n", line.c_str());
-                return true;
+                LOGI("[public] %s:%s",libraries_list[i].c_str(), line.c_str());
+                flage = true;
+                break;
             }
 
         }
         out.close();
     }
-    return false;
+
+    const std::vector<std::string> libpaths = {
+        "libOpenCL.so",
+    #if defined(__aarch64__)
+        // Qualcomm Adreno with Android
+        "/system/vendor/lib64/libOpenCL.so",
+        "/system/lib64/libOpenCL.so",
+        // Mali with Android
+        "/system/vendor/lib64/egl/libGLES_mali.so",
+        "/system/lib64/egl/libGLES_mali.so",
+        // Typical Linux board
+        "/usr/lib/aarch64-linux-gnu/libOpenCL.so",
+    #else
+        // Qualcomm Adreno with Android
+        "/system/vendor/lib/libOpenCL.so",
+        "/system/lib/libOpenCL.so",
+        // Mali with Android
+        "/system/vendor/lib/egl/libGLES_mali.so",
+        "/system/lib/egl/libGLES_mali.so",
+        // Typical Linux board
+        "/usr/lib/arm-linux-gnueabihf/libOpenCL.so",
+    #endif
+    };
+    for(int i = 0; i < libpaths.size(); i++) {
+        ifstream f(libpaths[i].c_str());
+        if(f.good()) {
+            flage = true;
+            LOGI("[libpaths]:%s", libpaths[i].c_str());
+            break;
+        }
+    }
+    return flage;
 }
 
 
