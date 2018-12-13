@@ -274,10 +274,10 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = WINOGRADF63;
     }
-    else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3)
-    {
-       this->algo = SGECONV;
-    }
+    //else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3)
+    //{
+    //   this->algo = SGECONV;
+    //}
     else if (param->group == 1)
     {
        this->algo = IM2COL;
