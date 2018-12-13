@@ -43,7 +43,7 @@ class RuntimeParameter
       {
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new clhpp_feather::OpenCLRuntime(); 
+            _cl_runtime = new clhpp_feather::OpenCLRuntime();
         #endif
       }
       RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
@@ -61,6 +61,7 @@ class RuntimeParameter
         #ifdef FEATHER_OPENCL
           if(_device_type == DeviceType::GPU_CL)
             delete _cl_runtime;
+            _cl_runtime = NULL;
         #endif
       }
 
