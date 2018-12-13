@@ -44,38 +44,37 @@ __kernel void init1O4(__global const float* restrict input, /* [c, h, w] */
   int idx = mad24(channel_idx, 
                   in_channel_size, 
                   mad24(height_idx, width, width_idx));
-  float x = 0, y = 0, z = 0, w = 0;
+  float4 out_val_float4 = 0;
   switch (INPUT_CHANNELS - channel_idx) {
     case 1:
-      x = input[idx];
+      out_val_float4.x = input[idx];
 
       break;
     case 2:
-      x = input[idx];
+      out_val_float4.x = input[idx];
       idx += in_channel_size;
-      y = input[idx];
+      out_val_float4.y = input[idx];
 
       break;
     case 3:
-      x = input[idx];
+      out_val_float4.x = input[idx];
       idx += in_channel_size;
-      y = input[idx];
+      out_val_float4.y = input[idx];
       idx += in_channel_size;
-      z = input[idx];
+      out_val_float4.z = input[idx];
 
       break;
     default:
-      x = input[idx];
+      out_val_float4.x = input[idx];
       idx += in_channel_size;
-      y = input[idx];
+      out_val_float4.y = input[idx];
       idx += in_channel_size;
-      z = input[idx];
+      out_val_float4.z = input[idx];
       idx += in_channel_size;
-      w = input[idx];
+      out_val_float4.w = input[idx];
 
       break;
   }
-  float4 out_val_float4 = (float4)(x, y, z, w);
   DATA_TYPE4 out_val = CONVERT4(out_val_float4);
   const int out_val_idx = mad24(mad24(height_idx, width, width_idx), 
                                 ((INPUT_CHANNELS + 3) >> 2) << 2, 
