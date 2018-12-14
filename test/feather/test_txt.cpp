@@ -134,8 +134,9 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
                     time += timedif;
             }
             printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
-	    if(results.length()>0)
-	    	ResultEvaluate(&forward_net, "prob", 0, results);
+	    //if(results.length()>0)
+	    //	ResultEvaluate(&forward_net, "prob", 0, results);
+            PrintBlobData(&forward_net, "prob", 0);
         }
         break;
     }
