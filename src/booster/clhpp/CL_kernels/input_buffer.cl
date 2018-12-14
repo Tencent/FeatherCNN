@@ -33,7 +33,8 @@ __kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict input, /* [c, h, 
 
 #else /* INPUT_CHANNELS > 4 */
 
-  const int channel_idx = mul24(get_global_id(2), N);
+  const int channel_group_idx = get_global_id(2);
+  const int channel_idx = mul24(channel_group_idx, N);
   const int in_channel_size = mul24(height, width);
   const int height_width_idx = mad24(height_idx, width, width_idx);
   int idx = mad24(channel_idx, in_channel_size, height_width_idx);
