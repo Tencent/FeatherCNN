@@ -5,7 +5,7 @@ namespace feather {
 template <class Dtype>
 int InputLayerCL<Dtype>::InitCL()
 {
-    std::string func_name1  = "init1O4";
+    std::string func_name1  = "chw_to_hwc";
     std::string kernel_name1 = "clNormalInit";
     auto it_source1 = booster::opencl_kernel_string_map.find("input_buffer");
     std::string kernel_str1(it_source1->second.begin(),it_source1->second.end());
@@ -83,10 +83,14 @@ template <class Dtype>
 int InputLayerCL<Dtype>::SetBuildOptions() {
     Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
     size_t input_channels = layer_blob->channels();
-    std::ostringstream ss;
-    ss << input_channels;
-    this->build_options.push_back("-DINPUT_CHANNELS=" + ss.str());
-    if(std::is_same<Dtype, uint16_t>::value)
+    std::ostringstream ss0;
+    ss0 << input_channels;
+    this->build_options.push_back("-DINPUT_CHANNELS=" + ss0.str());
+    std::ostringstream ss1;
+    ss1 << layer_blob->channel_grp();
+    this->build_options.push_back("-DN=" + ss1.str());
+    this->build_options.push_back("-DIN_DATA_TYPE=float");
+    if (std::is_same<Dtype, uint16_t>::value)
       this->build_options.push_back("-DDATA_TYPE=half");
     else
       this->build_options.push_back("-DDATA_TYPE=float");

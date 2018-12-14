@@ -26,6 +26,7 @@
 
 #define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
 #define DATA_TYPEN VEC_DATA_TYPE(DATA_TYPE, N)
+#define IN_DATA_TYPEN VEC_DATA_TYPE(IN_DATA_TYPE, N)
 #define OUT_DATA_TYPE4 VEC_DATA_TYPE(OUT_DATA_TYPE, 4)
 
 #define CONVERT_STR(value, type) convert_##type((value))
@@ -33,6 +34,7 @@
 #define CONVERT_TO(value, type) CONVERT_STR(value, type)
 #define CONVERT(value) CONVERT_TO(value, DATA_TYPE)
 #define CONVERT4(value) CONVERT_TO(value, DATA_TYPE4)
+#define CONVERTN(value) CONVERT_TO(value, DATA_TYPEN)
 
 #define GLOBAL_WORK_GROUP_SIZE_DIM2       \
     __private const int global_size_dim0, \

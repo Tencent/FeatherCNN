@@ -21,8 +21,8 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_group_idx = get_global_id(2);
-  const int out_channel_idx = mul24(out_channel_group_idx, N);
+  const int channel_group_idx = get_global_id(2);
+  const int channel_idx = mul24(channel_group_idx, N);
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;
@@ -42,13 +42,13 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   const int kernel_height_beg_gap_size = mul24(in_height_beg_gap, kernel_height_size);
   const int kernel_width_beg_gap_size = mul24(in_width_beg_gap, kernel_width_size);
   const int kernel_width_end_gap_size = mul24(in_width_end_gap, kernel_width_size);
-  int kernel_val_idx = mad24(out_channel_group_idx, 
+  int kernel_val_idx = mad24(channel_group_idx, 
                              mul24(kernel_height, kernel_height_size),
                              kernel_height_beg_gap_size);
 
   DATA_TYPEN in_val, kernel_val;
 #ifdef BIAS
-  DATA_TYPEN out_val = VLOADN(0, &bias[out_channel_idx]);
+  DATA_TYPEN out_val = VLOADN(0, &bias[channel_idx]);
 #else
   DATA_TYPEN out_val = 0;
 #endif
@@ -57,7 +57,7 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
 
     int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), 
                            channels, 
-                           out_channel_idx);
+                           channel_idx);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end; ++in_width_idx) {
       in_val = VLOADN(0, &input[in_val_idx]);
       kernel_val = VLOADN(0, &weights[kernel_val_idx]);
@@ -76,6 +76,6 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
 
   int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
                           channels, 
-                          out_channel_idx);
+                          channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }

@@ -19,8 +19,8 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
   if (out_height_idx >= output_height || out_width_idx >= output_width) return;
-  const int out_channel_group_idx = get_global_id(2);
-  const int out_channel_idx = mul24(out_channel_group_idx, N);
+  const int channel_group_idx = get_global_id(2);
+  const int channel_idx = mul24(channel_group_idx, N);
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;
@@ -41,7 +41,7 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
   DATA_TYPEN out_val = (DATA_TYPEN)(MIN_VAL);
 #endif
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
-    const int in_val_base_idx = mad24(in_height_idx, in_height_size, out_channel_idx);
+    const int in_val_base_idx = mad24(in_height_idx, in_height_size, channel_idx);
     const int in_val_beg = in_val_base_idx + in_width_beg_channels;
     const int in_val_end = in_val_base_idx + in_width_end_channels;
     for (int in_val_idx = in_val_beg; in_val_idx != in_val_end; in_val_idx += channels) {
@@ -59,6 +59,6 @@ __kernel void pooling(__global const DATA_TYPE* restrict input, /* [ih, iw, c] *
 
   int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
                           channels, 
-                          out_channel_idx);
+                          channel_idx);
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }
