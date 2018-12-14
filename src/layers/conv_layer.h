@@ -35,9 +35,10 @@ class ConvLayer : public Layer
               kernel_data(NULL),
               processed_kernel(NULL)
         {
+            this->_fusible = true;
             //From proto
             const ConvolutionParameter *conv_param_in = layer_param->convolution_param();
-            
+
             conv_param.kernel_h = conv_param_in->kernel_h();
             conv_param.kernel_w = conv_param_in->kernel_w();
             conv_param.stride_h = conv_param_in->stride_h();
@@ -51,7 +52,7 @@ class ConvLayer : public Layer
             conv_param.output_channels = this->_weight_blobs[0]->num();
             conv_param.bias_term = conv_param_in->bias_term();
             conv_param.activation = booster::None;
-            assert(_weight_blobs.size() > 0);
+            assert(this->_weight_blobs.size() > 0);
 
             if (conv_param.bias_term)
             {
@@ -63,14 +64,14 @@ class ConvLayer : public Layer
         int GenerateTopBlobs()
         {
             //Conv layer has and only has one bottom blob.
-            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            const Blob<float> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 	        conv_param.input_w = bottom_blob->width();
             conv_param.input_h = bottom_blob->height();
             conv_param.input_channels = bottom_blob->channels();
             conv_param.AssignOutputDim();
             conv_param.LogParams(this->name().c_str());
-            _top_blobs[_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
-            _top_blobs[_top[0]]->Alloc();
+            this->_top_blobs[this->_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
+            this->_top_blobs[this->_top[0]]->Alloc();
             conv_booster.SelectAlgo(&this->conv_param);
 	    //conv_booster.ForceSelectAlgo(booster::NAIVE);
 	    //conv_booster.ForceSelectAlgo(booster::IM2COL);
@@ -79,11 +80,11 @@ class ConvLayer : public Layer
 
         int ForwardReshape()
         {
-            const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];
+            const Blob<float> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
             conv_param.input_h = bottom_blob->height();
             conv_param.input_w = bottom_blob->width();
             conv_param.AssignOutputDim();
-            _top_blobs[_top[0]]->ReshapeWithRealloc(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
+            this->_top_blobs[this->_top[0]]->ReshapeWithRealloc(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             return this->Forward();
         }
 
@@ -91,10 +92,10 @@ class ConvLayer : public Layer
         {
 	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
             //_top_blobs[_top[0]]->PrintBlobInfo();
-            float* input = _bottom_blobs[_bottom[0]]->data();
-            float* output = _top_blobs[_top[0]]->data();
+            float* input = this->_bottom_blobs[this->_bottom[0]]->data();
+            float* output = this->_top_blobs[this->_top[0]]->data();
             float* buffer = NULL;
-            MEMPOOL_CHECK_RETURN(common_mempool->GetPtr(&buffer));
+            MEMPOOL_CHECK_RETURN(this->common_mempool->GetPtr(&buffer));
             conv_booster.Forward(&conv_param, output, input, processed_kernel, buffer, bias_data);
             return 0;
         }
@@ -104,20 +105,34 @@ class ConvLayer : public Layer
             int buffer_size = 0;
             int processed_kernel_size = 0;
             int ret = conv_booster.GetBufferSize(&conv_param, &buffer_size, &processed_kernel_size);
-            MEMPOOL_CHECK_RETURN(private_mempool.Alloc(&processed_kernel, sizeof(float) * (processed_kernel_size)));
+            MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&processed_kernel, sizeof(float) * (processed_kernel_size)));
             conv_booster.Init(&conv_param, processed_kernel, kernel_data);
-            MEMPOOL_CHECK_RETURN(common_mempool->Request(sizeof(float) * buffer_size));
+            MEMPOOL_CHECK_RETURN(this->common_mempool->Request(sizeof(float) * buffer_size));
             printf("buffer size %d, processed_kernel_size %d\n", buffer_size, processed_kernel_size);
             return 0;
         }
 
-    protected:
-        booster::ConvBooster conv_booster;
-        booster::ConvParam   conv_param;
-        
-        float *bias_data;
-        
-        float *kernel_data;
-        float *processed_kernel;
+        int Fuse(Layer *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                printf("FUSE RELU");
+                conv_param.activation = booster::ReLU;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+          protected:
+            booster::ConvBooster conv_booster;
+            booster::ConvParam conv_param;
+
+            float *bias_data;
+
+            float *kernel_data;
+            float *processed_kernel;
 };
 };
