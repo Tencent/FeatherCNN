@@ -258,7 +258,7 @@ int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_prog
         for (auto &opt : this->build_options) {
           opt_str += " " + opt;
         }
-        std::string promap_key = cl_kernel_names[i] + opt_str;
+        std::string promap_key = this->cl_kernel_names[i] + opt_str;
 
         if (cl_program_map.find(promap_key) != cl_program_map.end()){
             cl_programs.push_back(cl_program_map[promap_key]);
@@ -266,15 +266,9 @@ int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_prog
             continue;
         }
 
-        std::string kernelAddr = this->_name + "_" + this->cl_kernel_names[i] + ".bin";
-        if(std::is_same<Dtype, uint16_t>::value)
-            kernelAddr = "half_" + kernelAddr;
-        else
-            kernelAddr = "float_" + kernelAddr;
-        //LOGI("kernelAddr [%s]", kernelAddr.c_str());
+        std::string kernelAddr = this->_name + "_" + promap_key + ".bin";
         StringTool::RelaceString(kernelAddr, "/", "_");
         StringTool::RelaceString(kernelAddr, ":", "_");
-        //LOGI("kernelAddr [%s]", kernelAddr.c_str());
         kernelAddr = "no_save";
 
         if (buildProgram(  this->rt_param->context(),
