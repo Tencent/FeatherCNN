@@ -50,7 +50,7 @@ bool judge_android7_opencl()
     //android7.0 sdk api 24
     char sdk[93] = "";
     __system_property_get("ro.build.version.sdk", sdk);
-    if (std::atoi(sdk) < 24) 
+    if (std::atoi(sdk) < 24)
     {
         LOGI("[device] sdk [%d] < 24\n", std::atoi(sdk));
         return true;
@@ -660,6 +660,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
 #endif
 
     blob_map.clear();
+    std::map<std::string, cl::Program> cl_program_map;
     for (int i = 0; i < layers.size(); ++i)
     {
 #ifdef LAYER_INIT_TIMING
@@ -691,7 +692,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               total_timedif_s1 += timedif;
               clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-              if (layers[i]->BuildOpenCLProgram())
+              if (layers[i]->BuildOpenCLProgram(cl_program_map))
               {
                   LOGE("Build layer programs failed");
                   return false;

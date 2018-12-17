@@ -32,7 +32,7 @@ namespace feather
 {
 
 //#define TIMING_CL
-    
+
 template<class Dtype>
 class Layer
 {
@@ -46,7 +46,7 @@ class Layer
         int TryFuse(Layer *next_layer);
 
 #ifdef FEATHER_OPENCL
-        int BuildOpenCLProgram();
+        int BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map);
 
         virtual int SetKernelParameters();
 

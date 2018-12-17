@@ -243,9 +243,9 @@ bool Layer<Dtype>::fusible() const
 
 #ifdef FEATHER_OPENCL
 template<class Dtype>
-int Layer<Dtype>::BuildOpenCLProgram()
+int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map)
 {
-    std::map<std::string, cl::Program> cl_program_map;
+
     if (cl_kernel_names.size() != cl_kernel_symbols.size()){
       LOGE("program str and names size not match.");
       return -1;
@@ -253,16 +253,17 @@ int Layer<Dtype>::BuildOpenCLProgram()
     int size = cl_kernel_names.size();
     for (int i = 0; i < size; i++){
         //LOGI("current program. %s", cl_kernel_names[i].c_str());
-        if (cl_program_map.find(cl_kernel_names[i]) != cl_program_map.end()){
-            cl_programs.push_back(cl_program_map[cl_kernel_names[i]]);
-            //LOGI("exists current program. %s", cl_kernel_names[i].c_str());
-            continue;
-        }
-
         cl::Program cur_program;
         std::string opt_str = "";
         for (auto &opt : this->build_options) {
           opt_str += " " + opt;
+        }
+        std::string promap_key = cl_kernel_names[i] + opt_str;
+
+        if (cl_program_map.find(promap_key) != cl_program_map.end()){
+            cl_programs.push_back(cl_program_map[promap_key]);
+            //LOGI("exists current program. %s", cl_kernel_names[i].c_str());
+            continue;
         }
 
         std::string kernelAddr = this->_name + "_" + this->cl_kernel_names[i] + ".bin";
@@ -276,7 +277,7 @@ int Layer<Dtype>::BuildOpenCLProgram()
         //LOGI("kernelAddr [%s]", kernelAddr.c_str());
         kernelAddr = "no_save";
 
-        if (buildProgram(  this->rt_param->context(), 
+        if (buildProgram(  this->rt_param->context(),
                            this->rt_param->device(),
                            cur_program,
                            this->cl_kernel_symbols[i],
@@ -286,15 +287,10 @@ int Layer<Dtype>::BuildOpenCLProgram()
             return -1;
         }
 
+
         cl_programs.push_back(cur_program);
-        cl_program_map[cl_kernel_names[i]] = cur_program;
+        cl_program_map[promap_key] = cur_program;
     }
-    // std::map<std::string, cl_program>::iterator program_iter = cl_program_map.begin();
-    // for(; program_iter != cl_program_map.end(); program_iter++){
-    //     if(program_iter->second != 0){
-    //         clReleaseProgram(program_iter->second);
-    //     }
-    // }
 
     return 0;
 }
