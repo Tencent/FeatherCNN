@@ -660,7 +660,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
 #endif
 
     blob_map.clear();
-    std::map<std::string, cl::Program> cl_program_map;
+    //std::map<std::string, cl::Program> cl_program_map;
     for (int i = 0; i < layers.size(); ++i)
     {
 #ifdef LAYER_INIT_TIMING
@@ -692,7 +692,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               total_timedif_s1 += timedif;
               clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-              if (layers[i]->BuildOpenCLProgram(cl_program_map))
+              if (layers[i]->BuildOpenCLProgram(rt_param->cl_program_map()))
               {
                   LOGE("Build layer programs failed");
                   return false;
@@ -741,6 +741,21 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
     //Allocate for common mempool.
     rt_param->common_mempool()->Alloc();
     return true;
+}
+
+template<class Dtype>
+int Net<Dtype>::SetProgMapFromNet(const Net<Dtype>* infer_net) {
+#ifdef FEATHER_OPENCL
+    if (infer_net->rt_param->device_type() == DeviceType::GPU_CL &&
+        this->rt_param->device_type() == DeviceType::GPU_CL) {
+          this->rt_param->cl_program_map().insert(infer_net->rt_param->cl_program_map().begin(),
+                                                  infer_net->rt_param->cl_program_map().end());
+    } else {
+      LOGE("SetProgMapFromNet device type mismatch.");
+      return -1;
+    }
+#endif
+    return 0;
 }
 
 template class Net<float>;

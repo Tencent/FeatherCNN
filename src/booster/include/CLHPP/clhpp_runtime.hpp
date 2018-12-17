@@ -8,6 +8,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <map>
 
 #include "CLHPP/clhpp_common.hpp"
 
@@ -24,7 +25,7 @@ enum GPUType {
 
 enum OpenCLVersion {
   CL_VER_1_0,
-  CL_VER_1_1, 
+  CL_VER_1_1,
   CL_VER_1_2,
   CL_VER_2_0,
   CL_VER_UNKNOWN,
@@ -63,9 +64,14 @@ public:
   {
     return *_device;
   }
+  std::map<std::string, cl::Program> &cl_program_map() const
+  {
+    return *_cl_program_map;
+  }
+
 
   std::string FeatherOpenclVersion() {
-    return _feather_opencl_version; 
+    return _feather_opencl_version;
   }
   std::string GpuDeviceName() {
     return _gpu_device_name;
@@ -91,6 +97,7 @@ private:
   std::shared_ptr<cl::Context> _context;
   std::shared_ptr<cl::Device> _device;
   std::shared_ptr<cl::CommandQueue> _command_queue;
+  std::shared_ptr<std::map<std::string, cl::Program> > _cl_program_map;
 
 };
 

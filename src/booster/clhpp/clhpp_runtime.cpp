@@ -59,6 +59,7 @@ namespace clhpp_feather{
   }
 
   OpenCLRuntime::OpenCLRuntime() {
+    _cl_program_map = std::make_shared<std::map<std::string, cl::Program> >();
     OpenCLProbe();
     PrintOpenCLInfo();
 
@@ -69,11 +70,12 @@ namespace clhpp_feather{
     _command_queue.reset();
     _context.reset();
     _device.reset();
+    _cl_program_map.reset();
   }
 
   int OpenCLRuntime::OpenCLProbe() {
     cl_int err;
-    
+
     std::vector<cl::Platform> all_platforms;
     cl::Platform::get(&all_platforms);
     if (all_platforms.size()==0) {

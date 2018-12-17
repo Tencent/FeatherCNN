@@ -20,7 +20,7 @@
 
 #include "mempool.h"
 #include "common.h"
-
+#include <map>
 // #define FEATHER_OPENCL
 #ifdef FEATHER_OPENCL
 #include "CLHPP/clhpp_runtime.hpp"
@@ -92,6 +92,10 @@ class RuntimeParameter
       cl::Device device() const
       {
           return _cl_runtime->device();
+      }
+      std::map<std::string, cl::Program>& cl_program_map() const
+      {
+          return _cl_runtime->cl_program_map();
       }
 #endif
 

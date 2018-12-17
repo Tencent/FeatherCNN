@@ -266,9 +266,13 @@ int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_prog
             continue;
         }
 
-        std::string kernelAddr = this->_name + "_" + promap_key + ".bin";
+        std::string kernelAddr = promap_key + ".bin";
         StringTool::RelaceString(kernelAddr, "/", "_");
         StringTool::RelaceString(kernelAddr, ":", "_");
+        StringTool::RelaceString(kernelAddr, " ", "_");
+        StringTool::RelaceString(kernelAddr, "-", "_");
+        StringTool::RelaceString(kernelAddr, "=", "_");
+
         kernelAddr = "no_save";
 
         if (buildProgram(  this->rt_param->context(),
