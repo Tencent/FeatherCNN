@@ -321,9 +321,8 @@ int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& heig
     //local_work_size  HWC
     uint64_t current_work_group_size = 0;
     uint64_t kernel_work_group_size = 0;
-    cl_int error_num = rt_param->device().getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &current_work_group_size);
-    if (!checkSuccess(error_num))
-    {
+
+    if (rt_param->cl_runtime()->GetDeviceMaxWorkGroupSize(current_work_group_size)) {
         LOGE("Get kernel work group info failed.");
         return -1;
     }
@@ -334,9 +333,9 @@ int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& heig
     }
 
     uint64_t total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
+    uint64_t valid_min_wgs = std::min(current_work_group_size,  kernel_work_group_size);
     int flag = 0;
-    
-    while( total_lws > current_work_group_size || total_lws > kernel_work_group_size){
+    while( total_lws > valid_min_wgs){
         if(local_work_size[2] > 1 && (flag % 3) == 0){
             local_work_size[2] /= 2;
         } else if(local_work_size[1] > 1 && (flag % 3) == 1){

@@ -61,6 +61,7 @@ OpenCLVersion ParseDeviceVersion(
 }
 
 OpenCLRuntime::OpenCLRuntime() {
+  _cl_program_map = std::make_shared<std::map<std::string, cl::Program> >();
   OpenCLProbe();
   PrintOpenCLInfo();
 
@@ -71,6 +72,7 @@ OpenCLRuntime::~OpenCLRuntime() {
   _command_queue.reset();
   _context.reset();
   _device.reset();
+  _cl_program_map.reset();
 }
 
 int OpenCLRuntime::OpenCLProbe() {

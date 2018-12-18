@@ -70,6 +70,10 @@ public:
   {
     return *_device;
   }
+  std::map<std::string, cl::Program> &cl_program_map() const
+  {
+    return *_cl_program_map;
+  }
 
 
   std::string FeatherOpenclVersion() {
@@ -99,6 +103,7 @@ private:
   std::shared_ptr<cl::Context> _context;
   std::shared_ptr<cl::Device> _device;
   std::shared_ptr<cl::CommandQueue> _command_queue;
+  std::shared_ptr<std::map<std::string, cl::Program> > _cl_program_map;
 };
 
 
