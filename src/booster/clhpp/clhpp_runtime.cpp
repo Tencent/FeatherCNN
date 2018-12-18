@@ -15,6 +15,8 @@ typedef cl_uint cl_priority_hint;
 #define CL_PRIORITY_HINT_NORMAL_QCOM 0x40CB
 #define CL_PRIORITY_HINT_LOW_QCOM 0x40CC
 
+#define CL_KERNEL_WAVE_SIZE_QCOM 0xAA02
+
 
 using namespace std;
 
@@ -22,122 +24,185 @@ using namespace std;
 
 namespace clhpp_feather{
 
-  GPUType ParseGPUType(const std::string &device_name) {
-    constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
-    constexpr const char *kMaliGPUStr = "Mali";
-    constexpr const char *kPowerVRGPUStr = "PowerVR";
+GPUType ParseGPUType(const std::string &device_name) {
+  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+  constexpr const char *kMaliGPUStr = "Mali";
+  constexpr const char *kPowerVRGPUStr = "PowerVR";
 
-    if (device_name == kQualcommAdrenoGPUStr) {
-      return GPUType::QUALCOMM_ADRENO;
-    } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
-      return GPUType::MALI;
-    } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
-      return GPUType::PowerVR;
-    } else {
-      return GPUType::UNKNOWN;
-    }
+  if (device_name == kQualcommAdrenoGPUStr) {
+    return GPUType::QUALCOMM_ADRENO;
+  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+    return GPUType::MALI;
+  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
+    return GPUType::PowerVR;
+  } else {
+    return GPUType::UNKNOWN;
+  }
+}
+
+OpenCLVersion ParseDeviceVersion(
+    const std::string &device_version) {
+  // OpenCL Device version string format:
+  // OpenCL<space><major_version.minor_version><space>
+  // <vendor-specific information>
+  auto words = Split(device_version, ' ');
+  if (words[1] == "2.0") {
+    return OpenCLVersion::CL_VER_2_0;
+  } else if (words[1] == "1.2") {
+    return OpenCLVersion::CL_VER_1_2;
+  } else if (words[1] == "1.1") {
+    return OpenCLVersion::CL_VER_1_1;
+  } else if (words[1] == "1.0") {
+    return OpenCLVersion::CL_VER_1_0;
+  } else {
+    LOGE("Do not support OpenCL version: %s", words[1].c_str());
+    return OpenCLVersion::CL_VER_UNKNOWN;
+  }
+}
+
+OpenCLRuntime::OpenCLRuntime() {
+  OpenCLProbe();
+  PrintOpenCLInfo();
+
+  dirCreate(g_pre_kernel_dir);
+}
+OpenCLRuntime::~OpenCLRuntime() {
+  _command_queue->finish();
+  _command_queue.reset();
+  _context.reset();
+  _device.reset();
+}
+
+int OpenCLRuntime::OpenCLProbe() {
+  cl_int err;
+
+  std::vector<cl::Platform> all_platforms;
+  cl::Platform::get(&all_platforms);
+  if (all_platforms.size()==0) {
+      LOGE(" No platforms found. Check OpenCL installation!");
+      return -1;
+  }
+  cl::Platform default_platform=all_platforms[0];
+  LOGI("Using platform: %s", default_platform.getInfo<CL_PLATFORM_NAME>().c_str());
+
+  // get default device (CPUs, GPUs) of the default platform
+  std::vector<cl::Device> all_devices;
+  default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+  if(all_devices.size()==0){
+      LOGE("No devices found. Check OpenCL installation!");
+      return -1;
   }
 
-  OpenCLVersion ParseDeviceVersion(
-      const std::string &device_version) {
-    // OpenCL Device version string format:
-    // OpenCL<space><major_version.minor_version><space>
-    // <vendor-specific information>
-    auto words = Split(device_version, ' ');
-    if (words[1] == "2.0") {
-      return OpenCLVersion::CL_VER_2_0;
-    } else if (words[1] == "1.2") {
-      return OpenCLVersion::CL_VER_1_2;
-    } else if (words[1] == "1.1") {
-      return OpenCLVersion::CL_VER_1_1;
-    } else if (words[1] == "1.0") {
-      return OpenCLVersion::CL_VER_1_0;
-    } else {
-      LOGE("Do not support OpenCL version: %s", words[1].c_str());
-      return OpenCLVersion::CL_VER_UNKNOWN;
-    }
-  }
-
-  OpenCLRuntime::OpenCLRuntime() {
-    _cl_program_map = std::make_shared<std::map<std::string, cl::Program> >();
-    OpenCLProbe();
-    PrintOpenCLInfo();
-
-    dirCreate(g_pre_kernel_dir);
-  }
-  OpenCLRuntime::~OpenCLRuntime() {
-    _command_queue->finish();
-    _command_queue.reset();
-    _context.reset();
-    _device.reset();
-    _cl_program_map.reset();
-  }
-
-  int OpenCLRuntime::OpenCLProbe() {
-    cl_int err;
-
-    std::vector<cl::Platform> all_platforms;
-    cl::Platform::get(&all_platforms);
-    if (all_platforms.size()==0) {
-        LOGE(" No platforms found. Check OpenCL installation!");
+  bool gpu_detected = false;
+  _device = std::make_shared<cl::Device>();
+  for (auto device : all_devices) {
+    if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
+      *_device = device;
+      gpu_detected = true;
+      _gpu_device_name = device.getInfo<CL_DEVICE_NAME>();
+      _gpu_type = ParseGPUType(_gpu_device_name);
+      _gpu_device_version = device.getInfo<CL_DEVICE_VERSION>();
+      _opencl_version = ParseDeviceVersion(_gpu_device_version);
+      if (_opencl_version == OpenCLVersion::CL_VER_UNKNOWN) {
         return -1;
-    }
-    cl::Platform default_platform=all_platforms[0];
-    LOGI("Using platform: %s", default_platform.getInfo<CL_PLATFORM_NAME>().c_str());
-
-    // get default device (CPUs, GPUs) of the default platform
-    std::vector<cl::Device> all_devices;
-    default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-    if(all_devices.size()==0){
-        LOGE("No devices found. Check OpenCL installation!");
-        return -1;
-    }
-
-    bool gpu_detected = false;
-    _device = std::make_shared<cl::Device>();
-    for (auto device : all_devices) {
-      if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
-        *_device = device;
-        gpu_detected = true;
-        _gpu_device_name = device.getInfo<CL_DEVICE_NAME>();
-        _gpu_type = ParseGPUType(_gpu_device_name);
-        _gpu_device_version = device.getInfo<CL_DEVICE_VERSION>();
-        _opencl_version = ParseDeviceVersion(_gpu_device_version);
-        if (_opencl_version == OpenCLVersion::CL_VER_UNKNOWN) {
-          return -1;
-        }
-        LOGI("Using device_name: [%s], device_version [%s]", _gpu_device_name.c_str(), _gpu_device_version.c_str());
-        break;
       }
+      LOGI("Using device_name: [%s], device_version [%s]", _gpu_device_name.c_str(), _gpu_device_version.c_str());
+      break;
     }
-    if(!gpu_detected) {
-      LOGE("No Gpu device found");
-      return -1;
-    }
-
-    //_context
-    cl_command_queue_properties properties = 0;
-    properties |= CL_QUEUE_PROFILING_ENABLE;
-
-    _context = std::shared_ptr<cl::Context>(
-          new cl::Context({*_device}, nullptr, nullptr, nullptr, &err));
-    if(!checkSuccess(err)) {
-      LOGE("new cl::Context error");
-      return -1;
-    }
-
-    _command_queue = std::make_shared<cl::CommandQueue>(*_context,
-                                                      *_device,
-                                                      properties,
-                                                      &err);
-    if(!checkSuccess(err)){
-      LOGE("new cl::CommandQueue error");
-      return -1;
-    }
-
-    return 0;
-
   }
+  if(!gpu_detected) {
+    LOGE("No Gpu device found");
+    return -1;
+  }
+
+  //_context
+  cl_command_queue_properties properties = 0;
+  properties |= CL_QUEUE_PROFILING_ENABLE;
+
+  _context = std::shared_ptr<cl::Context>(
+        new cl::Context({*_device}, nullptr, nullptr, nullptr, &err));
+  if(!checkSuccess(err)) {
+    LOGE("new cl::Context error");
+    return -1;
+  }
+
+  _command_queue = std::make_shared<cl::CommandQueue>(*_context,
+                                                    *_device,
+                                                    properties,
+                                                    &err);
+  if(!checkSuccess(err)){
+    LOGE("new cl::CommandQueue error");
+    return -1;
+  }
+
+  return 0;
+
+}
+
+int OpenCLRuntime::GetDeviceMaxWorkGroupSize(uint64_t& size) {
+  cl_int error_num = _device->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetDeviceMaxWorkGroupSize error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  return 0;
+}
+
+int OpenCLRuntime::GetDeviceMaxMemAllocSize(uint64_t& size) {
+  cl_int error_num = _device->getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetDeviceMaxMemAllocSize error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  return 0;
+}
+
+int OpenCLRuntime::IsImageSupport(cl_bool& res) {
+  cl_int error_num = _device->getInfo(CL_DEVICE_IMAGE_SUPPORT, &res);
+  if (error_num != CL_SUCCESS) {
+    LOGE("IsImageSupport error: %s", OpenCLErrorToString(error_num).c_str());
+    return false;
+  }
+  return res == CL_TRUE;
+}
+
+int OpenCLRuntime::GetMaxImage2DSize(size_t& m_height, size_t& m_width) {
+  cl_int error_num = _device->getInfo(CL_DEVICE_IMAGE2D_MAX_HEIGHT, &m_height);
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetMaxImage2DSize height error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  error_num = _device->getInfo(CL_DEVICE_IMAGE2D_MAX_WIDTH, &m_width);
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetMaxImage2DSize width error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  return 0;
+}
+
+int OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel& kernel, uint64_t& size) {
+  cl_int error_num = kernel.getWorkGroupInfo(*_device, CL_KERNEL_WORK_GROUP_SIZE,
+                                       &size);
+
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetKernelMaxWorkGroupSize error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  return 0;
+}
+
+
+int OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel, uint64_t& size) {
+  cl_int error_num = kernel.getWorkGroupInfo(*_device, CL_KERNEL_WAVE_SIZE_QCOM,
+                                       &size);
+  if (error_num != CL_SUCCESS) {
+    LOGE("GetKernelWaveSize error: %s", OpenCLErrorToString(error_num).c_str());
+    return -1;
+  }
+  return 0;
+}
+
+
 
 
 } //namespace cl_feather

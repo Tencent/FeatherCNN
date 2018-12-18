@@ -51,6 +51,12 @@ public:
   OpenCLRuntime();
   ~OpenCLRuntime();
   int OpenCLProbe();
+  int GetDeviceMaxWorkGroupSize(uint64_t& size);
+  int GetDeviceMaxMemAllocSize(uint64_t& size);
+  int IsImageSupport(cl_bool& res);
+  int GetMaxImage2DSize(size_t& m_height, size_t& m_width);
+  int GetKernelMaxWorkGroupSize(const cl::Kernel &kernel, uint64_t& size);
+  int GetKernelWaveSize(const cl::Kernel &kernel, uint64_t& size);
 
   cl::Context &context() const
   {
@@ -63,10 +69,6 @@ public:
   cl::Device &device() const
   {
     return *_device;
-  }
-  std::map<std::string, cl::Program> &cl_program_map() const
-  {
-    return *_cl_program_map;
   }
 
 
@@ -97,8 +99,6 @@ private:
   std::shared_ptr<cl::Context> _context;
   std::shared_ptr<cl::Device> _device;
   std::shared_ptr<cl::CommandQueue> _command_queue;
-  std::shared_ptr<std::map<std::string, cl::Program> > _cl_program_map;
-
 };
 
 

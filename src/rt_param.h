@@ -93,9 +93,9 @@ class RuntimeParameter
       {
           return _cl_runtime->device();
       }
-      std::map<std::string, cl::Program>& cl_program_map() const
+      clhpp_feather::OpenCLRuntime* cl_runtime() const
       {
-          return _cl_runtime->cl_program_map();
+          return _cl_runtime;
       }
 #endif
 

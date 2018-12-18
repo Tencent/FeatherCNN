@@ -44,6 +44,9 @@
 namespace feather
 {
 
+static std::map<std::string, cl::Program> cl_program_map;
+
+
 bool judge_android7_opencl()
 {
     //libOpenCL.so
@@ -692,7 +695,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               total_timedif_s1 += timedif;
               clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-              if (layers[i]->BuildOpenCLProgram(rt_param->cl_program_map()))
+              if (layers[i]->BuildOpenCLProgram(cl_program_map))
               {
                   LOGE("Build layer programs failed");
                   return false;
@@ -743,20 +746,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
     return true;
 }
 
-template<class Dtype>
-int Net<Dtype>::SetProgMapFromNet(const Net<Dtype>* infer_net) {
-#ifdef FEATHER_OPENCL
-    if (infer_net->rt_param->device_type() == DeviceType::GPU_CL &&
-        this->rt_param->device_type() == DeviceType::GPU_CL) {
-          this->rt_param->cl_program_map().insert(infer_net->rt_param->cl_program_map().begin(),
-                                                  infer_net->rt_param->cl_program_map().end());
-    } else {
-      LOGE("SetProgMapFromNet device type mismatch.");
-      return -1;
-    }
-#endif
-    return 0;
-}
+
 
 template class Net<float>;
 #ifdef FEATHER_OPENCL

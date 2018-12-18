@@ -320,22 +320,34 @@ int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& heig
     //global_work_size HWC
     //local_work_size  HWC
     uint64_t current_work_group_size = 0;
+    uint64_t kernel_work_group_size = 0;
     cl_int error_num = rt_param->device().getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &current_work_group_size);
     if (!checkSuccess(error_num))
     {
-        LOGE("Get kernel work group info failed. %s: %s", __FILE__, __LINE__);
+        LOGE("Get kernel work group info failed.");
         return -1;
     }
 
-    while(local_work_size[0] * local_work_size[1] * local_work_size[2] > current_work_group_size){
-        if(local_work_size[0] > 1){
-            local_work_size[0] /= 2;
-        } else if(local_work_size[1] > 1){
-            local_work_size[1] /= 2;
-        } else if(local_work_size[2] > 1){
-            local_work_size[2] /= 2;
-        }
+    if (rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(kernel, kernel_work_group_size)) {
+        LOGE("Get kernel work group size failed.");
+        return -1;
     }
+
+    uint64_t total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
+    int flag = 0;
+    
+    while( total_lws > current_work_group_size || total_lws > kernel_work_group_size){
+        if(local_work_size[2] > 1 && (flag % 3) == 0){
+            local_work_size[2] /= 2;
+        } else if(local_work_size[1] > 1 && (flag % 3) == 1){
+            local_work_size[1] /= 2;
+        } else if(local_work_size[0] > 1 && (flag % 3) == 2){
+            local_work_size[0] /= 2;
+        }
+        flag++;
+        total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
+    }
+
     this->global_work_size[0] = (height / local_work_size[0] + !!(height % local_work_size[0])) * local_work_size[0];
     this->global_work_size[1] = (width / local_work_size[1]  + !!(width % local_work_size[1])) * local_work_size[1];
     return 0;

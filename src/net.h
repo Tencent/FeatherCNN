@@ -39,7 +39,6 @@ class Net
         void InitFromPath(const char *model_path);
         void InitFromStringPath(std::string model_path);
         void InitFromFile(FILE *fp);
-        int SetProgMapFromNet(const Net<Dtype>* infer_net);
 
         bool InitFromBuffer(const void *net_buffer);
 
@@ -52,11 +51,11 @@ class Net
         int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);
         std::map<std::string, const Blob<Dtype> *> blob_map;
-        RuntimeParameter<float> *rt_param;
 
       private:
         bool CheckDtype();
         std::vector<Layer<Dtype>* > layers;
+        RuntimeParameter<float> *rt_param;
 
 
 };
