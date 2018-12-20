@@ -1,13 +1,13 @@
 #include <common.h>
 
 // N = 4, 8, or 16, which is the channel group size. 
-__kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   /* [ih, iw, c] */
-                                    __global const DATA_TYPE* restrict weights, /* [c/N, kh, kw, [N, 1]] */
+__kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   /* [c/N, ih, iw, N] */
+                                    __global const DATA_TYPE* restrict weights, /* [c/N, kh, kw, N] */
 #ifdef BIAS
                                     __global const DATA_TYPE* restrict bias,    /* [c] */
 #endif
-                                    __global DATA_TYPE* restrict output,        /* [oh, ow, c] */
-                                    __private const int channels,               /* a multiple of 4 */
+                                    __global DATA_TYPE* restrict output,        /* [c/N, oh, ow, N] */
+                                    __private const int channels,               /* a multiple of N */
                                     __private const int input_height,
                                     __private const int input_width,
                                     __private const int output_height,
@@ -26,25 +26,32 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
 
   int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
   int in_height_end = in_height_beg + kernel_height;
-  const int in_height_beg_gap = select(0, -in_height_beg, in_height_beg < 0);
+  const int kernel_height_beg_gap = select(0, -in_height_beg, in_height_beg < 0);
   in_height_beg = max(0, in_height_beg);
   in_height_end = min(in_height_end, input_height);
-
   int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
   int in_width_end = in_width_beg + kernel_width;
-  const int in_width_beg_gap = select(0, -in_width_beg, in_width_beg < 0);
-  const int in_width_end_gap = select(0, in_width_end - input_width, in_width_end > input_width);
+  const int kernel_width_beg_gap = select(0, -in_width_beg, in_width_beg < 0);
+  const int kernel_width_end_gap = select(0, in_width_end - input_width, in_width_end > input_width);
   in_width_beg = max(0, in_width_beg);
   in_width_end = min(in_width_end, input_width);
 
+  const int in_width_gap_size = mul24(in_width_beg + input_width - in_width_end, N);
+  int in_val_idx = mul24(N, mad24(mad24(channel_group_idx, 
+                                        input_height, 
+                                        in_height_beg),
+                                     input_width, 
+                                     in_width_beg));
+
   const int kernel_width_size = N;
   const int kernel_height_size = mul24(kernel_width, kernel_width_size);
-  const int kernel_height_beg_gap_size = mul24(in_height_beg_gap, kernel_height_size);
-  const int kernel_width_beg_gap_size = mul24(in_width_beg_gap, kernel_width_size);
-  const int kernel_width_end_gap_size = mul24(in_width_end_gap, kernel_width_size);
+  const int kernel_height_beg_gap_size = mul24(kernel_height_beg_gap, kernel_height_size);
+  const int kernel_width_beg_gap_size = mul24(kernel_width_beg_gap, kernel_width_size);
+  const int kernel_width_end_gap_size = mul24(kernel_width_end_gap, kernel_width_size);
+  const int kernel_width_gap_size = kernel_width_beg_gap_size + kernel_width_end_gap_size;
   int kernel_val_idx = mad24(channel_group_idx, 
                              mul24(kernel_height, kernel_height_size),
-                             kernel_height_beg_gap_size);
+                             kernel_height_beg_gap_size) + kernel_width_beg_gap_size;
 
   DATA_TYPEN in_val, kernel_val;
 #ifdef BIAS
@@ -53,29 +60,27 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   DATA_TYPEN out_val = 0;
 #endif
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
-    kernel_val_idx += kernel_width_beg_gap_size;
-
-    int in_val_idx = mad24(mad24(in_height_idx, input_width, in_width_beg), 
-                           channels, 
-                           channel_idx);
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end; ++in_width_idx) {
       in_val = VLOADN(0, &input[in_val_idx]);
       kernel_val = VLOADN(0, &weights[kernel_val_idx]);
       out_val = mad(in_val, kernel_val, out_val);
 
-      in_val_idx += channels;
+      in_val_idx += N;
       kernel_val_idx += N;
     }
 
-    kernel_val_idx += kernel_width_end_gap_size;
+    in_val_idx += in_width_gap_size;
+    kernel_val_idx += kernel_width_gap_size;
   }
 
 #if defined(USE_RELU)
   out_val = fmax(out_val, (DATA_TYPEN)0);
 #endif
 
-  int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
-                          channels, 
-                          channel_idx);
+  const int out_val_idx = mul24(N, mad24(mad24(channel_group_idx, 
+                                               output_height, 
+                                               out_height_idx),
+                                         output_width,
+                                         out_width_idx));
   VSTOREN(out_val, 0, &output[out_val_idx]);
 }

@@ -57,7 +57,7 @@ public:
 private:
   uint32_t output_height;
   uint32_t output_width;
-  size_t channel_grp_size;
+  size_t channel_group_size;
   bool fuse_relu;
 
 };

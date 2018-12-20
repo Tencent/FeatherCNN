@@ -52,7 +52,7 @@ public:
     uint32_t kernel_width;
     uint32_t stride_height;
     uint32_t stride_width;
-    uint32_t channel_grp_size;
+    uint32_t channel_group_size;
     bool global_pooling;
     PoolingParameter_::PoolMethod method;
 };

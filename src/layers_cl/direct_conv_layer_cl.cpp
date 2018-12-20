@@ -86,9 +86,8 @@ int DirectConvLayerCL<Dtype>::InitCL()
 template <class Dtype>
 int DirectConvLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
-    ss << out_channel_grp_size;
+    ss << this->channel_group_size;
     this->build_options.push_back("-DN=" + ss.str());
-    //this->build_options.push_back("-DDATA_TYPE=half");
     if(std::is_same<Dtype, uint16_t>::value)
       this->build_options.push_back("-DDATA_TYPE=half");
     else
@@ -112,9 +111,7 @@ int DirectConvLayerCL<Dtype>::SetKernelParameters()
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t in_real_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
 
-    //size_t c_grp_size = this->in_channel_grp_size;
-    size_t c_grp_size = 1;
-    size_t n_grp_size = this->out_channel_grp_size;
+    size_t N = this->channel_group_size;
     size_t w_num = this->_weight_blobs[0]->num();
     size_t w_channels = this->_weight_blobs[0]->channels();
     size_t w_hw = this->_weight_blobs[0]->height() * this->_weight_blobs[0]->width();
@@ -132,34 +129,19 @@ int DirectConvLayerCL<Dtype>::SetKernelParameters()
       for (int i = 0; i < w_num; ++i) {
         for (int j = 0; j < w_hw; ++j) {
           // int dst_idx = j * this->_weight_blobs[0]->get_num_padding() + i;
-          int dst_idx = (i / this->in_channel_grp_size * w_hw + j)
-                        * this->in_channel_grp_size
-                        + i % this->in_channel_grp_size;
+          int dst_idx = (i / N * w_hw + j) * N + i % N;
           int src_idx = i * w_hw + j;
           weight_padding[dst_idx] = this->kernel_data[src_idx];
         }
       }
     }
     else {
-      // for (int i = 0; i < w_num; ++i) {
-      //     for (int j = 0; j < w_hw; ++j) {
-      //         for (int k = 0; k < w_channels; ++k) {
-      //             int dst_idx = (i * w_hw + j) * this->_weight_blobs[0]->get_channels_padding() + k;
-      //             int src_idx = (i * this->_weight_blobs[0]->channels() + k) * w_hw + j;
-      //             weight_padding[dst_idx] = kernel_data[src_idx];
-      //         }
-      //     }
-      // }
-
+      auto channel_groups = this->_weight_blobs[0]->get_channels_padding() / N;
       for (int i = 0; i < w_num; ++i) {
-        for (int k = 0; k < w_channels; ++k) {
-          for (int j = 0; j < w_hw; ++j) {
-            int src_idx = (i * w_channels + k) * w_hw + j;
-            int dst_idx = (i / n_grp_size) * w_hw * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
-                          j * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
-                          ( k / c_grp_size ) * n_grp_size * c_grp_size +
-                          ( i % n_grp_size ) * c_grp_size +
-                          k % c_grp_size;
+        for (int j = 0; j < w_channels; ++j) {
+          for (int k = 0; k < w_hw; ++k) {
+            int src_idx = (i * w_channels + j) * w_hw + k;
+            int dst_idx = (((i / N * channel_groups + j / N) * w_hw + k) * N + j % N) * N + i % N;
             weight_padding[dst_idx] = this->kernel_data[src_idx];
           }
         }
@@ -315,27 +297,15 @@ int DirectConvLayerCL<Dtype>::ForwardCL()
 template <class Dtype>
 void DirectConvLayerCL<Dtype>::FinetuneKernel()
 {
-    std::string cur_kname;
-    std::string cur_kstr;
-    std::string cur_func;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-
-    int group_size = 4;
-    if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      group_size = 8;
-    }
+    this->channel_group_size = this->_top_blobs[this->_top[0]]->channel_grp();
+    this->global_work_size[2] = padded_output_c / this->channel_group_size;
 
     int kernel_idx = this->is_dw ? 1 : 0;
     int func_idx = this->is_dw ? 1 : 0;
-    cur_kname = this->cl_kernel_names[kernel_idx];
-    cur_kstr = this->cl_kernel_symbols[kernel_idx];
-    cur_func = this->cl_kernel_functions[func_idx];
-
-    this->global_work_size[2] = padded_output_c / group_size;
-    this->in_channel_grp_size = group_size;
-    this->out_channel_grp_size = group_size;
-
+    std::string cur_kname = this->cl_kernel_names[kernel_idx];
+    std::string cur_kstr = this->cl_kernel_symbols[kernel_idx];
+    std::string cur_func = this->cl_kernel_functions[func_idx];
     this->cl_kernel_names.clear();
     this->cl_kernel_symbols.clear();
     this->cl_kernel_functions.clear();

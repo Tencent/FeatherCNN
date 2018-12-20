@@ -43,8 +43,7 @@ public:
 
 private:
     bool fuse_relu;
-    uint32_t in_channel_grp_size;
-    uint32_t out_channel_grp_size;
+    uint32_t channel_group_size;
 
     uint32_t input_channels;
     uint32_t input_width;

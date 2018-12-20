@@ -41,7 +41,7 @@ public:
 protected:
   uint32_t input_width;
   uint32_t input_height;
-  uint32_t channel_grp_size;
+  uint32_t channel_group_size;
 
   uint32_t output_channels;
 

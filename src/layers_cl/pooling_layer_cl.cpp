@@ -79,7 +79,7 @@ int PoolingLayerCL<Dtype>::SetBuildOptions() {
       break;
   }
   std::ostringstream ss;
-  ss << this->channel_grp_size;
+  ss << this->channel_group_size;
   this->build_options.push_back("-DN=" + ss.str());
   if (std::is_same<Dtype, uint16_t>::value)
     this->build_options.push_back("-DDATA_TYPE=half");
@@ -215,22 +215,12 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
 
 template <class Dtype>
 void PoolingLayerCL<Dtype>::FinetuneKernel() {
-    std::string cur_kname;
-    std::string cur_kstr;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    this->channel_group_size = this->_top_blobs[this->_top[0]]->channel_grp();
+    this->global_work_size[2] = padded_output_c / this->channel_group_size;
 
-    int group_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
-      group_size = 16;
-    } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      group_size = 8;
-    }
-
-    cur_kname = this->cl_kernel_names[0];
-    cur_kstr = this->cl_kernel_symbols[0];
-    this->global_work_size[2] = padded_output_c / group_size;
-    this->channel_grp_size = group_size;
+    std::string cur_kname = this->cl_kernel_names[0];
+    std::string cur_kstr = this->cl_kernel_symbols[0];
 
     this->cl_kernel_names.clear();
     this->cl_kernel_symbols.clear();
