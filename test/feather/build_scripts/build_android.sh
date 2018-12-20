@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cd ../..
-#rm -rf build-android
+rm -rf build-android
 bash build_scripts/build_android.sh
 cd test/feather/
 ${NDK_ROOT}/ndk-build clean
