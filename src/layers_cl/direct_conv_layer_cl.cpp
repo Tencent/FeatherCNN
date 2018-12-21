@@ -226,9 +226,7 @@ int DirectConvLayerCL<Dtype>::ForwardReshapeCL()
 
     int param_idx = this->is_dw ? 5 : 6;
     cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    LOGD("data_size 1 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(0, *input_mem));
-    LOGD("data_size 2 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
@@ -268,7 +266,7 @@ int DirectConvLayerCL<Dtype>::ForwardCL()
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
-    
+
     cl::Event profileEvent = this->events[0];
     double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
     double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
