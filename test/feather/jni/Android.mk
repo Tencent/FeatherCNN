@@ -3,7 +3,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := feather
-LOCAL_SRC_FILES := ../../../build-android/feather/arm64-v8a/libfeather.a
+LOCAL_SRC_FILES := ../../../build-android/feather/$(TARGET_ARCH_ABI)/libfeather.a
 LOCAL_EXPORT_CPPFLAGS:= -I../../build-android/feather/include/feather/ -DFEATHER_OPENCL
 include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)

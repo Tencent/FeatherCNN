@@ -14,6 +14,7 @@
 
 #include <net.h>
 
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -21,25 +22,19 @@
 #include <iostream>
 #include <fstream>
 #include <assert.h>
+#include <type_traits>
 
 using namespace std;
 using namespace feather;
 
-
-//#define Dtype float
-//#define Dtype uint16_t
 template<typename Dtype>
-void PrintBlobData(feather::Net<Dtype> *forward_net, std::string blob_name, int n)
+void PrintBlobData(feather::Net<Dtype> *forward_net, const std::string& blob_name, size_t n)
 {
     size_t data_size;
     forward_net->GetBlobDataSize(&data_size, blob_name);
-    float *arr = (float*) malloc(sizeof(float) * data_size);
+    float *arr = (float*)malloc(sizeof(float) * data_size);
     forward_net->ExtractBlob(arr, blob_name);
-    size_t len = 0;
-    if (n <= 0)
-        len = data_size;
-    else
-        len = n;
+    size_t len = std::min(data_size, n);
 
     for (int i = 0; i < len; ++i)
     {
@@ -49,124 +44,123 @@ void PrintBlobData(feather::Net<Dtype> *forward_net, std::string blob_name, int 
     free(arr);
 }
 
-void DiffBlobData(feather::Net<uint16_t>* gpu_net, feather::Net<float>* cpu_net, std::string blob_name)
+template <typename Dtype>
+void DiffBlobData(feather::Net<float>* cpu_net, feather::Net<Dtype>* gpu_net, const std::string& cpu_blob_name, const std::string& gpu_blob_name)
 {
-    size_t gpu_data_size, cpu_data_size;
-    gpu_net->GetBlobDataSize(&gpu_data_size, blob_name);
-    cpu_net->GetBlobDataSize(&cpu_data_size, blob_name);
-    assert(gpu_data_size == cpu_data_size);
+    size_t cpu_data_size = 0, gpu_data_size = 0;
+    cpu_net->GetBlobDataSize(&cpu_data_size, cpu_blob_name);
+    gpu_net->GetBlobDataSize(&gpu_data_size, gpu_blob_name);
+    assert(cpu_data_size == gpu_data_size);
     size_t data_size = cpu_data_size;
     
-    float *cpu_data = (float*) malloc(sizeof(float) * data_size);
-    cpu_net->ExtractBlob(cpu_data, blob_name);
-    float *gpu_data = (float*) malloc(sizeof(float) * data_size);
-    gpu_net->ExtractBlob(gpu_data, blob_name);
-    
-    double diff = 0.f;
+    float* cpu_data = (float*)malloc(sizeof(float) * data_size);
+    cpu_net->ExtractBlob(cpu_data, cpu_blob_name);
+    float* gpu_data = (float*)malloc(sizeof(float) * data_size);
+    gpu_net->ExtractBlob(gpu_data, gpu_blob_name);
+   
+
+    float threshold = std::is_same<Dtype, uint16_t>::value ? 1.0f : 0.001f;
+    float diff_sum = 0.f;
     for(int i = 0; i < data_size; ++i)
     {
-        double cur_diff = fabs(cpu_data[i] - gpu_data[i]);
-        if((cur_diff) > 1.f)
-        // if(1)
+        float cur_diff = fabs(cpu_data[i] - gpu_data[i]);
+        if (cur_diff > threshold)
         {
             printf("Diff %d %f %f\n", i, cpu_data[i], gpu_data[i]);
+	    diff_sum += cur_diff;
         }
-        diff += (cur_diff > 1.f) ? cur_diff : 0;
     }
-    printf("diff sum %lf\n", diff);
+    printf("diff_sum %f\n", diff_sum);
 }
 
 template<typename Dtype>
-void test(std::string model_path, std::string output_name, int loop, DeviceType type)
+void testPerf(const std::string& model_path, int input_size, const std::string& output_name, int loop_count, DeviceType type)
 {
+    std::string device_str = type == DeviceType::CPU ? "CPU" : "GPU";
+    std::string type_str = std::is_same<Dtype, uint16_t>::value ? "half" : "float";
+    printf("-------------------------test%sPerf<%s>--------------------------\n", device_str.c_str(), type_str.c_str());
     feather::Net<Dtype> forward_net(1, type);
     forward_net.InitFromPath(model_path.c_str());
-    size_t input_size = 300 * 300 * 3 ;
-    float *input_cpu = new float[input_size * 20];
-    size_t count = 0;
-    double time = 0;
+    float* input = (float*)malloc(sizeof(float) * input_size);
     for(int i = 0; i < input_size; i++)
     {
-       input_cpu[i] = (float)(count % 256);
-       count++;
+       input[i] = (i % 256 - 127.5) / 128;
     }
     
-    for(int i = 0; i < loop; i++)
+    double total_time = 0;
+    int timing_count = 0;
+    timespec tpstart, tpend;
+    for(int i = 0; i < loop_count; i++)
     {
-        timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
-        forward_net.Forward(input_cpu);
-
-        //PrintBlobData(&forward_net, "multibox_head/loc_0/bias_add:0", 10);
-        //PrintBlobData(&forward_net, "MobilenetV2/Conv/BatchNorm/Relu:0", 10);
-        //tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0
-
+        forward_net.Forward(input);
         PrintBlobData(&forward_net, output_name, 10);
-        
         clock_gettime(CLOCK_MONOTONIC, &tpend);
-        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        timedif = timedif /1000.0;
-        //PrintBlobData(&forward_net, "tx_pose/stage1/branch0/conv5_5_CPM_L1/bias_add:0", 10);
-        printf("Prediction costs %lfms\n", timedif);
-        if (i > 0)
-            time += timedif;
+        double time = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        time = time / 1000.0;
+        printf("Prediction costs %lfms\n", time);
+	if (time > 200) continue;
+        if (i > 0) {
+            total_time += time;
+	    ++timing_count;
+	}
     }
 
-    printf("--------Average runtime %lfms------\n", time / (loop-1));
-    free(input_cpu);
-
+    printf("Average %s runtime %lfms\n", device_str.c_str(), total_time / timing_count);
+    free(input);
 }
 
-void testdiff(std::string model_path, std::string output_name)
+template <typename Dtype>
+void testDiff(const std::string& model_path, int input_size, const std::string& cpu_blob_name, const std::string& gpu_blob_name)
 {
-    printf("++++++Start Loader++++++\n");
-    feather::Net<uint16_t> forward_net_gpu(1, DeviceType::GPU_CL);
-    feather::Net<float>    forward_net_cpu(1, DeviceType::CPU);
+    std::string type_str = std::is_same<Dtype, uint16_t>::value ? "half" : "float";
+    printf("\n--------------------------testDiff<%s>---------------------------\n", type_str.c_str());
+    feather::Net<float> forward_net_cpu(1, DeviceType::CPU);
+    feather::Net<Dtype> forward_net_gpu(1, DeviceType::GPU_CL);
 
-    forward_net_gpu.InitFromPath(model_path.c_str());
     forward_net_cpu.InitFromPath(model_path.c_str());
+    forward_net_gpu.InitFromPath(model_path.c_str());
 
-    //size_t input_size = 224 * 224 * 3 ;
-    size_t input_size = 300 * 300 * 3 ;
-    float *input_cpu = new float[input_size * 20];
-
-    size_t count = 0;
-    double time = 0;
-
-    for(int i = 0; i < input_size; i++)
+    float* input = (float*)malloc(sizeof(float) * input_size);
+    for(int i = 0; i < input_size; ++i)
     {
-      input_cpu[i] = (float)(count % 256);
-      count++;
+      input[i] = (rand() % 256 - 127.5) / 128;
     }
+    forward_net_cpu.Forward(input);
+    forward_net_gpu.Forward(input);
 
-    forward_net_gpu.Forward(input_cpu);
-    forward_net_cpu.Forward(input_cpu);
+    DiffBlobData<Dtype>(&forward_net_cpu, &forward_net_gpu, cpu_blob_name, gpu_blob_name);
 
-    //PrintBlobData(&forward_net, output_name, 10);
-    DiffBlobData(&forward_net_gpu, &forward_net_cpu, output_name);
-
-    free(input_cpu);
+    free(input);
 }
 
-void gpu_cpu_test(std::string model_path, std::string output_name, int loop)
+template <typename Dtype>
+void testGPU(const std::string& model_path, int input_size, const std::string& cpu_blob_name, const std::string& gpu_blob_name, int loop_count = 2)
 {
-    //test<float>(model_path, output_name, loop, DeviceType::CPU);
-    test<uint16_t>(model_path, output_name, loop, DeviceType::GPU_CL);
-    testdiff(model_path, output_name);
+    testDiff<Dtype>(model_path, input_size, cpu_blob_name, gpu_blob_name);
+    testPerf<Dtype>(model_path, input_size, gpu_blob_name, loop_count, DeviceType::GPU_CL);
 }
 
 int main(int argc, char* argv[])
 {
-    if (argc == 4)
+    if (argc >= 6)
     {
-        size_t loop = atoi(argv[2]);
         std::string model_path = std::string(argv[1]);
-        std::string output_name = std::string(argv[3]);
-        gpu_cpu_test(model_path, output_name, loop);
+	int input_channels = atoi(argv[2]);
+	int input_height = atoi(argv[3]);
+        int input_width = atoi(argv[4]);
+        std::string cpu_blob_name = std::string(argv[5]); // ReLU is always fused in the GPU conv/fc layers, 
+        std::string gpu_blob_name = std::string(argv[6]); // which is not always the case for CPU conv/fc layers.
+        int loop_count = argc > 7 ? atoi(argv[7]) : 2;
+	int input_size = input_channels * input_height * input_width;
+        testPerf<float>(model_path, input_size, cpu_blob_name, loop_count, DeviceType::CPU);
+        testGPU<float>(model_path, input_size, cpu_blob_name, gpu_blob_name, loop_count);
+        testGPU<uint16_t>(model_path, input_size, cpu_blob_name, gpu_blob_name, loop_count);
     }
     else
     {
-        fprintf(stderr, "Usage: ./testRun [feathermodel] [loop_count] [output_name]\n");
+        fprintf(stderr, "Usage: ./feather_test [model_path] [input_channels] [input_height] [input_width] [cpu_blob_name] [gpu_blob_name] [loop_count]\n");
+	fprintf(stderr, "Example: ./feather_test nobn.feathermodel 3 224 192 \"fc5_classification_relu\" \"fc5_classification\" 100\n");
         return 0;
     }
     return 0;
