@@ -99,14 +99,19 @@ void testPerf(const std::string& model_path, int input_size, const std::string& 
         double time = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
         time = time / 1000.0;
         printf("Prediction costs %lfms\n", time);
-	if (time > 200) continue;
+	if (time > 400) continue;
         if (i > 0) {
             total_time += time;
 	    ++timing_count;
 	}
     }
 
-    printf("Average %s runtime %lfms\n", device_str.c_str(), total_time / timing_count);
+    if (timing_count > 0) {
+   	printf("Average %s runtime %lfms\n", device_str.c_str(), total_time / timing_count);
+    } else {
+	printf("Average runtime > 400ms!\n");
+    }
+
     free(input);
 }
 
