@@ -273,7 +273,7 @@ int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_prog
         StringTool::RelaceString(kernelAddr, "-", "_");
         StringTool::RelaceString(kernelAddr, "=", "_");
 
-        //kernelAddr = "no_save";
+        kernelAddr = "no_save";
 
         if (buildProgram(  this->rt_param->context(),
                            this->rt_param->device(),
