@@ -223,42 +223,18 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
       return 1;
     }
 
-    // for (int i = 0; i < _channels; ++i) {
-    //   for (int j = 0; j < _height * _width; ++j) {
-    //     int dst_idx = i * _height * _width + j;
-    //     int src_idx = j * this->get_channels_padding() + i;
-    //     if (std::is_same<Dtype, uint16_t>::value)
-    //         data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
-    //     else
-    //         data[dst_idx] = data_half[src_idx];
-    //   }
-    // }
+    for (int i = 0; i < _channels; ++i) {
+      for (int j = 0; j < _height * _width; ++j) {
+        int dst_idx = i * _height * _width + j;
+        int src_idx = j * this->get_channels_padding() + i;
+        if(std::is_same<Dtype, uint16_t>::value)
+            data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
+        else
+            data[dst_idx] = data_half[src_idx];
 
-    // [(c+N-1)/N, h, w, N] -> [c, h, w]
-    auto _height_x_width = _height * _width;
-    if (std::is_same<Dtype, uint16_t>::value) {
-      for (int i = 0; i < _channels; ++i) {
-        auto channel_group_idx = i / this->channel_grp();
-        auto channel_idx_within_group = i % this->channel_grp();
-        for (int j = 0; j < _height_x_width; ++j) {
-          int dst_idx = i * _height_x_width + j;
-          int src_idx = (channel_group_idx * _height_x_width + j) * this->channel_grp()
-                        + channel_idx_within_group;
-          data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
-        } 
-      }
-    } else {
-        for (int i = 0; i < _channels; ++i) {
-        auto channel_group_idx = i / this->channel_grp();
-        auto channel_idx_within_group = i % this->channel_grp();
-        for (int j = 0; j < _height_x_width; ++j) {
-          int dst_idx = i * _height_x_width + j;
-          int src_idx = (channel_group_idx * _height_x_width + j) * this->channel_grp()
-                        + channel_idx_within_group;
-          data[dst_idx] = data_half[src_idx];
-        } 
       }
     }
+
 
     error_num = queue.enqueueUnmapMemObject(*_data_cl, data_half,
                                              nullptr, nullptr);

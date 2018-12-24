@@ -180,8 +180,8 @@ class Blob
         size_t _channels;
         size_t _height;
         size_t _width;
-        size_t _channel_grp = 8;
-        size_t _num_grp = 8;
+        size_t _channel_grp = 4;
+        size_t _num_grp = 4;
 
         std::string _name;
 };

@@ -55,7 +55,7 @@ int InnerProductLayerCL<Dtype>::InitCL() {
 template <class Dtype>
 int InnerProductLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
-    ss << this->channel_group_size;
+    ss << channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
     if(std::is_same<Dtype, uint16_t>::value)
       this->build_options.push_back("-DDATA_TYPE=half");
@@ -90,16 +90,28 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters() {
 
     std::vector<Dtype> weight_padding(real_weight_size, 0.0f);
 
+    uint32_t kernel_size = this->input_height * this->input_width * b_channel_padding;
     uint32_t hw_size = this->input_height * this->input_width;
+    uint32_t num_channel_grp = b_channel_padding / this->channel_grp_size;
+    uint32_t c_grp_size = 1 /* this->channel_grp_size */;
+    uint32_t n_grp_size = this->channel_grp_size;
 
-    size_t N = this->channel_group_size;
-    auto channel_groups = b_channel_padding / N;
-    for (int i = 0; i < w_num; ++i) {
-      for (int j = 0; j < w_channel; ++j) {
-        int c_idx = j / hw_size;
-        int hw_idx = j % hw_size;
-        int src_idx = i * w_channel + j;
-        int dst_idx = (((i / N * channel_groups + c_idx / N) * hw_size + hw_idx) * N + c_idx % N) * N + i % N;
+    for (int n = 0; n < w_num; ++n) {
+      for (int m = 0; m < w_channel; ++m) {
+        int c_idx = m / hw_size;
+        int hw_idx = m % hw_size;
+        int src_idx = n * w_channel + m;
+        /* naive arrangement */
+        //int dst_idx = (n * this->input_height * this->input_width + hw_idx) * b_channel_padding + c_idx;
+
+        /* re-arrangement*/
+        int dst_idx = (n / n_grp_size) * hw_size * b_channel_padding * n_grp_size +
+                      hw_idx * b_channel_padding * n_grp_size +
+                      (c_idx / c_grp_size) * n_grp_size * c_grp_size +
+                      (n % n_grp_size) * c_grp_size +
+                      c_idx % c_grp_size;
+        //printf("(%d, %d, %d) %d, %d\n", n, c_idx, hw_idx, src_idx, dst_idx);
+
         weight_padding[dst_idx] = kernel_data[src_idx];
       }
     }
@@ -212,16 +224,31 @@ int InnerProductLayerCL<Dtype>::ForwardReshapeCL() {
 
 template <class Dtype>
 void InnerProductLayerCL<Dtype>::FinetuneKernel() {
+    std::string cur_kname;
+    std::string cur_kstr;
+    uint32_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     uint32_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    this->channel_group_size = this->_top_blobs[this->_top[0]]->channel_grp();
-    this->global_work_size[2] = padded_output_c / this->channel_group_size;
 
-    std::string cur_kname = this->cl_kernel_names[0];
-    std::string cur_kstr = this->cl_kernel_symbols[0];
+    int group_size = 4;
+    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
+      group_size = 16;
+    } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
+      group_size = 8;
+    }
+
+    cur_kname = this->cl_kernel_names[0];
+    cur_kstr = this->cl_kernel_symbols[0];
+    this->global_work_size[2] = padded_output_c / group_size;
+    this->channel_grp_size = group_size;
+
     this->cl_kernel_names.clear();
     this->cl_kernel_symbols.clear();
     this->cl_kernel_names.push_back(cur_kname);
     this->cl_kernel_symbols.push_back(cur_kstr);
+
+    std::ostringstream ss;
+    ss << group_size;
+    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
 }
 
 template <class Dtype>

@@ -86,8 +86,9 @@ int DirectConvLayerCL<Dtype>::InitCL()
 template <class Dtype>
 int DirectConvLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
-    ss << this->channel_group_size;
+    ss << out_channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
+    //this->build_options.push_back("-DDATA_TYPE=half");
     if(std::is_same<Dtype, uint16_t>::value)
       this->build_options.push_back("-DDATA_TYPE=half");
     else
@@ -111,7 +112,9 @@ int DirectConvLayerCL<Dtype>::SetKernelParameters()
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t in_real_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
 
-    size_t N = this->channel_group_size;
+    //size_t c_grp_size = this->in_channel_grp_size;
+    size_t c_grp_size = 1;
+    size_t n_grp_size = this->out_channel_grp_size;
     size_t w_num = this->_weight_blobs[0]->num();
     size_t w_channels = this->_weight_blobs[0]->channels();
     size_t w_hw = this->_weight_blobs[0]->height() * this->_weight_blobs[0]->width();
@@ -129,19 +132,34 @@ int DirectConvLayerCL<Dtype>::SetKernelParameters()
       for (int i = 0; i < w_num; ++i) {
         for (int j = 0; j < w_hw; ++j) {
           // int dst_idx = j * this->_weight_blobs[0]->get_num_padding() + i;
-          int dst_idx = (i / N * w_hw + j) * N + i % N;
+          int dst_idx = (i / this->in_channel_grp_size * w_hw + j)
+                        * this->in_channel_grp_size
+                        + i % this->in_channel_grp_size;
           int src_idx = i * w_hw + j;
           weight_padding[dst_idx] = this->kernel_data[src_idx];
         }
       }
     }
     else {
-      auto channel_groups = this->_weight_blobs[0]->get_channels_padding() / N;
+      // for (int i = 0; i < w_num; ++i) {
+      //     for (int j = 0; j < w_hw; ++j) {
+      //         for (int k = 0; k < w_channels; ++k) {
+      //             int dst_idx = (i * w_hw + j) * this->_weight_blobs[0]->get_channels_padding() + k;
+      //             int src_idx = (i * this->_weight_blobs[0]->channels() + k) * w_hw + j;
+      //             weight_padding[dst_idx] = kernel_data[src_idx];
+      //         }
+      //     }
+      // }
+
       for (int i = 0; i < w_num; ++i) {
-        for (int j = 0; j < w_channels; ++j) {
-          for (int k = 0; k < w_hw; ++k) {
-            int src_idx = (i * w_channels + j) * w_hw + k;
-            int dst_idx = (((i / N * channel_groups + j / N) * w_hw + k) * N + j % N) * N + i % N;
+        for (int k = 0; k < w_channels; ++k) {
+          for (int j = 0; j < w_hw; ++j) {
+            int src_idx = (i * w_channels + k) * w_hw + j;
+            int dst_idx = (i / n_grp_size) * w_hw * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
+                          j * this->_weight_blobs[0]->get_channels_padding() * n_grp_size +
+                          ( k / c_grp_size ) * n_grp_size * c_grp_size +
+                          ( i % n_grp_size ) * c_grp_size +
+                          k % c_grp_size;
             weight_padding[dst_idx] = this->kernel_data[src_idx];
           }
         }
@@ -226,7 +244,9 @@ int DirectConvLayerCL<Dtype>::ForwardReshapeCL()
 
     int param_idx = this->is_dw ? 5 : 6;
     cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    LOGD("data_size 1 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(0, *input_mem));
+    LOGD("data_size 2 %d", this->_bottom_blobs[this->_bottom[0]]->data_size());
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->output_height));
@@ -266,7 +286,7 @@ int DirectConvLayerCL<Dtype>::ForwardCL()
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
-
+    
     cl::Event profileEvent = this->events[0];
     double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
     double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
@@ -295,15 +315,27 @@ int DirectConvLayerCL<Dtype>::ForwardCL()
 template <class Dtype>
 void DirectConvLayerCL<Dtype>::FinetuneKernel()
 {
+    std::string cur_kname;
+    std::string cur_kstr;
+    std::string cur_func;
+    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    this->channel_group_size = this->_top_blobs[this->_top[0]]->channel_grp();
-    this->global_work_size[2] = padded_output_c / this->channel_group_size;
+
+    int group_size = 4;
+    if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
+      group_size = 8;
+    }
 
     int kernel_idx = this->is_dw ? 1 : 0;
     int func_idx = this->is_dw ? 1 : 0;
-    std::string cur_kname = this->cl_kernel_names[kernel_idx];
-    std::string cur_kstr = this->cl_kernel_symbols[kernel_idx];
-    std::string cur_func = this->cl_kernel_functions[func_idx];
+    cur_kname = this->cl_kernel_names[kernel_idx];
+    cur_kstr = this->cl_kernel_symbols[kernel_idx];
+    cur_func = this->cl_kernel_functions[func_idx];
+
+    this->global_work_size[2] = padded_output_c / group_size;
+    this->in_channel_grp_size = group_size;
+    this->out_channel_grp_size = group_size;
+
     this->cl_kernel_names.clear();
     this->cl_kernel_symbols.clear();
     this->cl_kernel_functions.clear();

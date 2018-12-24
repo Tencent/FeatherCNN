@@ -150,7 +150,7 @@ class OpenCLLibrary final {
                                                        cl_int *,
                                                        cl_int *);
 
-  using clCreateProgramWithBuiltInKernelsFunc =
+  using clCreateProgramWithBuiltInKernelsFunc = 
       cl_program (*) (cl_context, cl_uint, const cl_device_id *, const char *, cl_int *);
 
   using clRetainContextFunc = cl_int (*)(cl_context context);
@@ -338,7 +338,7 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   do {                                                           \
     void *ptr = dlsym(handle, #func);                            \
     if (ptr == nullptr) {                                        \
-      LOGI("Failed to load %s from %s", #func, path.c_str());    \
+      LOGE("Failed to load %s from %s", #func, path.c_str());    \
       continue;                                                  \
     }                                                            \
     func = reinterpret_cast<func##Func>(ptr);                    \
@@ -363,9 +363,9 @@ void *OpenCLLibrary::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clRetainContext);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetContextInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
-  MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBuiltInKernels);
+MACE_CL_ASSIGN_FROM_DLSYM(clCreateProgramWithBuiltInKernels);
   MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueue);
-  MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
+MACE_CL_ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
   MACE_CL_ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
   MACE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
   MACE_CL_ASSIGN_FROM_DLSYM(clEnqueueMapImage);

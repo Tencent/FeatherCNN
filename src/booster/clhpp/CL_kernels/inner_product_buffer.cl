@@ -1,14 +1,14 @@
 #include <common.h>
 
 // N = 4, 8, or 16, which is the channel group size.
-__kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [ic/N, h, w, N] */
-                            __global const DATA_TYPE* restrict weights, /* [oc/N, ic/N, h, w, N, N] */
-#ifdef BIAS                                                                                /* i, o */
+__kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [h, w, ic] */
+                            __global const DATA_TYPE* restrict weights, /* [oc/N, h, w, [ic, N, 1]] */
+#ifdef BIAS
                             __global const DATA_TYPE* restrict bias,    /* [oc] */
 #endif
                             __global DATA_TYPE* restrict output,        /* [oc] */
-                            __private const int input_channels,         /* a multiple of N */
-                            __private const int output_channels,        /* a multiple of N */
+                            __private const int input_channels,         /* a multiple of 4 */
+                            __private const int output_channels,        /* a multiple of 4 */
                             __private const int input_height,
                             __private const int input_width) {
   const int out_channel_group_idx = get_global_id(2);
@@ -24,9 +24,10 @@ __kernel void inner_product(__global const DATA_TYPE* restrict input,   /* [ic/N
 #else
   DATA_TYPEN out_val = 0;
 #endif
-  for (int in_channel_idx = 0; in_channel_idx != input_channels; in_channel_idx += N) {
-    for (int in_height_idx = 0; in_height_idx != input_height; ++in_height_idx) {
-      for (int in_width_idx = 0; in_width_idx != input_width; ++in_width_idx) {
+  for (int in_height_idx = 0; in_height_idx != input_height; ++in_height_idx) {
+    for (int in_width_idx = 0; in_width_idx != input_width; ++in_width_idx) {
+#pragma unroll
+      for (int in_channel_idx = 0; in_channel_idx != input_channels; in_channel_idx += N) {
         in_val = VLOADN(0, &input[in_val_idx]);
         in_val_idx += N;
         
