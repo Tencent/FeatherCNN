@@ -37,10 +37,6 @@ int NAIVE_Init_CL(std::vector<std::string>& cl_kernel_names,
     return 0;
 }
 
-int NAIVE_Forward_CL()
-{
-    return 0;
-}
 
 template <typename Dtype>
 int NAIVE_Weight_Reform_CL(const ConvParam param,
@@ -85,10 +81,6 @@ int DEPTHWISE_Init_CL(std::vector<std::string>& cl_kernel_names,
     return 0;
 }
 
-int DEPTHWISE_Forward_CL()
-{
-    return 0;
-}
 
 template <typename Dtype>
 int DEPTHWISE_Weight_Reform_CL(const ConvParam param,
@@ -112,7 +104,48 @@ int DEPTHWISE_Weight_Reform_CL(const ConvParam param,
     return 0;
 }
 
+int BOTH_Forward_CL(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Kernel> kernels, size_t gws[3], size_t lws[3], std::string k_name)
+{
+#ifdef TIMING_CL
+    cmd_q.finish();
+    timespec tpstart, tpend;
+    clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
+    int error_num = cmd_q.enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+
+    event.wait();
+    clock_gettime(CLOCK_MONOTONIC, &tpend);
+    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, k_name.c_str());
+
+    cl::Event profileEvent = event;
+    double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
+    double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
+    double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    double stop_nanos_   = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    double submit_kerel_time = (submit_nanos_ - queued_nanos_) / 1000.0 / 1000.0;
+    double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
+    double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+    LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
+     this->name().c_str(), k_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+#else
+    int error_num = cmd_q.enqueueNDRangeKernel(
+        kernels[0], cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+#endif
+    return 0;
+}
 
 int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam param, CLBuffers buffers, std::vector<cl::Kernel> kernels, bool is_reshape)
 {
@@ -224,13 +257,13 @@ int ConvBoosterCL<Dtype>::SetFuncs()
     {
     case NAIVE:
         this->Init = NAIVE_Init_CL;
-        this->Forward = NAIVE_Forward_CL;
+        this->Forward = BOTH_Forward_CL;
         this->WeightReform = NAIVE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         return 0;
     case DEPTHWISE:
         this->Init = DEPTHWISE_Init_CL;
-        this->Forward = DEPTHWISE_Forward_CL;
+        this->Forward = BOTH_Forward_CL;
         this->WeightReform = DEPTHWISE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         return 0;

@@ -144,7 +144,7 @@ public:
   typedef int (*INIT_FUNC_CL)(std::vector<std::string>& cl_kernel_names,
           std::vector<std::string>& cl_kernel_symbols,
           std::vector<std::string>& cl_kernel_functions);
-  typedef int (*FORWARD_FUNC_CL)();
+  typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Kernel> kernels, size_t gws[3], size_t lws[3], std::string k_name);
   typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam param, size_t n_grp_size, size_t c_grp_size, const Dtype* weight, Dtype* weight_reformed);
   typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam param, CLBuffers buffers, std::vector<cl::Kernel> kernels, bool is_reshape);
 
