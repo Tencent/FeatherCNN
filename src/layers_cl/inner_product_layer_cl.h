@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include <CL/opencl_kernels.h>
+#include <booster/opencl_kernels.h>
 #include <assert.h>
 #include <stdio.h>
 #include <vector>

@@ -5,6 +5,12 @@ file(GLOB CL_HEADERS ./*.h)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O3 -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -Wno-format -std=c++11 -Wno-unused-parameter")
 
+if(COMPILE_OPENCL)
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DFEATHER_OPENCL")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DFEATHER_OPENCL")
+	#add_library(booster_cl_obj OBJECT ${LAYER_CL_SRC} ${LAYER_CL_HEADERS})
+endif()
+
 add_library(booster_cl_obj OBJECT ${CL_SRC} ${CL_HEADERS})
 #add_library(arm_backend STATIC ${AVX_SRC} ${AVX_HEADERS})
 

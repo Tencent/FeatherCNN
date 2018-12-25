@@ -15,7 +15,7 @@
 // Booster is the standalone backend of FeatherCNN, in order to facilitate unit testing
 // and multi-purpose deployment. I am currently focusing on the fast convolution kernels,
 // and will pack other operators as well. This backend library is now supporting
-// AVX and Neon, and is going to supoort OpenCL/GLES in the future. 
+// AVX and Neon, and is going to supoort OpenCL/GLES in the future.
 // Booster won't grow up into a hugh and abstract lib. I'll keep it simple and stupid.
 // -- Haidong Lan @ Tencent AI Platform, 08/30/2018
 
@@ -23,6 +23,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
+#include <vector>
+#ifdef FEATHER_OPENCL
+#include "CLHPP/clhpp_runtime.hpp"
+#endif
 
 namespace booster{
 
@@ -40,7 +45,8 @@ enum ActivationType{
     ReLU,
 };
 
-struct ConvParam{
+
+struct ConvParam {
     int output_channels;
     int input_channels;
     int input_h;
@@ -58,6 +64,11 @@ struct ConvParam{
     int group;
     bool bias_term;
     ActivationType activation;
+#ifdef FEATHER_OPENCL
+    int oc_padded;
+    int ic_padded;
+#endif
+
     void AssignOutputDim()
     {
         //Validate default values
@@ -93,7 +104,7 @@ struct ConvParam{
 };
 
 typedef int (*GET_BUFFER_SIZE_FUNC)(ConvParam *param, int* buffer_size, int* processed_kernel_size);
-typedef int (*INIT_FUNC)(ConvParam *param, float* processed_kernel, float* kernel); 
+typedef int (*INIT_FUNC)(ConvParam *param, float* processed_kernel, float* kernel);
 typedef int (*FORWARD_FUNC)(ConvParam *param, float* output, float* input, float* kernel, float* buffer, float* bias_arr);
 
 //ConvBooster doesn't allocate any memory.
@@ -112,4 +123,47 @@ public:
 private:
     ConvAlgo algo;
 };
+
+#ifdef FEATHER_OPENCL
+
+struct CLBuffers{
+    cl::Buffer* input_mem;
+    cl::Buffer* output_mem;
+    cl::Buffer* weight_mem;
+    cl::Buffer* bias_mem;
+    cl::Buffer* input_trans_mem;
+    cl::Buffer* out_trans_mem;
+};
+
+
+template <class Dtype>
+class ConvBoosterCL
+{
+public:
+
+  typedef int (*INIT_FUNC_CL)(std::vector<std::string>& cl_kernel_names,
+          std::vector<std::string>& cl_kernel_symbols,
+          std::vector<std::string>& cl_kernel_functions);
+  typedef int (*FORWARD_FUNC_CL)();
+  typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam param, size_t n_grp_size, size_t c_grp_size, const Dtype* weight, Dtype* weight_reformed);
+  typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam param, CLBuffers buffers, std::vector<cl::Kernel> kernels, bool is_reshape);
+
+
+  ConvBoosterCL();
+  ~ConvBoosterCL(){}
+  int SelectAlgo(ConvParam* param);
+  int ForceSelectAlgo(ConvAlgo algo);
+  int SetFuncs();
+  size_t GetWeightSize();
+  INIT_FUNC_CL Init;
+  FORWARD_FUNC_CL Forward;
+  WEIGHT_REFORM_FUNC_CL WeightReform;
+  SET_CONV_KERNEL_PARAMS_CL SetConvKernelParams;
+private:
+  ConvAlgo algo;
+  size_t weight_size;
+
+};
+#endif
+
 };

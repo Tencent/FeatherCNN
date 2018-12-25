@@ -17,7 +17,8 @@
 #include "../feather_generated.h"
 #include "../layer.h"
 #include "blob.h"
-#include <CL/opencl_kernels.h>
+#include <booster/opencl_kernels.h>
+#include <booster/booster.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -26,53 +27,28 @@ namespace feather {
 //#define USE_LEGACY_SGEMM
 
 template <class Dtype>
-class DirectConvLayerCL: public Layer<Dtype> {
+class ConvLayerCL: public Layer<Dtype> {
 public:
-  DirectConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
+  ConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
 
-    int InitCL();
     virtual int SetBuildOptions();
     virtual int SetWorkSize();
     virtual int ForwardCL();
     virtual int ForwardReshapeCL();
     virtual int SetKernelParameters();
     void FinetuneKernel();
-    inline void AssignOutputSize();
     int GenerateTopBlobs();
     int Fuse(Layer<Dtype> *next_layer);
 
 private:
-    bool fuse_relu;
     uint32_t in_channel_grp_size;
     uint32_t out_channel_grp_size;
+    booster::ConvBoosterCL<Dtype> conv_booster;
+    booster::ConvParam conv_param;
 
-    uint32_t input_channels;
-    uint32_t input_width;
-    uint32_t input_height;
-
-    uint32_t output_channels;
-    uint32_t output_width;
-    uint32_t output_height;
-
-    uint32_t kernel_width;
-    uint32_t kernel_height;
-
-    uint32_t stride_width;
-    uint32_t stride_height;
-
-    uint32_t padding_left;
-    uint32_t padding_right;
-    uint32_t padding_top;
-    uint32_t padding_bottom;
-
-    uint32_t group;
-
-    bool is_dw;
-
-    bool bias_term;
-
-    Dtype *kernel_data;
     Dtype *bias_data;
+    Dtype *kernel_data;
+    //float *processed_kernel;
 
 };
 }; // namespace feather

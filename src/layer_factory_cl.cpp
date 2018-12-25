@@ -24,7 +24,7 @@
 
 
 #include <layers_cl/input_layer_cl.h>
-#include <layers_cl/direct_conv_layer_cl.h>
+#include <layers_cl/conv_layer_cl.h>
 #include <layers_cl/pooling_layer_cl.h>
 #include <layers_cl/relu_layer_cl.h>
 #include <layers_cl/elewise_layer_cl.h>
@@ -33,7 +33,7 @@
 
 namespace feather
 {
-    
+
 template <class Dtype>
 Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
@@ -43,7 +43,7 @@ Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParamete
 template <class Dtype>
 Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
 {
-    return (Layer<Dtype> *) new DirectConvLayerCL<Dtype>(layer_param, rt_param);
+    return (Layer<Dtype> *) new ConvLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
