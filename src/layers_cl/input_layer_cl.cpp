@@ -164,8 +164,9 @@ int InputLayerCL<Dtype>::SetKernelParameters() {
     LOGE("Failed setting normalinit OpenCL kernels[1] arguments. %s: %s", __FILE__, __LINE__);
     return -1;
   }
-  this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
-  this->FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
+  this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+  // this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+  // this->FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
   return 0;
 }
 
@@ -298,7 +299,7 @@ int InputLayerCL<Dtype>::RunKernel(int type) {
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
   LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
-  
+
   cl::Event profileEvent = this->events[0];
   double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
   double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();

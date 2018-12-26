@@ -153,7 +153,9 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters() {
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
 
-    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], 1, 1, this->global_work_size, this->local_work_size);
+
+    // this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     if (!set_kernel_arg_success) {
       LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
       return 1;
@@ -183,7 +185,7 @@ int InnerProductLayerCL<Dtype>::ForwardCL() {
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
     LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
-    
+
     cl::Event profileEvent = this->events[0];
     double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
     double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();

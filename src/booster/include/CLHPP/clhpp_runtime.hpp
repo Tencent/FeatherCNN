@@ -57,6 +57,11 @@ public:
   int GetMaxImage2DSize(size_t& m_height, size_t& m_width);
   int GetKernelMaxWorkGroupSize(const cl::Kernel &kernel, uint64_t& size);
   int GetKernelWaveSize(const cl::Kernel &kernel, uint64_t& size);
+  int FineTuneGroupSize(const cl::Kernel &kernel,
+                                      const size_t &height,
+                                      const size_t &width,
+                                      size_t *gws,
+                                      size_t *lws);
 
   cl::Context &context() const
   {

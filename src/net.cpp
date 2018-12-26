@@ -385,6 +385,11 @@ int Net<Dtype>::Forward(float* input, int height, int width)
                 LOGE("Unsupported device type");
                 return -1;
         }
+#ifdef LAYER_TIMING
+        clock_gettime(CLOCK_MONOTONIC, &tpend);
+        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+#endif
     }
     return 0;
 }

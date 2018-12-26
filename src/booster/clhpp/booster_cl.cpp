@@ -104,7 +104,7 @@ int DEPTHWISE_Weight_Reform_CL(const ConvParam param,
     return 0;
 }
 
-int BOTH_Forward_CL(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Kernel> kernels, size_t gws[3], size_t lws[3], std::string k_name)
+int BOTH_Forward_CL(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Kernel> kernels, size_t gws[3][3], size_t lws[3][3], std::string k_name)
 {
 #ifdef TIMING_CL
     cmd_q.finish();
@@ -112,8 +112,8 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Ker
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
     int error_num = cmd_q.enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+        kernels[0], cl::NullRange, cl::NDRange(gws[0][0], gws[0][1], gws[0][2]),
+        cl::NDRange(lws[0][0], lws[0][1], lws[0][2]), nullptr, &event);
 
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel.");
@@ -137,8 +137,8 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q, cl::Event event, std::vector<cl::Ker
      this->name().c_str(), k_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 #else
     int error_num = cmd_q.enqueueNDRangeKernel(
-        kernels[0], cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, nullptr);
+        kernels[0], cl::NullRange, cl::NDRange(gws[0][0], gws[0][1], gws[0][2]),
+        cl::NDRange(lws[0][0], lws[0][1], lws[0][2]), nullptr, nullptr);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the conv kernel.");
       return -1;
@@ -192,6 +192,26 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam param, CLBuffers buffers, std
         }
 
     }
+    return 0;
+}
+
+int BOTH_Set_Conv_Work_Size_CL(const ConvParam param, size_t conv_gws[3][3], size_t conv_lws[3][3], std::vector<cl::Kernel> kernels, clhpp_feather::OpenCLRuntime* cl_runtime)
+{
+    int c_blk_size = 4;
+    int h_lws = param.output_h > 32 ? 16 : 8;
+    int w_lws = param.output_w > 32 ? 16 : 8;
+    if (param.ic_padded % 8 == 0 && param.oc_padded % 8 == 0) {
+      c_blk_size = 8;
+    }
+
+    conv_gws[0][0] = (param.output_h / h_lws + !!(param.output_h % h_lws)) * h_lws;
+    conv_gws[0][1] = (param.output_w / w_lws + !!(param.output_w % w_lws)) * w_lws;
+    conv_gws[0][2] = param.oc_padded / c_blk_size;
+
+    conv_lws[0][0] = h_lws;
+    conv_lws[0][1] = w_lws;
+    conv_lws[0][2] = (conv_gws[0][2] > 4 && conv_gws[0][2] % 4 == 0) ? 4 : 1;
+    cl_runtime->FineTuneGroupSize(kernels[0], param.output_h, param.output_w, conv_gws[0], conv_lws[0]);
     return 0;
 }
 
@@ -260,12 +280,14 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->Forward = BOTH_Forward_CL;
         this->WeightReform = NAIVE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
+        this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
         return 0;
     case DEPTHWISE:
         this->Init = DEPTHWISE_Init_CL;
         this->Forward = BOTH_Forward_CL;
         this->WeightReform = DEPTHWISE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
+        this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
         return 0;
     default:
         LOGE("This algo is not supported on GPU.");

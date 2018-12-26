@@ -59,7 +59,7 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
 template <class Dtype>
 int ConvLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
-    ss << out_channel_grp_size;
+    ss << channel_grp_size;
     this->build_options.push_back("-DN=" + ss.str());
     //this->build_options.push_back("-DDATA_TYPE=half");
     if(std::is_same<Dtype, uint16_t>::value)
@@ -86,7 +86,7 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::SetKernelParameters()
 {
     int error_num;
-    size_t n_grp_size = this->out_channel_grp_size;
+    size_t n_grp_size = this->channel_grp_size;
     size_t real_weight_size = this->conv_booster.GetWeightSize();
     std::vector<Dtype> weight_reformed(real_weight_size, 0);
     this->conv_booster.WeightReform(this->conv_param,
@@ -121,8 +121,8 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     buffers.input_trans_mem = nullptr;
     buffers.out_trans_mem = nullptr;
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, false);
+    this->conv_booster.SetConvWorkSize(this->conv_param, conv_gws, conv_lws, this->kernels, this->rt_param->cl_runtime());
 
-    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
 }
 
@@ -134,7 +134,6 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
         this->conv_param.input_w == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
 
-    bool set_kernel_arg_success = true;
     this->conv_param.input_h = this->_bottom_blobs[this->_bottom[0]]->height();
     this->conv_param.input_w = this->_bottom_blobs[this->_bottom[0]]->width();
 
@@ -148,34 +147,18 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, true);
-    this->SetWorkSize();
-    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->conv_booster.SetConvWorkSize(this->conv_param, conv_gws, conv_lws, this->kernels, this->rt_param->cl_runtime());
     return this->ForwardCL();
 }
 
 template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardCL()
 {
-    this->conv_booster.Forward(this->rt_param->command_queue(), this->events[0], this->kernels, this->global_work_size, this->local_work_size, this->cl_kernel_names[0]);
+
+    this->conv_booster.Forward(this->rt_param->command_queue(), this->events[0], this->kernels, this->conv_gws, this->conv_lws, this->cl_kernel_names[0]);
     return 0;
 }
 
-template <class Dtype>
-void ConvLayerCL<Dtype>::FinetuneKernel()
-{
-
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-
-    int group_size = 4;
-    if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      group_size = 8;
-    }
-
-    this->global_work_size[2] = padded_output_c / group_size;
-    this->in_channel_grp_size = group_size;
-    this->out_channel_grp_size = group_size;
-}
 
 template <class Dtype>
 int ConvLayerCL<Dtype>::GenerateTopBlobs() {
@@ -186,49 +169,20 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     this->conv_param.input_w = bottom_blob->width();
     this->conv_param.input_h = bottom_blob->height();
     this->conv_param.input_channels = bottom_blob->channels();
-    if (this->conv_param.stride_w == 0 || this->conv_param.stride_h == 0)
-    {
-        this->conv_param.stride_w = 1;
-        this->conv_param.stride_h = 1;
-    }
     this->conv_param.AssignOutputDim();
-    // AssignOutputSize();
-    if(this->conv_param.group > 1 && this->conv_param.group == this->conv_param.input_channels)
-    {
-        this->conv_param.output_channels = this->conv_param.group;
-    }
-     this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->conv_param.output_channels, this->conv_param.output_h, this->conv_param.output_w);
-     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
-    FinetuneKernel();
-    SetWorkSize();
+    this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->conv_param.output_channels, this->conv_param.output_h, this->conv_param.output_w);
+    this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
     this->conv_param.oc_padded = this->_top_blobs[this->_top[0]]->get_channels_padding();
     this->conv_param.ic_padded = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    this->channel_grp_size = 4;
+    if (this->conv_param.ic_padded % 8 == 0 && this->conv_param.oc_padded % 8 == 0) {
+      this->channel_grp_size = 8;
+    }
+
     this->conv_booster.SelectAlgo(&this->conv_param);
     this->conv_booster.Init(this->cl_kernel_names, this->cl_kernel_symbols, this->cl_kernel_functions);
-    return 0;
-}
-
-template <class Dtype>
-int ConvLayerCL<Dtype>::SetWorkSize()
-{
-    if (this->conv_param.output_w > 32) this->group_size_w = 16;
-    if (this->conv_param.output_h > 32) this->group_size_h = 16;
-
-    this->global_work_size[0] = (this->conv_param.output_h / this->group_size_h + !!(this->conv_param.output_h % this->group_size_h)) * this->group_size_h;
-    this->global_work_size[1] = (this->conv_param.output_w / this->group_size_w  + !!(this->conv_param.output_w % this->group_size_w)) * this->group_size_w;
-    this->local_work_size[0] = this->group_size_h;
-    this->local_work_size[1] = this->group_size_w;
-    // int work_size_w = this->global_work_size[1] / 2;
-    // if(work_size_w >= this->local_work_size[1] && work_size_w % this->local_work_size[1] == 0){
-    //   this->global_work_size[1] = work_size_w;
-    // }
-    if (this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
-      this->local_work_size[2] = 4;
-    } else {
-      this->local_work_size[2] = 1;
-    }
     return 0;
 }
 

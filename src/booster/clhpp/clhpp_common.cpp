@@ -168,7 +168,7 @@ int buildProgramFromSource(const cl::Context& context,
                            const cl::Device & device,
                            cl::Program& program,
                            const std::string& kernel_code,
-                           std::string build_opts, 
+                           std::string build_opts,
                            std::string kernelAddr)
 {
   cl_int error_num;
@@ -220,7 +220,7 @@ int buildProgramFromPrecompiledBinary( const cl::Context& context,
                                        const cl::Device & device,
                                        cl::Program& program,
                                        const std::string& kernel_code,
-                                       std::string build_opts, 
+                                       std::string build_opts,
                                        std::string kernelAddr)
 {
   if(!fileIsExists(kernelAddr))
@@ -266,8 +266,8 @@ int buildProgram( const cl::Context& context,
                   const cl::Device & device,
                   cl::Program& program,
                   const std::string& kernel_code,
-                  std::string build_opts, 
-                  std::string kernelAddr) 
+                  std::string build_opts,
+                  std::string kernelAddr)
 {
   if(kernelAddr == "no_save")
     return buildProgramFromSource(context, device, program, kernel_code, build_opts);
@@ -307,45 +307,4 @@ int buildProgramFromSource(const cl::Context& context,
     }
     return 0;
 
-
-    // cl_int error_num;
-    // const char* kernel_cstr = kernel_code.c_str();
-    // program = clCreateProgramWithSource(context, 1, (const char **) & kernel_cstr, NULL, &error_num);
-    // if (error_num){
-    //     LOGE("error code in create program with source is: %d", error_num);
-    //     return 1;
-    // }
-
-    // build_opts += " -cl-mad-enable -cl-fast-relaxed-math";
-    // error_num = clBuildProgram(program, 0, NULL, build_opts.c_str(), NULL, NULL);
-    // if (error_num){
-    //     char *buff_erro;
-    //     cl_int errcode;
-    //     size_t build_log_len;
-    //     errcode = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_len);
-    //     if (errcode) {
-    //         LOGE("clGetProgramBuildInfo failed at line: %d", __LINE__);
-    //         return -1;
-    //     }
-
-    //     buff_erro = (char *)malloc(build_log_len);
-    //     if (!buff_erro) {
-    //         LOGE("malloc failed at line: %d",__LINE__);
-    //         return -1;
-    //     }
-
-    //     errcode = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, build_log_len, buff_erro, NULL);
-    //     if (errcode) {
-    //         LOGE("clGetProgramBuildInfo failed at line: %d", __LINE__);
-    //         return -1;
-    //     }
-
-    //     LOGE("Build log: %s" ,buff_erro); //Be careful with  the fprint
-    //     free(buff_erro);
-    //     LOGE("clBuildProgram failed %d", error_num);
-    //     return -1;
-    // }
-    // return 0;
 }
-
-

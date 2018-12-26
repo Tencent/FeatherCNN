@@ -314,43 +314,43 @@ int Layer<Dtype>::SetWorkSize()
     return -1;
 }
 
-template<class Dtype>
-int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& height, const size_t& width)
-{
-    //global_work_size HWC
-    //local_work_size  HWC
-    uint64_t current_work_group_size = 0;
-    uint64_t kernel_work_group_size = 0;
-
-    if (rt_param->cl_runtime()->GetDeviceMaxWorkGroupSize(current_work_group_size)) {
-        LOGE("Get kernel work group info failed.");
-        return -1;
-    }
-
-    if (rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(kernel, kernel_work_group_size)) {
-        LOGE("Get kernel work group size failed.");
-        return -1;
-    }
-
-    uint64_t total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
-    uint64_t valid_min_wgs = std::min(current_work_group_size,  kernel_work_group_size);
-    int flag = 0;
-    while( total_lws > valid_min_wgs){
-        if(local_work_size[2] > 1 && (flag % 3) == 0){
-            local_work_size[2] /= 2;
-        } else if(local_work_size[1] > 1 && (flag % 3) == 1){
-            local_work_size[1] /= 2;
-        } else if(local_work_size[0] > 1 && (flag % 3) == 2){
-            local_work_size[0] /= 2;
-        }
-        flag++;
-        total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
-    }
-
-    this->global_work_size[0] = (height / local_work_size[0] + !!(height % local_work_size[0])) * local_work_size[0];
-    this->global_work_size[1] = (width / local_work_size[1]  + !!(width % local_work_size[1])) * local_work_size[1];
-    return 0;
-}
+// template<class Dtype>
+// int Layer<Dtype>::FineTuneGroupSize(const cl::Kernel& kernel, const size_t& height, const size_t& width)
+// {
+//     //global_work_size HWC
+//     //local_work_size  HWC
+//     uint64_t current_work_group_size = 0;
+//     uint64_t kernel_work_group_size = 0;
+//
+//     if (rt_param->cl_runtime()->GetDeviceMaxWorkGroupSize(current_work_group_size)) {
+//         LOGE("Get kernel work group info failed.");
+//         return -1;
+//     }
+//
+//     if (rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(kernel, kernel_work_group_size)) {
+//         LOGE("Get kernel work group size failed.");
+//         return -1;
+//     }
+//
+//     uint64_t total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
+//     uint64_t valid_min_wgs = std::min(current_work_group_size,  kernel_work_group_size);
+//     int flag = 0;
+//     while( total_lws > valid_min_wgs){
+//         if(local_work_size[2] > 1 && (flag % 3) == 0){
+//             local_work_size[2] /= 2;
+//         } else if(local_work_size[1] > 1 && (flag % 3) == 1){
+//             local_work_size[1] /= 2;
+//         } else if(local_work_size[0] > 1 && (flag % 3) == 2){
+//             local_work_size[0] /= 2;
+//         }
+//         flag++;
+//         total_lws = local_work_size[0] * local_work_size[1] * local_work_size[2];
+//     }
+//
+//     this->global_work_size[0] = (height / local_work_size[0] + !!(height % local_work_size[0])) * local_work_size[0];
+//     this->global_work_size[1] = (width / local_work_size[1]  + !!(width % local_work_size[1])) * local_work_size[1];
+//     return 0;
+// }
 
 template<class Dtype>
 int Layer<Dtype>::ForwardCL()

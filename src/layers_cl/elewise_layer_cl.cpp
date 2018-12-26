@@ -111,7 +111,7 @@ int EltwiseLayerCL<Dtype>::SetKernelParameters() {
   set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_width));
   set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_channels));
 
-  this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+  this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
     return -1;
@@ -178,7 +178,8 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL() {
     }
 
     this->SetWorkSize();
-    this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+    // this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return this->ForwardCL();
 }
 
@@ -204,7 +205,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL() {
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
   LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
-  
+
   cl::Event profileEvent = this->events[0];
   double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
   double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
@@ -215,7 +216,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL() {
   double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
   LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
    this->name().c_str(), this->cl_kernel_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
-  
+
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
           this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),

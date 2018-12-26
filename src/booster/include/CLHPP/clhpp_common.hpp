@@ -45,21 +45,21 @@ int buildProgramFromSource(const cl::Context& context,
                            const cl::Device & device,
                            cl::Program& program,
                            const std::string& kernel_code,
-                           std::string build_opts, 
+                           std::string build_opts,
                            std::string kernelAddr);
 
 int buildProgramFromPrecompiledBinary( const cl::Context& context,
                                        const cl::Device & device,
                                        cl::Program& program,
                                        const std::string& kernel_code,
-                                       std::string build_opts, 
+                                       std::string build_opts,
                                        std::string kernelAddr);
 
 int buildProgram( const cl::Context& context,
                   const cl::Device & device,
                   cl::Program& program,
                   const std::string& kernel_code,
-                  std::string build_opts, 
+                  std::string build_opts,
                   std::string kernelAddr);
 
 #endif

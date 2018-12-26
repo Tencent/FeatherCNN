@@ -206,5 +206,47 @@ int OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel, uint64_t& size) {
 
 
 
+int OpenCLRuntime::FineTuneGroupSize(const cl::Kernel& kernel,
+                                    const size_t& height,
+                                    const size_t& width,
+                                    size_t *gws,
+                                    size_t *lws)
+{
+    //gws HWC
+    //lws  HWC
+    uint64_t current_work_group_size = 0;
+    uint64_t kernel_work_group_size = 0;
+
+    if (this->GetDeviceMaxWorkGroupSize(current_work_group_size)) {
+        LOGE("Get kernel work group info failed.");
+        return -1;
+    }
+
+    if (this->GetKernelMaxWorkGroupSize(kernel, kernel_work_group_size)) {
+        LOGE("Get kernel work group size failed.");
+        return -1;
+    }
+
+    uint64_t total_lws = lws[0] * lws[1] * lws[2];
+    uint64_t valid_min_wgs = std::min(current_work_group_size,  kernel_work_group_size);
+    int flag = 0;
+    while( total_lws > valid_min_wgs){
+        if(lws[2] > 1 && (flag % 3) == 0){
+            lws[2] /= 2;
+        } else if(lws[1] > 1 && (flag % 3) == 1){
+            lws[1] /= 2;
+        } else if(lws[0] > 1 && (flag % 3) == 2){
+            lws[0] /= 2;
+        }
+        flag++;
+        total_lws = lws[0] * lws[1] * lws[2];
+    }
+
+    gws[0] = (height / lws[0] + !!(height % lws[0])) * lws[0];
+    gws[1] = (width / lws[1]  + !!(width % lws[1])) * lws[1];
+    return 0;
+}
+
+
 
 } //namespace cl_feather

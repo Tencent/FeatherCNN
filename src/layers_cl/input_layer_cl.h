@@ -91,7 +91,8 @@ public:
         return -1;
       }
       this->SetWorkSize();
-      this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+      this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+      // this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
       return 0;
   }
 
