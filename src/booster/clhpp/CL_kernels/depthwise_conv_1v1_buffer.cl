@@ -1,42 +1,42 @@
 #include <common.h>
 
 // N = 4, 8, or 16, which is the channel group size. 
-__kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   /* [ih, iw, c] */
-                                    __global const DATA_TYPE* restrict weights, /* [c/N, kh, kw, [N, 1]] */
+__kernel void convolution_depthwise(__global const DATA_TYPE* restrict in,     /* [ih, iw, c] */
+                                    __global const DATA_TYPE* restrict weight, /* [c/N, kh, kw, [N, 1]] */
 #ifdef BIAS
-                                    __global const DATA_TYPE* restrict bias,    /* [c] */
+                                    __global const DATA_TYPE* restrict bias,   /* [c] */
 #endif
-                                    __global DATA_TYPE* restrict output,        /* [oh, ow, c] */
-                                    __private const int channels,               /* a multiple of 4 */
-                                    __private const int input_height,
-                                    __private const int input_width,
-                                    __private const int output_height,
-                                    __private const int output_width,
+                                    __global DATA_TYPE* restrict out,          /* [oh, ow, c] */
+                                    __private const int channels,              /* a multiple of 4 */
+                                    __private const int in_height,
+                                    __private const int in_width,
+                                    __private const int out_height,
+                                    __private const int out_width,
                                     __private const int kernel_height,
                                     __private const int kernel_width,
                                     __private const int stride_height,
                                     __private const int stride_width,
-                                    __private const int padding_top,
-                                    __private const int padding_left) {
+                                    __private const int pad_top,
+                                    __private const int pad_left) {
   const int out_height_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
-  if (out_height_idx >= output_height || out_width_idx >= output_width) return;
+  if (out_height_idx >= out_height || out_width_idx >= out_width) return;
   const int channel_group_idx = get_global_id(2);
   const int channel_idx = mul24(channel_group_idx, N);
 
-  int in_height_beg = mad24(out_height_idx, stride_height, -padding_top);
+  int in_height_beg = mad24(out_height_idx, stride_height, -pad_top);
   int in_height_end = in_height_beg + kernel_height;
   const int kernel_height_beg_gap = select(0, -in_height_beg, in_height_beg < 0);
   in_height_beg = max(0, in_height_beg);
-  in_height_end = min(in_height_end, input_height);
-  int in_width_beg = mad24(out_width_idx, stride_width, -padding_left);
+  in_height_end = min(in_height_end, in_height);
+  int in_width_beg = mad24(out_width_idx, stride_width, -pad_left);
   int in_width_end = in_width_beg + kernel_width;
   const int kernel_width_beg_gap = select(0, -in_width_beg, in_width_beg < 0);
-  const int kernel_width_end_gap = select(0, in_width_end - input_width, in_width_end > input_width);
+  const int kernel_width_end_gap = select(0, in_width_end - in_width, in_width_end > in_width);
   in_width_beg = max(0, in_width_beg);
-  in_width_end = min(in_width_end, input_width);
-  const int in_width_gap_size = mul24(in_width_beg + input_width - in_width_end, channels);
-  int in_val_idx = mad24(mad24(in_height_beg, input_width, in_width_beg), 
+  in_width_end = min(in_width_end, in_width);
+  const int in_width_gap_size = mul24(in_width_beg + in_width - in_width_end, channels);
+  int in_val_idx = mad24(mad24(in_height_beg, in_width, in_width_beg), 
                          channels,
                          channel_idx);
 
@@ -58,8 +58,8 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
 #endif
   for (int in_height_idx = in_height_beg; in_height_idx != in_height_end; ++in_height_idx) {
     for (int in_width_idx = in_width_beg; in_width_idx != in_width_end; ++in_width_idx) {
-      in_val = VLOADN(0, &input[in_val_idx]);
-      kernel_val = VLOADN(0, &weights[kernel_val_idx]);
+      in_val = VLOADN(0, &in[in_val_idx]);
+      kernel_val = VLOADN(0, &weight[kernel_val_idx]);
       out_val = mad(in_val, kernel_val, out_val);
 
       in_val_idx += channels;
@@ -74,8 +74,8 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict input,   
   out_val = fmax(out_val, (DATA_TYPEN)0);
 #endif
 
-  const int out_val_idx = mad24(mad24(out_height_idx, output_width, out_width_idx), 
+  const int out_val_idx = mad24(mad24(out_height_idx, out_width, out_width_idx), 
                                 channels, 
                                 channel_idx);
-  VSTOREN(out_val, 0, &output[out_val_idx]);
+  VSTOREN(out_val, 0, &out[out_val_idx]);
 }

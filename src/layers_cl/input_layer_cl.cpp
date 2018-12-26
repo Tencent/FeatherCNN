@@ -85,7 +85,7 @@ int InputLayerCL<Dtype>::SetBuildOptions() {
     size_t input_channels = layer_blob->channels();
     std::ostringstream ss0;
     ss0 << input_channels;
-    this->build_options.push_back("-DINPUT_CHANNELS=" + ss0.str());
+    this->build_options.push_back("-DIN_CHANNELS=" + ss0.str());
     std::ostringstream ss1;
     ss1 << layer_blob->channel_grp();
     this->build_options.push_back("-DN=" + ss1.str());

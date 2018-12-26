@@ -70,7 +70,8 @@ void DiffBlobData(feather::Net<float>* cpu_net, feather::Net<Dtype>* gpu_net, co
 	    diff_sum += cur_diff;
         }
     }
-    printf("diff_sum %f\n", diff_sum);
+    std::string type_str = std::is_same<Dtype, uint16_t>::value ? "half" : "float";
+    printf("GPU<%s> diff_sum %f\n", type_str.c_str(), diff_sum);
 }
 
 template<typename Dtype>

@@ -1,50 +1,51 @@
 #include <common.h>
 
 // N = 4, 8, or 16, which is the channel group size. 
-__kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict input, /* [c, h, w] */
-                         __global DATA_TYPE* restrict output,         /* [h, w, (c+N-1)/N * N] */
+__kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] */
+                         __global DATA_TYPE* restrict out,         /* [h, w, (c+N-1)/N * N] */
                          __private const int height,
                          __private const int width) {
   const int height_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   if (height_idx >= height || width_idx >= width) return;
 
-#if INPUT_CHANNELS <= 4 /* common case */
+#if IN_CHANNELS <= 4 /* common case */
 
   int idx = mad24(height_idx, width, width_idx);
   const int out_val_idx = mul24(idx, N);
 
   IN_DATA_TYPEN val = 0;
-  val.s0 = input[idx];
-#if INPUT_CHANNELS >= 2
-  const int in_channel_size = mul24(height, width);
-  idx += in_channel_size;
-  val.s1 = input[idx];
-#if INPUT_CHANNELS >= 3
-  idx += in_channel_size;
-  val.s2 = input[idx];
-#if INPUT_CHANNELS == 4
-  idx += in_channel_size;
-  val.s3 = input[idx];
-#endif /* INPUT_CHANNELS == 4 */
-#endif /* INPUT_CHANNELS >= 3 */
-#endif /* INPUT_CHANNELS >= 2 */
-  VSTOREN(CONVERTN(val), 0, &output[out_val_idx]);
+  val.s0 = in[idx];
+#if IN_CHANNELS >= 2
+  const int height_x_width = mul24(height, width);
+  idx += height_x_width;
+  val.s1 = in[idx];
+#if IN_CHANNELS >= 3
+  idx += height_x_width;
+  val.s2 = in[idx];
+#if IN_CHANNELS == 4
+  idx += height_x_width;
+  val.s3 = in[idx];
+#endif /* IN_CHANNELS == 4 */
+#endif /* IN_CHANNELS >= 3 */
+#endif /* IN_CHANNELS >= 2 */
+  VSTOREN(CONVERTN(val), 0, &out[out_val_idx]);
 
-#else /* INPUT_CHANNELS > 4 */
+#else /* IN_CHANNELS > 4 */
 
   const int channel_group_idx = get_global_id(2);
   const int in_channel_beg = mul24(channel_group_idx, N);
-  const int channels_within_group = min(N, INPUT_CHANNELS - in_channel_beg);
+  const int channels_within_group = min(N, IN_CHANNELS - in_channel_beg);
   const int in_channel_end = in_channel_beg + channels_within_group;
-  const int in_channel_size = mul24(height, width);  
+  const int height_x_width = mul24(height, width);  
   const int height_width_idx = mad24(height_idx, width, width_idx);
-  int idx = mad24(in_channel_end, in_channel_size, height_width_idx);
+  int idx = mad24(in_channel_end, height_x_width, height_width_idx);
   IN_DATA_TYPEN val = 0;
-#define LOAD_INPUT(i)     \
-  idx -= in_channel_size; \
-  val.s##i = input[idx];
+#define LOAD_INPUT(i)    \
+  idx -= height_x_width; \
+  val.s##i = in[idx];
 
+  // load from back to front.
   switch (channels_within_group) {
 #if N == 16
     case 16:
@@ -83,9 +84,9 @@ __kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict input, /* [c, h, 
     case 1:
       LOAD_INPUT(0);
   }
-  const int output_channels = mul24((INPUT_CHANNELS+N-1)/N, N);
-  const int out_val_idx = mad24(height_width_idx, output_channels, in_channel_beg);
-  VSTOREN(CONVERTN(val), 0, &output[out_val_idx]);
+  const int out_channels = mul24((IN_CHANNELS+N-1)/N, N);
+  const int out_val_idx = mad24(height_width_idx, out_channels, in_channel_beg);
+  VSTOREN(CONVERTN(val), 0, &out[out_val_idx]);
 
 #endif
 }
