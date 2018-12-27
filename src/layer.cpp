@@ -246,23 +246,23 @@ template<class Dtype>
 int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map)
 {
 
-    if (cl_kernel_names.size() != cl_kernel_symbols.size()){
+    if (cl_program_names.size() != cl_kernel_sources.size()){
       LOGE("program str and names size not match.");
       return -1;
     }
-    int size = cl_kernel_names.size();
+    int size = cl_program_names.size();
     for (int i = 0; i < size; i++){
-        //LOGI("current program. %s", cl_kernel_names[i].c_str());
+        //LOGI("current program. %s", cl_program_names[i].c_str());
         cl::Program cur_program;
         std::string opt_str = "";
-        for (auto &opt : this->build_options) {
+        for (auto &opt : this->cl_build_options) {
           opt_str += " " + opt;
         }
-        std::string promap_key = this->cl_kernel_names[i] + opt_str;
+        std::string promap_key = this->cl_program_names[i] + opt_str;
 
         if (cl_program_map.find(promap_key) != cl_program_map.end()){
             cl_programs.push_back(cl_program_map[promap_key]);
-            //LOGI("exists current program. %s", cl_kernel_names[i].c_str());
+            //LOGI("exists current program. %s", cl_program_names[i].c_str());
             continue;
         }
 
@@ -278,7 +278,7 @@ int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_prog
         if (buildProgram(  this->rt_param->context(),
                            this->rt_param->device(),
                            cur_program,
-                           this->cl_kernel_symbols[i],
+                           this->cl_kernel_sources[i],
                            opt_str,
                            kernelAddr) ) {
             LOGE("Build program failed.");

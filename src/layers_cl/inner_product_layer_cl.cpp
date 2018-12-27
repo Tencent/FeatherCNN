@@ -36,18 +36,18 @@ InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_para
 template <class Dtype>
 int InnerProductLayerCL<Dtype>::InitCL() {
     std::string func_name = "inner_product";
-    this->cl_kernel_functions.push_back(func_name);
+    this->cl_kernel_names.push_back(func_name);
     std::string kernel_name_inner_product = "inner_product_buffer";
     auto it_source1 = booster::opencl_kernel_string_map.find("inner_product_buffer");
     std::string kernel_str_inner_product(it_source1->second.begin(),it_source1->second.end());
 
-    this->cl_kernel_names.push_back(kernel_name_inner_product);
-    this->cl_kernel_symbols.push_back(kernel_str_inner_product);
+    this->cl_program_names.push_back(kernel_name_inner_product);
+    this->cl_kernel_sources.push_back(kernel_str_inner_product);
 
     cl::Kernel kernel;
-    this->kernels.push_back(kernel);
+    this->cl_kernels.push_back(kernel);
     cl::Event event;
-    this->events.push_back(event);
+    this->cl_events.push_back(event);
 
     return 0;
 }
@@ -56,17 +56,17 @@ template <class Dtype>
 int InnerProductLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
     ss << channel_grp_size;
-    this->build_options.push_back("-DN=" + ss.str());
+    this->cl_build_options.push_back("-DN=" + ss.str());
     if(std::is_same<Dtype, uint16_t>::value)
-      this->build_options.push_back("-DDATA_TYPE=half");
+      this->cl_build_options.push_back("-DDATA_TYPE=half");
     else
-      this->build_options.push_back("-DDATA_TYPE=float");
+      this->cl_build_options.push_back("-DDATA_TYPE=float");
 
     if (bias_term) {
-      this->build_options.push_back("-DBIAS");
+      this->cl_build_options.push_back("-DBIAS");
     }
     if (fuse_relu) {
-      this->build_options.push_back("-DUSE_RELU");
+      this->cl_build_options.push_back("-DUSE_RELU");
     }
     return 0;
 }
@@ -129,10 +129,10 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters() {
     }
 
     /* build kernel */
-    //kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
-    this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+    //cl_kernels[0] = clCreateKernel(this->cl_programs[0], this->cl_kernel_names[0].c_str(), &error_num);
+    this->cl_kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_names[0].c_str(), &error_num);
     if (!checkSuccess(error_num)) {
-      LOGE("Failed to create innerProduct OpenCL kernels[0]. ");
+      LOGE("Failed to create innerProduct OpenCL cl_kernels[0]. ");
       return -1;
     }
 
@@ -142,22 +142,22 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters() {
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t use_relu = fuse_relu;
 
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *input_mem));
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *weight_mem));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *input_mem));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *weight_mem));
     if (bias_term) {
-      set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *this->_weight_blobs[1]->data_cl()));
+      set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *this->_weight_blobs[1]->data_cl()));
     }
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *output_mem));
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, b_channel_padding));
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, out_real_channels));
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_height));
-    set_kernel_arg_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->input_width));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *output_mem));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, b_channel_padding));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, out_real_channels));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, this->input_height));
+    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, this->input_width));
 
-    this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], 1, 1, this->global_work_size, this->local_work_size);
+    this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], 1, 1, this->global_work_size, this->local_work_size);
 
-    // this->FineTuneGroupSize(this->kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    // this->FineTuneGroupSize(this->cl_kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     if (!set_kernel_arg_success) {
-      LOGE("Failed setting inner product OpenCL kernels[0] arguments. ");
+      LOGE("Failed setting inner product OpenCL cl_kernels[0] arguments. ");
       return 1;
     }
     return 0;
@@ -171,22 +171,22 @@ int InnerProductLayerCL<Dtype>::ForwardCL() {
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
     // int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-    //     kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-    //     cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+    //     cl_kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+    //     cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &cl_events[0]);
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
-        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->events[0]);
+        this->cl_kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->cl_events[0]);
 
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the inner product kernel.");
       return -1;
     }
-    this->events[0].wait();
+    this->cl_events[0].wait();
     clock_gettime(CLOCK_MONOTONIC, &tpend);
     double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
+    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_program_names[0].c_str());
 
-    cl::Event profileEvent = this->events[0];
+    cl::Event profileEvent = this->cl_events[0];
     double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
     double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
     double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
@@ -195,11 +195,11 @@ int InnerProductLayerCL<Dtype>::ForwardCL() {
     double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
     double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
     LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
-     this->name().c_str(), this->cl_kernel_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+     this->name().c_str(), this->cl_program_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        this->kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        this->cl_kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
         cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
 
     if (!checkSuccess(error_num)) {
@@ -238,19 +238,19 @@ void InnerProductLayerCL<Dtype>::FinetuneKernel() {
       group_size = 8;
     }
 
-    cur_kname = this->cl_kernel_names[0];
-    cur_kstr = this->cl_kernel_symbols[0];
+    cur_kname = this->cl_program_names[0];
+    cur_kstr = this->cl_kernel_sources[0];
     this->global_work_size[2] = padded_output_c / group_size;
     this->channel_grp_size = group_size;
 
-    this->cl_kernel_names.clear();
-    this->cl_kernel_symbols.clear();
-    this->cl_kernel_names.push_back(cur_kname);
-    this->cl_kernel_symbols.push_back(cur_kstr);
+    this->cl_program_names.clear();
+    this->cl_kernel_sources.clear();
+    this->cl_program_names.push_back(cur_kname);
+    this->cl_kernel_sources.push_back(cur_kstr);
 
     std::ostringstream ss;
     ss << group_size;
-    this->build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
+    this->cl_build_options.push_back("-DCHANNEL_GROUP_SIZE=" + ss.str());
 }
 
 template <class Dtype>

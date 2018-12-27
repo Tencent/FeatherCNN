@@ -40,19 +40,17 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
     this->conv_param.activation = booster::None;
     assert(this->_weight_blobs.size() > 0);
 
-    if(this->conv_param.stride_w  == 0) this->conv_param.stride_w  = 1;
-    if(this->conv_param.stride_h == 0) this->conv_param.stride_h = 1;
-    if(this->conv_param.group == 0) this->conv_param.group = 1;
+    if (this->conv_param.stride_w  == 0) this->conv_param.stride_w = 1;
+    if (this->conv_param.stride_h == 0) this->conv_param.stride_h = 1;
+    if (this->conv_param.group == 0) this->conv_param.group = 1;
     if (this->conv_param.bias_term)
     {
         assert(this->_weight_blobs.size() == 2);
         this->bias_data = this->_weight_blobs[1]->data();
     }
 
-    cl::Kernel kernel;
-    this->kernels.push_back(kernel);
     cl::Event event;
-    this->events.push_back(event);
+    this->cl_events.push_back(event);
 }
 
 
@@ -60,19 +58,19 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::SetBuildOptions() {
     std::ostringstream ss;
     ss << channel_grp_size;
-    this->build_options.push_back("-DN=" + ss.str());
-    //this->build_options.push_back("-DDATA_TYPE=half");
-    if(std::is_same<Dtype, uint16_t>::value)
-      this->build_options.push_back("-DDATA_TYPE=half");
+    this->cl_build_options.push_back("-DN=" + ss.str());
+    //this->cl_build_options.push_back("-DDATA_TYPE=half");
+    if (std::is_same<Dtype, uint16_t>::value)
+      this->cl_build_options.push_back("-DDATA_TYPE=half");
     else
-      this->build_options.push_back("-DDATA_TYPE=float");
+      this->cl_build_options.push_back("-DDATA_TYPE=float");
 
     if (this->conv_param.bias_term) {
-      this->build_options.push_back("-DBIAS");
+      this->cl_build_options.push_back("-DBIAS");
     }
-    switch(this->conv_param.activation) {
+    switch (this->conv_param.activation) {
       case booster::ReLU:
-        this->build_options.push_back("-DUSE_RELU");
+        this->cl_build_options.push_back("-DUSE_RELU");
         break;
       case booster::None:
         break;
@@ -107,12 +105,6 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
       this->_weight_blobs[1]->Free();
     }
 
-    this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed to create conv OpenCL kernels[0]. ");
-      return 1;
-    }
-
     booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.weight_mem = this->_weight_blobs[0]->data_cl();
@@ -120,8 +112,8 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     buffers.bias_mem = this->_weight_blobs[1]->data_cl();
     buffers.input_trans_mem = nullptr;
     buffers.out_trans_mem = nullptr;
-    this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, false);
-    this->conv_booster.SetConvWorkSize(this->conv_param, this->gws, this->lws, this->kernels, this->rt_param->cl_runtime());
+    this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->cl_programs, this->cl_kernel_names, this->cl_kernels, false);
+    this->conv_booster.SetConvWorkSize(this->conv_param, this->cl_gws, this->cl_lws, this->cl_kernels, this->rt_param->cl_runtime());
 
     return 0;
 }
@@ -129,7 +121,6 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
 template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardReshapeCL()
 {
-
     if (this->conv_param.input_h == this->_bottom_blobs[this->_bottom[0]]->height() &&
         this->conv_param.input_w == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
@@ -146,8 +137,8 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
     booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
-    this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, true);
-    this->conv_booster.SetConvWorkSize(this->conv_param, this->gws, this->lws, this->kernels, this->rt_param->cl_runtime());
+    this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->cl_programs, this->cl_kernel_names, this->cl_kernels, true);
+    this->conv_booster.SetConvWorkSize(this->conv_param, this->cl_gws, this->cl_lws, this->cl_kernels, this->rt_param->cl_runtime());
     return this->ForwardCL();
 }
 
@@ -155,7 +146,7 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardCL()
 {
 
-    this->conv_booster.Forward(this->rt_param->command_queue(), this->events[0], this->kernels, this->gws, this->lws, this->cl_kernel_names);
+    this->conv_booster.Forward(this->rt_param->command_queue(), this->cl_events[0], this->cl_kernels, this->cl_gws, this->cl_lws, this->cl_program_names);
     return 0;
 }
 
@@ -182,7 +173,7 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     }
 
     this->conv_booster.SelectAlgo(&this->conv_param);
-    this->conv_booster.Init(this->cl_kernel_names, this->cl_kernel_symbols, this->cl_kernel_functions, this->gws, this->lws);
+    this->conv_booster.Init(this->cl_program_names, this->cl_kernel_sources, this->cl_kernel_names, this->cl_gws, this->cl_lws);
     return 0;
 }
 

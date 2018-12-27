@@ -21,22 +21,27 @@
 namespace booster
 {
 //NAIVE Methods
-int NAIVE_Init_CL(std::vector<std::string>& cl_kernel_names,
-                  std::vector<std::string>& cl_kernel_symbols,
-                  std::vector<std::string>& cl_kernel_functions,
+int NAIVE_Init_CL(std::vector<std::string>& cl_program_names,
+                  std::vector<std::string>& cl_kernel_sources,
+                  std::vector<std::string>& cl_kernel_names,
                   std::vector<std::vector<size_t>>& gws,
                   std::vector<std::vector<size_t>>& lws)
 {
-    std::string func_name_conv = "convolution";
-    std::string kernel_name_conv = "conv_1v1_buffer";
-    auto it_source = booster::opencl_kernel_string_map.find("conv_1v1_buffer");
-    std::string kernel_str_conv(it_source->second.begin(), it_source->second.end());
+    std::string program_name = "conv_1v1_buffer";
+    std::string kernel_name = "convolution";
+    auto it_source = booster::opencl_kernel_string_map.find(program_name);
+    if (it_source != booster::opencl_kernel_string_map.end()) {
+        cl_program_names.push_back(program_name);
+        cl_kernel_names.push_back(kernel_name);
+        std::string kernel_source(it_source->second.begin(), it_source->second.end());
+        cl_kernel_sources.push_back(kernel_source);
 
-    cl_kernel_names.push_back(kernel_name_conv);
-    cl_kernel_symbols.push_back(kernel_str_conv);
-    cl_kernel_functions.push_back(func_name_conv);
-    gws.push_back(std::vector<size_t>(3));
-    lws.push_back(std::vector<size_t>(3));
+        gws.push_back(std::vector<size_t>(3));  
+        lws.push_back(std::vector<size_t>(3));      
+    } else {
+        LOGE("can't find program %s!", program_name.c_str());
+        return -1;
+    }
 
     return 0;
 }
@@ -69,9 +74,9 @@ int NAIVE_Weight_Reform_CL(const ConvParam& param,
     return 0;
 }
 
-int DEPTHWISE_Init_CL(std::vector<std::string>& cl_kernel_names,
-        std::vector<std::string>& cl_kernel_symbols,
-        std::vector<std::string>& cl_kernel_functions,
+int DEPTHWISE_Init_CL(std::vector<std::string>& cl_program_names,
+        std::vector<std::string>& cl_kernel_sources,
+        std::vector<std::string>& cl_kernel_names,
         std::vector<std::vector<size_t>>& gws,
         std::vector<std::vector<size_t>>& lws)
 {
@@ -80,9 +85,9 @@ int DEPTHWISE_Init_CL(std::vector<std::string>& cl_kernel_names,
     auto it_source = booster::opencl_kernel_string_map.find("depthwise_conv_1v1_buffer");
     std::string kernel_str_depthwise_conv(it_source->second.begin(), it_source->second.end());
 
-    cl_kernel_names.push_back(kernel_name_depthwise_conv);
-    cl_kernel_symbols.push_back(kernel_str_depthwise_conv);
-    cl_kernel_functions.push_back(func_name_depthwise);
+    cl_program_names.push_back(kernel_name_depthwise_conv);
+    cl_kernel_sources.push_back(kernel_str_depthwise_conv);
+    cl_kernel_names.push_back(func_name_depthwise);
     gws.push_back(std::vector<size_t>(3));
     lws.push_back(std::vector<size_t>(3));
 
@@ -166,11 +171,20 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
 
 int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param, 
                                    const CLBuffers& buffers, 
+                                   const std::vector<cl::Program>& programs,
+                                   const std::vector<std::string>& kernel_names,
                                    std::vector<cl::Kernel>& kernels, 
                                    bool is_reshape)
 {
+    int error_num;
     int param_idx = 0;
     bool set_kernel_arg_success = true;
+    kernels.push_back(cl::Kernel(programs[0], kernel_names[0].c_str(), &error_num));
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed to create conv OpenCL cl_kernels[0].");
+      return 1;
+    }
+
     if (!is_reshape){
         set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers. input_mem));
         set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers.weight_mem));

@@ -15,19 +15,19 @@ int InputLayerCL<Dtype>::InitCL()
     auto it_source2 = booster::opencl_kernel_string_map.find("inputImage");
     std::string kernel_str2(it_source2->second.begin(),it_source2->second.end());
 
-    this->cl_kernel_functions.push_back(func_name1);
-    this->cl_kernel_functions.push_back(func_name2);
-    this->cl_kernel_names.push_back(kernel_name1);
-    this->cl_kernel_names.push_back(kernel_name2);
-    this->cl_kernel_symbols.push_back(kernel_str1);
-    this->cl_kernel_symbols.push_back(kernel_str2);
+    this->cl_kernel_names.push_back(func_name1);
+    this->cl_kernel_names.push_back(func_name2);
+    this->cl_program_names.push_back(kernel_name1);
+    this->cl_program_names.push_back(kernel_name2);
+    this->cl_kernel_sources.push_back(kernel_str1);
+    this->cl_kernel_sources.push_back(kernel_str2);
 
     cl::Kernel kernel1;
     cl::Kernel kernel2;
-    this->kernels.push_back(kernel1);
-    this->kernels.push_back(kernel2);
+    this->cl_kernels.push_back(kernel1);
+    this->cl_kernels.push_back(kernel2);
     cl::Event event;
-    this->events.push_back(event);
+    this->cl_events.push_back(event);
 
     return 0;
 }
@@ -85,15 +85,15 @@ int InputLayerCL<Dtype>::SetBuildOptions() {
     size_t input_channels = layer_blob->channels();
     std::ostringstream ss0;
     ss0 << input_channels;
-    this->build_options.push_back("-DIN_CHANNELS=" + ss0.str());
+    this->cl_build_options.push_back("-DIN_CHANNELS=" + ss0.str());
     std::ostringstream ss1;
     ss1 << layer_blob->channel_grp();
-    this->build_options.push_back("-DN=" + ss1.str());
-    this->build_options.push_back("-DIN_DATA_TYPE=float");
+    this->cl_build_options.push_back("-DN=" + ss1.str());
+    this->cl_build_options.push_back("-DIN_DATA_TYPE=float");
     if (std::is_same<Dtype, uint16_t>::value)
-      this->build_options.push_back("-DDATA_TYPE=half");
+      this->cl_build_options.push_back("-DDATA_TYPE=half");
     else
-      this->build_options.push_back("-DDATA_TYPE=float");
+      this->cl_build_options.push_back("-DDATA_TYPE=float");
 
     return 0;
 }
@@ -109,14 +109,14 @@ int InputLayerCL<Dtype>::SetKernelParameters() {
 
   SetWorkSize();
 
-  this->kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_functions[0].c_str(), &error_num);
+  this->cl_kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_names[0].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
-    LOGE("Failed to create normalinit OpenCL kernels[0]. ");
+    LOGE("Failed to create normalinit OpenCL cl_kernels[0]. ");
     return -1;
   }
-  this->kernels[1] = cl::Kernel(this->cl_programs[1], this->cl_kernel_functions[1].c_str(), &error_num);
+  this->cl_kernels[1] = cl::Kernel(this->cl_programs[1], this->cl_kernel_names[1].c_str(), &error_num);
   if (!checkSuccess(error_num)) {
-    LOGE("Failed to create normalinit OpenCL kernels[1]. ");
+    LOGE("Failed to create normalinit OpenCL cl_kernels[1]. ");
     return -1;
   }
 
@@ -135,13 +135,13 @@ int InputLayerCL<Dtype>::SetKernelParameters() {
   this->input_data_size = data_size;
 
   cl::Buffer* layer_data_cl = layer_blob->data_cl();
-  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, this->_cl_fimage));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, *layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, this->_cl_fimage));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *layer_data_cl));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, output_width));
 
   if (!set_kernel_arguments_success) {
-    LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
+    LOGE("Failed setting normalinit OpenCL cl_kernels[0] arguments. %s: %s", __FILE__, __LINE__);
     return -1;
   }
 
@@ -156,17 +156,17 @@ int InputLayerCL<Dtype>::SetKernelParameters() {
   }
 
   param_idx = 0;
-  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, this->_cl_img2d));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, *layer_data_cl));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(this->kernels[1].setArg(param_idx++, output_width));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[1].setArg(param_idx++, this->_cl_img2d));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[1].setArg(param_idx++, *layer_data_cl));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[1].setArg(param_idx++, output_height));
+  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[1].setArg(param_idx++, output_width));
   if (!set_kernel_arguments_success) {
-    LOGE("Failed setting normalinit OpenCL kernels[1] arguments. %s: %s", __FILE__, __LINE__);
+    LOGE("Failed setting normalinit OpenCL cl_kernels[1] arguments. %s: %s", __FILE__, __LINE__);
     return -1;
   }
-  this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
-  // this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
-  // this->FineTuneGroupSize(this->kernels[1], this->output_height, this->output_width);
+  this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+  // this->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width);
+  // this->FineTuneGroupSize(this->cl_kernels[1], this->output_height, this->output_width);
   return 0;
 }
 
@@ -284,23 +284,23 @@ int InputLayerCL<Dtype>::RunKernel(int type) {
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
   // int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-  //       kernels[type], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-  //       cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &events[0]);
+  //       cl_kernels[type], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
+  //       cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &cl_events[0]);
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        this->kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
-        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->events[0]);
+        this->cl_kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->cl_events[0]);
 
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the normalinit kernel.");
     return -1;
   }
 
-  this->events[0].wait();
+  this->cl_events[0].wait();
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_kernel_names[0].c_str());
+  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_program_names[0].c_str());
 
-  cl::Event profileEvent = this->events[0];
+  cl::Event profileEvent = this->cl_events[0];
   double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
   double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
   double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
@@ -309,11 +309,11 @@ int InputLayerCL<Dtype>::RunKernel(int type) {
   double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
   double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
   LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
-   this->name().c_str(), this->cl_kernel_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+   this->name().c_str(), this->cl_program_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-        this->kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
+        this->cl_kernels[type], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
         cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the normalinit kernel.");

@@ -110,17 +110,18 @@ class Layer
         RuntimeParameter<float> *rt_param;
 
 #ifdef FEATHER_OPENCL
+        std::vector<std::string> cl_program_names;
         std::vector<std::string> cl_kernel_names;
-        std::vector<std::string> cl_kernel_symbols;
-        std::vector<std::string> cl_kernel_functions;
+        std::vector<std::string> cl_kernel_sources;
         std::vector<cl::Program> cl_programs;
-        std::vector<cl::Kernel> kernels;
-        std::vector<cl::Event> events;
-        std::vector<std::string> build_options;
+        std::vector<cl::Kernel>  cl_kernels;
+        std::vector<cl::Event>   cl_events;
+        std::vector<std::string> cl_build_options;
+        std::vector<std::vector<size_t>> cl_gws;
+        std::vector<std::vector<size_t>> cl_lws;
+
         size_t global_work_size[3];
         size_t local_work_size[3];
-        std::vector<std::vector<size_t>> gws;
-        std::vector<std::vector<size_t>> lws;
         int group_size_h = 8;
         int group_size_w = 8;
 #endif

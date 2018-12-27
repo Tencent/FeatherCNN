@@ -76,23 +76,23 @@ public:
       int channels = this->_top_blobs[name]->channels();
       if (this->_top_blobs[name]->ReshapeWithReallocDevice(this->rt_param->context(), num, channels, height, width) == 2) {
           cl::Buffer* layer_data_cl = this->_top_blobs[name]->data_cl();
-          set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(1, *layer_data_cl));
+          set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(1, *layer_data_cl));
       }
       this->output_height = this->_top_blobs[name]->height();
       this->output_width = this->_top_blobs[name]->width();
 
       if (ResetInputAndArgs(num * channels * height * width) == 2) {
-          set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(0, this->_cl_fimage));
+          set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(0, this->_cl_fimage));
       }
-      set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(2, this->output_height));
-      set_kernel_arguments_success &= checkSuccess(this->kernels[0].setArg(3, this->output_width));
+      set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(2, this->output_height));
+      set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(3, this->output_width));
       if (!set_kernel_arguments_success) {
-        LOGE("Failed setting normalinit OpenCL kernels[0] arguments. %s: %s", __FILE__, __LINE__);
+        LOGE("Failed setting normalinit OpenCL cl_kernels[0] arguments. %s: %s", __FILE__, __LINE__);
         return -1;
       }
       this->SetWorkSize();
-      this->rt_param->cl_runtime()->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
-      // this->FineTuneGroupSize(this->kernels[0], this->output_height, this->output_width);
+      this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+      // this->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width);
       return 0;
   }
 

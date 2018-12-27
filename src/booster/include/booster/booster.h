@@ -141,9 +141,9 @@ class ConvBoosterCL
 {
 public:
 
-  typedef int (*INIT_FUNC_CL)(std::vector<std::string>& cl_kernel_names,
-                              std::vector<std::string>& cl_kernel_symbols,
-                              std::vector<std::string>& cl_kernel_functions,
+  typedef int (*INIT_FUNC_CL)(std::vector<std::string>& cl_program_names,
+                              std::vector<std::string>& cl_kernel_sources,
+                              std::vector<std::string>& cl_kernel_names,
                               std::vector<std::vector<size_t>>& gws,
                               std::vector<std::vector<size_t>>& lws);
   typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q, 
@@ -159,7 +159,9 @@ public:
                                        Dtype* weight_reformed);
   typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam& param, 
                                            const CLBuffers& buffers, 
-                                           std::vector<cl::Kernel>& kernel, 
+                                           const std::vector<cl::Program>& programs,
+                                           const std::vector<std::string>& kernel_names,
+                                           std::vector<cl::Kernel>& kernels, 
                                            bool is_reshape);
   typedef int (*SET_CONV_WORK_SIZE_CL)(const ConvParam& param, 
                                        std::vector<std::vector<size_t>>& gws, 
