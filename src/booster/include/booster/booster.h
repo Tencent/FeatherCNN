@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <map>
 #include <string>
 #include <vector>
 #ifdef FEATHER_OPENCL
@@ -141,17 +142,10 @@ class ConvBoosterCL
 {
 public:
 
-  typedef int (*INIT_FUNC_CL)(std::vector<std::string>& cl_program_names,
-                              std::vector<std::string>& cl_kernel_sources,
-                              std::vector<std::string>& cl_kernel_names,
-                              std::vector<std::vector<size_t>>& gws,
-                              std::vector<std::vector<size_t>>& lws);
+  typedef int (*INIT_FUNC_CL)(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
   typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q, 
-                                 cl::Event& event, 
-                                 const std::vector<cl::Kernel>& kernels, 
-                                 const std::vector<std::vector<size_t>>& gws, 
-                                 const std::vector<std::vector<size_t>>& lws, 
-                                 const std::vector<std::string>& kernel_names);
+                                 std::vector<std::string> kernel_names,
+                                 std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
   typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam& param, 
                                        size_t n_grp_size, 
                                        size_t c_grp_size, 
@@ -159,14 +153,13 @@ public:
                                        Dtype* weight_reformed);
   typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam& param, 
                                            const CLBuffers& buffers, 
-                                           const std::vector<cl::Program>& programs,
-                                           const std::vector<std::string>& kernel_names,
-                                           std::vector<cl::Kernel>& kernels, 
+                                           std::vector<std::string> kernel_names,
+                                           std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map, 
+                                           clhpp_feather::OpenCLRuntime* cl_runtime,
                                            bool is_reshape);
   typedef int (*SET_CONV_WORK_SIZE_CL)(const ConvParam& param, 
-                                       std::vector<std::vector<size_t>>& gws, 
-                                       std::vector<std::vector<size_t>>& lws, 
-                                       const std::vector<cl::Kernel>& kernels, 
+                                       std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                                       std::vector<std::string> kernel_names,
                                        clhpp_feather::OpenCLRuntime* cl_runtime);
 
   ConvBoosterCL();
@@ -175,6 +168,7 @@ public:
   int ForceSelectAlgo(ConvAlgo algo);
   int SetFuncs();
   size_t GetWeightSize();
+  std::vector<std::string> GetKernelNames();
   INIT_FUNC_CL Init;
   FORWARD_FUNC_CL Forward;
   WEIGHT_REFORM_FUNC_CL WeightReform;
@@ -183,6 +177,7 @@ public:
 private:
   ConvAlgo algo;
   size_t weight_size;
+  std::vector<std::string> kernel_names;
 
 };
 #endif

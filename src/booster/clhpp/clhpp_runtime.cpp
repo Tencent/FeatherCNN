@@ -248,5 +248,55 @@ int OpenCLRuntime::FineTuneGroupSize(const cl::Kernel& kernel,
 }
 
 
+int OpenCLRuntime::BuildKernel(const std::string& cl_kernel_name, std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
+{
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[cl_kernel_name];
+    const std::string& program_name = conv_kernel_info.program_name;
+    const std::string& kernel_name = conv_kernel_info.kernel_name;
+    const std::string& kernel_source = conv_kernel_info.kernel_source;
+    cl::Program& program = conv_kernel_info.program;
+    cl::Kernel& kernel = conv_kernel_info.kernel;
+    const std::vector<std::string>& build_options = conv_kernel_info.build_options;
+
+    std::string opt_str = "";
+    for (auto &opt : build_options) {
+      opt_str += " " + opt;
+    }
+    std::string promap_key = program_name + opt_str;
+
+    if (_cl_program_map->find(promap_key) != _cl_program_map->end()){
+        program = (*_cl_program_map)[promap_key];
+    } else {
+        std::string kernelAddr = promap_key + ".bin";
+        StringTool::RelaceString(kernelAddr, "/", "_");
+        StringTool::RelaceString(kernelAddr, ":", "_");
+        StringTool::RelaceString(kernelAddr, " ", "_");
+        StringTool::RelaceString(kernelAddr, "-", "_");
+        StringTool::RelaceString(kernelAddr, "=", "_");
+
+        kernelAddr = "no_save";
+        if (buildProgram(*_context,
+                         *_device,
+                         program,
+                         kernel_source,
+                         opt_str,
+                         kernelAddr)) {
+            LOGE("Build program failed.");
+            return -1;
+        }
+        (*_cl_program_map)[promap_key] = program;
+    }
+
+    int error_num;
+    kernel = cl::Kernel(program, kernel_name.c_str(), &error_num);
+    if (error_num != CL_SUCCESS) {
+        LOGE("failed to build kernel %s from program %s", kernel_name.c_str(), program_name.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+
 
 } //namespace cl_feather

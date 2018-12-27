@@ -120,6 +120,9 @@ class Layer
         std::vector<std::vector<size_t>> cl_gws;
         std::vector<std::vector<size_t>> cl_lws;
 
+
+        std::map<std::string, clhpp_feather::CLKernelInfo> cl_kernel_info_map;
+
         size_t global_work_size[3];
         size_t local_work_size[3];
         int group_size_h = 8;

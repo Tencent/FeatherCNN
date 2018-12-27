@@ -21,23 +21,15 @@
 namespace booster
 {
 //NAIVE Methods
-int NAIVE_Init_CL(std::vector<std::string>& cl_program_names,
-                  std::vector<std::string>& cl_kernel_sources,
-                  std::vector<std::string>& cl_kernel_names,
-                  std::vector<std::vector<size_t>>& gws,
-                  std::vector<std::vector<size_t>>& lws)
+int NAIVE_Init_CL(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
     std::string program_name = "conv_1v1_buffer";
     std::string kernel_name = "convolution";
     auto it_source = booster::opencl_kernel_string_map.find(program_name);
     if (it_source != booster::opencl_kernel_string_map.end()) {
-        cl_program_names.push_back(program_name);
-        cl_kernel_names.push_back(kernel_name);
-        std::string kernel_source(it_source->second.begin(), it_source->second.end());
-        cl_kernel_sources.push_back(kernel_source);
-
-        gws.push_back(std::vector<size_t>(3));  
-        lws.push_back(std::vector<size_t>(3));      
+        cl_kernel_info_map[kernel_name].program_name = program_name;
+        cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
+        cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
     } else {
         LOGE("can't find program %s!", program_name.c_str());
         return -1;
@@ -74,22 +66,19 @@ int NAIVE_Weight_Reform_CL(const ConvParam& param,
     return 0;
 }
 
-int DEPTHWISE_Init_CL(std::vector<std::string>& cl_program_names,
-        std::vector<std::string>& cl_kernel_sources,
-        std::vector<std::string>& cl_kernel_names,
-        std::vector<std::vector<size_t>>& gws,
-        std::vector<std::vector<size_t>>& lws)
+int DEPTHWISE_Init_CL(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-    std::string func_name_depthwise = "convolution_depthwise";
-    std::string kernel_name_depthwise_conv = "depthwise_conv_1v1_buffer";
-    auto it_source = booster::opencl_kernel_string_map.find("depthwise_conv_1v1_buffer");
-    std::string kernel_str_depthwise_conv(it_source->second.begin(), it_source->second.end());
-
-    cl_program_names.push_back(kernel_name_depthwise_conv);
-    cl_kernel_sources.push_back(kernel_str_depthwise_conv);
-    cl_kernel_names.push_back(func_name_depthwise);
-    gws.push_back(std::vector<size_t>(3));
-    lws.push_back(std::vector<size_t>(3));
+    std::string program_name = "depthwise_conv_1v1_buffer";
+    std::string kernel_name = "convolution_depthwise";
+    auto it_source = booster::opencl_kernel_string_map.find(program_name);
+    if (it_source != booster::opencl_kernel_string_map.end()) {
+        cl_kernel_info_map[kernel_name].program_name = program_name;
+        cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
+        cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
+    } else {
+        LOGE("can't find program %s!", program_name.c_str());
+        return -1;
+    }
 
     return 0;
 }
@@ -118,110 +107,113 @@ int DEPTHWISE_Weight_Reform_CL(const ConvParam& param,
 }
 
 int BOTH_Forward_CL(cl::CommandQueue cmd_q, 
-                    cl::Event& event, 
-                    const std::vector<cl::Kernel>& kernels, 
-                    const std::vector<std::vector<size_t>>& gws, 
-                    const std::vector<std::vector<size_t>>& lws, 
-                    const std::vector<std::string>& kernel_names)
+                    std::vector<std::string> kernel_names,
+                    std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-  auto n = kernels.size();
-  for (int i = 0; i != n; ++i) {
+  const clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+  const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
+  const std::vector<size_t>& conv_gws = conv_kernel_info.gws;
+  const std::vector<size_t>& conv_lws = conv_kernel_info.lws;
 #ifdef TIMING_CL
-    cmd_q.finish();
-    timespec tpstart, tpend;
-    clock_gettime(CLOCK_MONOTONIC, &tpstart);
+  cl::Event event;
+  cmd_q.finish();
+  timespec tpstart, tpend;
+  clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
-    int error_num = cmd_q.enqueueNDRangeKernel(
-        kernels[i], cl::NullRange, cl::NDRange(gws[i][0], gws[i][1], gws[i][2]),
-        cl::NDRange(lws[i][0], lws[i][1], lws[i][2]), nullptr, &event);
+  int error_num = cmd_q.enqueueNDRangeKernel(
+      conv_kernel, cl::NullRange, cl::NDRange(conv_gws[0], conv_gws[1], conv_gws[2]),
+      cl::NDRange(conv_lws[0], conv_lws[1], conv_lws[2]), nullptr, &event);
 
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the conv kernel.");
-      return -1;
-    }
-
-    event.wait();
-    clock_gettime(CLOCK_MONOTONIC, &tpend);
-    double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-    LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, k_name.c_str());
-
-    cl::Event profileEvent = event;
-    double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
-    double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
-    double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-    double stop_nanos_   = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-    double submit_kerel_time = (submit_nanos_ - queued_nanos_) / 1000.0 / 1000.0;
-    double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
-    double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
-    LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
-     this->name().c_str(), kernel_names[i].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
-#else
-    int error_num = cmd_q.enqueueNDRangeKernel(
-        kernels[i], cl::NullRange, cl::NDRange(gws[i][0], gws[i][1], gws[i][2]),
-        cl::NDRange(lws[i][0], lws[i][1], lws[i][2]), nullptr, nullptr);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the conv kernel.");
-      return -1;
-    }
-#endif
+  if (!checkSuccess(error_num)) {
+    LOGE("Failed enqueuing the conv kernel.");
+    return -1;
   }
+
+  event.wait();
+  clock_gettime(CLOCK_MONOTONIC, &tpend);
+  double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, k_name.c_str());
+
+  cl::Event profileEvent = event;
+  double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
+  double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
+  double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  double stop_nanos_   = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+  double submit_kerel_time = (submit_nanos_ - queued_nanos_) / 1000.0 / 1000.0;
+  double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
+  double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
+  LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
+   this->name().c_str(), kernel_names[i].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+#else
+  int error_num = cmd_q.enqueueNDRangeKernel(
+      conv_kernel, cl::NullRange, cl::NDRange(conv_gws[0], conv_gws[1], conv_gws[2]),
+      cl::NDRange(conv_lws[0], conv_lws[1], conv_lws[2]), nullptr, nullptr);
+  if (!checkSuccess(error_num)) {
+    LOGE("Failed enqueuing the conv kernel.");
+    return -1;
+  }
+#endif
 
   return 0;
 }
 
 int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param, 
                                    const CLBuffers& buffers, 
-                                   const std::vector<cl::Program>& programs,
-                                   const std::vector<std::string>& kernel_names,
-                                   std::vector<cl::Kernel>& kernels, 
+                                   std::vector<std::string> kernel_names,
+                                   std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map, 
+                                   clhpp_feather::OpenCLRuntime* cl_runtime,
                                    bool is_reshape)
 {
     int error_num;
     int param_idx = 0;
     bool set_kernel_arg_success = true;
-    kernels.push_back(cl::Kernel(programs[0], kernel_names[0].c_str(), &error_num));
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    cl::Kernel& conv_kernel = conv_kernel_info.kernel;
+    const cl::Program& conv_program = conv_kernel_info.program;
+    const std::string& conv_kernel_name = conv_kernel_info.kernel_name;
+    cl_runtime->BuildKernel(conv_kernel_name, cl_kernel_info_map);
     if (!checkSuccess(error_num)) {
-      LOGE("Failed to create conv OpenCL cl_kernels[0].");
+      LOGE("Failed to create conv OpenCL cl_conv_kernel.");
       return 1;
     }
 
     if (!is_reshape){
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers. input_mem));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers.weight_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers. input_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.weight_mem));
         if (param.bias_term) {
-          set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers.bias_mem));
+          set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.bias_mem));
         }
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, *buffers.output_mem));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.ic_padded));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.output_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.ic_padded));
         if (param.group != param.input_channels) {
-          set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.oc_padded));
+          set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.oc_padded));
         }
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.input_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.input_w));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.output_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.output_w));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.kernel_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.kernel_w));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.stride_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.stride_w));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.pad_top));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.pad_left));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.output_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.output_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.kernel_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.kernel_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.stride_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.stride_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.pad_top));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.pad_left));
         if (!set_kernel_arg_success) {
-          LOGE("Failed setting conv OpenCL kernels[0] arguments.");
+          LOGE("Failed setting conv OpenCL conv_kernel arguments.");
           return -1;
         }
     }
     else
     {
         param_idx = param.group != param.input_channels ? 6 : 5;
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(0, *buffers.input_mem));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(3, *buffers.output_mem));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.input_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.input_w));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.output_h));
-        set_kernel_arg_success &= checkSuccess(kernels[0].setArg(param_idx++, param.output_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(0, *buffers.input_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(3, *buffers.output_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_w));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.output_h));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.output_w));
         if (!set_kernel_arg_success) {
-          LOGE("Failed setting conv reshape OpenCL kernels[0] arguments.");
+          LOGE("Failed setting conv reshape OpenCL conv_kernel arguments.");
           return -1;
         }
 
@@ -230,11 +222,15 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
 }
 
 int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param, 
-                               std::vector<std::vector<size_t>>& gws, 
-                               std::vector<std::vector<size_t>>& lws, 
-                               const std::vector<cl::Kernel>& kernels, 
+                               std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                               std::vector<std::string> kernel_names,
                                clhpp_feather::OpenCLRuntime* cl_runtime)
 {
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
+    std::vector<size_t>& conv_gws = conv_kernel_info.gws;
+    std::vector<size_t>& conv_lws = conv_kernel_info.lws;
+
     int h_lws = param.output_h > 32 ? 16 : 8;
     int w_lws = param.output_w > 32 ? 16 : 8;
     int c_blk_size = 4;
@@ -242,17 +238,26 @@ int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
       c_blk_size = 8;
     }
 
-    gws[0][0] = (param.output_h / h_lws + !!(param.output_h % h_lws)) * h_lws;
-    gws[0][1] = (param.output_w / w_lws + !!(param.output_w % w_lws)) * w_lws;
-    gws[0][2] = param.oc_padded / c_blk_size;
+    size_t conv_gws_dim0 = (param.output_h / h_lws + !!(param.output_h % h_lws)) * h_lws;
+    size_t conv_gws_dim1 = (param.output_w / w_lws + !!(param.output_w % w_lws)) * w_lws;
+    size_t conv_gws_dim2 = param.oc_padded / c_blk_size;
 
-    lws[0][0] = h_lws;
-    lws[0][1] = w_lws;
-    lws[0][2] = (gws[0][2] > 4 && gws[0][2] % 4 == 0) ? 4 : 1;
+    size_t conv_lws_dim0 = h_lws;
+    size_t conv_lws_dim1 = w_lws;
+    size_t conv_lws_dim2 = (conv_gws_dim2 > 4 && conv_gws_dim2 % 4 == 0) ? 4 : 1;
 
+    conv_gws.push_back(conv_gws_dim0);
+    conv_gws.push_back(conv_gws_dim1);
+    conv_gws.push_back(conv_gws_dim2);
 
-    cl_runtime->FineTuneGroupSize(kernels[0], param.output_h, param.output_w, gws[0].data(), lws[0].data());
-    
+    conv_lws.push_back(conv_lws_dim0);
+    conv_lws.push_back(conv_lws_dim1);
+    conv_lws.push_back(conv_lws_dim2);
+
+    cl_runtime->FineTuneGroupSize(conv_kernel, param.output_h, param.output_w, conv_gws.data(), conv_lws.data());
+
+    conv_kernel_info.print();
+
     return 0;
 }
 
@@ -278,6 +283,12 @@ template <class Dtype>
 size_t ConvBoosterCL<Dtype>::GetWeightSize()
 {
     return this->weight_size;
+}
+
+template <class Dtype>
+std::vector<std::string> ConvBoosterCL<Dtype>::GetKernelNames()
+{
+    return this->kernel_names; 
 }
 //Conditional algo selecter
 template <class Dtype>
@@ -322,6 +333,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->WeightReform = NAIVE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
+        this->kernel_names.push_back("convolution");
         return 0;
     case DEPTHWISE:
         this->Init = DEPTHWISE_Init_CL;
@@ -329,6 +341,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->WeightReform = DEPTHWISE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
+        this->kernel_names.push_back("convolution_depthwise");
         return 0;
     default:
         LOGE("This algo is not supported on GPU.");

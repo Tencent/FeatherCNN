@@ -242,6 +242,8 @@ bool Layer<Dtype>::fusible() const
 }
 
 #ifdef FEATHER_OPENCL
+
+
 template<class Dtype>
 int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map)
 {
