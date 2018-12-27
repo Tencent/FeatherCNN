@@ -121,7 +121,7 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     buffers.input_trans_mem = nullptr;
     buffers.out_trans_mem = nullptr;
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, false);
-    this->conv_booster.SetConvWorkSize(this->conv_param, conv_gws, conv_lws, this->kernels, this->rt_param->cl_runtime());
+    this->conv_booster.SetConvWorkSize(this->conv_param, this->gws, this->lws, this->kernels, this->rt_param->cl_runtime());
 
     return 0;
 }
@@ -147,7 +147,7 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->kernels, true);
-    this->conv_booster.SetConvWorkSize(this->conv_param, conv_gws, conv_lws, this->kernels, this->rt_param->cl_runtime());
+    this->conv_booster.SetConvWorkSize(this->conv_param, this->gws, this->lws, this->kernels, this->rt_param->cl_runtime());
     return this->ForwardCL();
 }
 
@@ -155,7 +155,7 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardCL()
 {
 
-    this->conv_booster.Forward(this->rt_param->command_queue(), this->events[0], this->kernels, this->conv_gws, this->conv_lws, this->cl_kernel_names[0]);
+    this->conv_booster.Forward(this->rt_param->command_queue(), this->events[0], this->kernels, this->gws, this->lws, this->cl_kernel_names);
     return 0;
 }
 
@@ -182,7 +182,7 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     }
 
     this->conv_booster.SelectAlgo(&this->conv_param);
-    this->conv_booster.Init(this->cl_kernel_names, this->cl_kernel_symbols, this->cl_kernel_functions);
+    this->conv_booster.Init(this->cl_kernel_names, this->cl_kernel_symbols, this->cl_kernel_functions, this->gws, this->lws);
     return 0;
 }
 

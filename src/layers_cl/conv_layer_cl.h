@@ -29,26 +29,21 @@ namespace feather {
 template <class Dtype>
 class ConvLayerCL: public Layer<Dtype> {
 public:
-  ConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
+  ConvLayerCL(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param);
 
-    virtual int SetBuildOptions();
-    virtual int ForwardCL();
-    virtual int ForwardReshapeCL();
-    virtual int SetKernelParameters();
-    int GenerateTopBlobs();
-    int Fuse(Layer<Dtype> *next_layer);
+  virtual int SetBuildOptions();
+  virtual int ForwardCL();
+  virtual int ForwardReshapeCL();
+  virtual int SetKernelParameters();
+  int GenerateTopBlobs();
+  int Fuse(Layer<Dtype> *next_layer);
 
 private:
-    // uint32_t in_channel_grp_size;
-    uint32_t channel_grp_size;
-    booster::ConvBoosterCL<Dtype> conv_booster;
-    booster::ConvParam conv_param;
-    size_t conv_gws[3][3];
-    size_t conv_lws[3][3];
+  uint32_t channel_grp_size;
+  booster::ConvBoosterCL<Dtype> conv_booster;
+  booster::ConvParam conv_param;
 
-    Dtype *bias_data;
-    Dtype *kernel_data;
-    //float *processed_kernel;
-
+  Dtype *bias_data;
+  Dtype *kernel_data;
 };
 }; // namespace feather

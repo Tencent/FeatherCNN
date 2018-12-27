@@ -119,6 +119,8 @@ class Layer
         std::vector<std::string> build_options;
         size_t global_work_size[3];
         size_t local_work_size[3];
+        std::vector<std::vector<size_t>> gws;
+        std::vector<std::vector<size_t>> lws;
         int group_size_h = 8;
         int group_size_w = 8;
 #endif
