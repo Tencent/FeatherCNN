@@ -28,7 +28,7 @@ namespace feather {
 template <class Dtype>
 class EltwiseLayerCL: public Layer<Dtype> {
 public:
-  EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
+  EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
       : Layer<Dtype>(layer_param, rt_param) {
     this->_fusible = true;
     fuse_relu = false;

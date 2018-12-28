@@ -26,17 +26,6 @@ struct CLKernelInfo {
     std::vector<std::string> build_options;
     std::vector<size_t> gws;
     std::vector<size_t> lws;
-    void print() {
-        LOGI("program_name: %s", program_name.c_str());
-        LOGI("kernel_name: %s",  kernel_name.c_str());
-        std::string opt_str = "";
-        for (auto &opt : build_options) {
-            opt_str += " " + opt;
-        }
-        LOGI("build_options: %s", opt_str.c_str());
-        LOGI("gws: %u %u %u", gws[0], gws[1], gws[2]);
-        LOGI("lws: %u %u %u", lws[0], lws[1], lws[2]);
-    }
 };
 
 enum GPUType {

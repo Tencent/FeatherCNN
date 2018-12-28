@@ -48,8 +48,8 @@ enum ActivationType{
 
 
 struct ConvParam {
-    int output_channels;
     int input_channels;
+    int output_channels;
     int input_h;
     int input_w;
     int kernel_h;
@@ -58,28 +58,33 @@ struct ConvParam {
     int output_w;
     int stride_h;
     int stride_w;
-    int pad_left;
-    int pad_bottom;
-    int pad_right;
     int pad_top;
+    int pad_bottom;
+    int pad_left;
+    int pad_right;
     int group;
     bool bias_term;
     ActivationType activation;
 #ifdef FEATHER_OPENCL
-    int oc_padded;
-    int ic_padded;
     int channel_grp_size;
+    int padded_input_channels;
+    int padded_output_channels;
+    int padded_input_h;
+    int padded_input_w;
+    int padded_output_h;
+    int padded_output_w;
+    bool padding_needed;
 #endif
 
     void AssignOutputDim()
     {
         //Validate default values
-        if(group == 0)	group = 1;
-        if(stride_h == 0) stride_h = 1;
-        if(stride_w == 0) stride_w = 1;
+        if (group == 0)	group = 1;
+        if (stride_h == 0) stride_h = 1;
+        if (stride_w == 0) stride_w = 1;
         output_h = (input_h + pad_top + pad_bottom - kernel_h) / stride_h + 1;
         output_w = (input_w + pad_left + pad_right - kernel_w) / stride_w + 1;
-        if(group == input_channels)
+        if (group == input_channels)
         {
             output_channels = input_channels;
         }
@@ -114,7 +119,7 @@ class ConvBooster
 {
 public:
     ConvBooster();
-    ~ConvBooster(){}
+    ~ConvBooster() {}
     int SelectAlgo(ConvParam* param);
     int ForceSelectAlgo(ConvAlgo algo);
     int SetFuncs();
@@ -168,7 +173,7 @@ public:
                                   std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
 
   ConvBoosterCL();
-  ~ConvBoosterCL(){}
+  ~ConvBoosterCL() {}
   int SelectAlgo(ConvParam* param);
   int ForceSelectAlgo(ConvAlgo algo);
   int SetFuncs();

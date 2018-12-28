@@ -29,7 +29,7 @@ namespace feather {
 template <class Dtype>
 class ConvLayerCL: public Layer<Dtype> {
 public:
-  ConvLayerCL(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param);
+  ConvLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
 
   virtual int SetBuildOptions();
   virtual int ForwardCL();

@@ -7,8 +7,8 @@ __kernel void inner_product(__global const DATA_TYPE* restrict in,     /* [h, w,
                             __global const DATA_TYPE* restrict bias,   /* [oc] */
 #endif
                             __global DATA_TYPE* restrict out,          /* [oc] */
-                            __private const int in_channels,           /* a multiple of 4 */
-                            __private const int out_channels,          /* a multiple of 4 */
+                            __private const int in_channels,           /* a multiple of N */
+                            __private const int out_channels,          /* a multiple of N */
                             __private const int in_height,
                             __private const int in_width) {
   const int out_channel_group_idx = get_global_id(2);

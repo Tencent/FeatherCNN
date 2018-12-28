@@ -6,7 +6,7 @@ __kernel void eltwise(__global const DATA_TYPE* restrict in0, /* [h, w, c] */
                       __global DATA_TYPE* restrict out,       /* [h, w, c] */
                       __private const int height,
                       __private const int width,
-                      __private const int channels) {         /* a multiple of 4 */
+                      __private const int channels) {         /* a multiple of N */
   const int height_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   if (height_idx >= height || width_idx >= width) return;

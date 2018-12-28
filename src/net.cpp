@@ -141,8 +141,8 @@ Net<Dtype>::Net(size_t num_threads, DeviceType device_type)
     register_layer_creators_cl();
 #endif
     register_layer_creators();
-    CommonMemPool<float> *mempool = new CommonMemPool<float>();
-    rt_param = new RuntimeParameter<float>(mempool, device_type, num_threads);
+    CommonMemPool<Dtype> *mempool = new CommonMemPool<Dtype>();
+    rt_param = new RuntimeParameter<Dtype>(mempool, device_type, num_threads);
 
     CHECK_TYPE();
 

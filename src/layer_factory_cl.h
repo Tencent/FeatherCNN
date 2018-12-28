@@ -36,7 +36,7 @@ template <class Dtype>
 class LayerRegistryCL
 {
     public:
-        typedef Layer<Dtype>* (*Creator)(const LayerParameter *, RuntimeParameter<float> *);
+        typedef Layer<Dtype>* (*Creator)(const LayerParameter *, RuntimeParameter<Dtype> *);
         typedef std::map<string, Creator> CreatorRegistry;
 
         static CreatorRegistry &Registry()
@@ -53,7 +53,7 @@ class LayerRegistryCL
         }
 
         // Get a layer using a LayerParameter.
-        static Layer<Dtype> *CreateLayer(const LayerParameter *param, RuntimeParameter<float> *rt_param)
+        static Layer<Dtype> *CreateLayer(const LayerParameter *param, RuntimeParameter<Dtype> *rt_param)
         {
             const string &type = param->type()->str();
             CreatorRegistry &registry = Registry();
@@ -78,7 +78,7 @@ class LayerRegistererCL
 {
     public:
         LayerRegistererCL(const string &type,
-                        Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<float>*))
+                        Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<Dtype>*))
         {
             LayerRegistryCL<Dtype>::AddCreator(type, creator);
         }

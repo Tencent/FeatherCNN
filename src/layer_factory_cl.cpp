@@ -35,35 +35,35 @@ namespace feather
 {
 
 template <class Dtype>
-Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetInputLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *) new InputLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
-Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetConvolutionLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *) new ConvLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
-Layer<Dtype> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetPoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *)new PoolingLayerCL<Dtype>(layer_param, rt_param);
 }
 template <class Dtype>
-Layer<Dtype> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetReluLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *)new ReluLayerCL<Dtype>(layer_param, rt_param);
 }
 template <class Dtype>
-Layer<Dtype> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetEltwiseLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *) new EltwiseLayerCL<Dtype>(layer_param, rt_param);
 }
 
 template <class Dtype>
-Layer<Dtype> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+Layer<Dtype> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *)new InnerProductLayerCL<Dtype>(layer_param, rt_param);
 }

@@ -7,8 +7,8 @@ __kernel void convolution(__global const DATA_TYPE* restrict in,     /* [ih, iw,
                           __global const DATA_TYPE* restrict bias,   /* [oc] */
 #endif
                           __global DATA_TYPE* restrict out,          /* [oh, ow, oc] */
-                          __private const int in_channels,           /* a multiple of 4 */
-                          __private const int out_channels,          /* a multiple of 4 */
+                          __private const int in_channels,           /* a multiple of N */
+                          __private const int out_channels,          /* a multiple of N */
                           __private const int in_height,
                           __private const int in_width,
                           __private const int out_height,

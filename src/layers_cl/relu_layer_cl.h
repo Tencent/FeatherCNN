@@ -21,11 +21,11 @@ namespace feather
 {
 
 template <class Dtype>
-class ReluLayerCL : public Layer<uint16_t>
+class ReluLayerCL : public Layer<Dtype>
 {
     public:
-        ReluLayerCL(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
-            : Layer<uint16_t>(layer_param, rt_param)
+        ReluLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
+            : Layer<Dtype>(layer_param, rt_param)
         {
         }
         int ForwardCL();

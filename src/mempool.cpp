@@ -273,7 +273,9 @@ void PrivateMemPool<PTR_TYPE>::PrintStats()
 
 template class CommonMemPool<float>;
 template class CommonMemPool<int>;
+template class CommonMemPool<uint16_t>;
 template class CommonMemPool<void>;
 template class PrivateMemPool<float>;
 template class PrivateMemPool<int>;
+template class PrivateMemPool<uint16_t>;
 template class PrivateMemPool<void>;

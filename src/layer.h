@@ -37,7 +37,7 @@ template<class Dtype>
 class Layer
 {
     public:
-        Layer(const void* layer_param, RuntimeParameter<float>* rt_param);//Layer param must be LayerParameter type
+        Layer(const void* layer_param, RuntimeParameter<Dtype>* rt_param);//Layer param must be LayerParameter type
         ~Layer();
         int SetupBottomBlob(const Blob<Dtype>* p_blob, std::string name);
 
@@ -101,11 +101,11 @@ class Layer
 
         size_t num_threads;
 
-        CommonMemPool<float>    *common_mempool;
+        CommonMemPool<Dtype>    *common_mempool;
 
-        PrivateMemPool<float>   private_mempool;
+        PrivateMemPool<Dtype>   private_mempool;
 
-        RuntimeParameter<float> *rt_param;
+        RuntimeParameter<Dtype> *rt_param;
 
 #ifdef FEATHER_OPENCL
         std::map<std::string, clhpp_feather::CLKernelInfo> cl_kernel_info_map;

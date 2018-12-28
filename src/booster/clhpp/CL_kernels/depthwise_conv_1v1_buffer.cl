@@ -7,7 +7,7 @@ __kernel void convolution_depthwise(__global const DATA_TYPE* restrict in,     /
                                     __global const DATA_TYPE* restrict bias,   /* [c] */
 #endif
                                     __global DATA_TYPE* restrict out,          /* [oh, ow, c] */
-                                    __private const int channels,              /* a multiple of 4 */
+                                    __private const int channels,              /* a multiple of N */
                                     __private const int in_height,
                                     __private const int in_width,
                                     __private const int out_height,

@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "blob.h"
 #include "mempool.h"
 #include "common.h"
 #include <map>
@@ -40,29 +41,49 @@ class RuntimeParameter
       RuntimeParameter() : _common_mempool(NULL),
                            _device_type(DeviceType::CPU),
                            _num_threads(1)
+#ifdef FEATHER_OPENCL
+                           , _padded_input(NULL)
+                           , _padded_input_size(0)
+#endif
       {
-        #ifdef FEATHER_OPENCL
-          if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new clhpp_feather::OpenCLRuntime();
-        #endif
+#ifdef FEATHER_OPENCL
+          if (_device_type == DeviceType::GPU_CL) 
+          {
+              _cl_runtime = new clhpp_feather::OpenCLRuntime();
+          }
+#endif
       }
       RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
           : _common_mempool(common_mempool),
           _num_threads(num_threads),
           _device_type(device_type)
+#ifdef FEATHER_OPENCL
+          , _padded_input(NULL)
+          , _padded_input_size(0)
+#endif
       {
-        #ifdef FEATHER_OPENCL
-          if(_device_type == DeviceType::GPU_CL)
-            _cl_runtime = new clhpp_feather::OpenCLRuntime();
-        #endif
+#ifdef FEATHER_OPENCL
+          if (_device_type == DeviceType::GPU_CL) 
+          {
+              _cl_runtime = new clhpp_feather::OpenCLRuntime();
+          }
+#endif
       }
       ~RuntimeParameter()
       {
-        #ifdef FEATHER_OPENCL
-          if(_device_type == DeviceType::GPU_CL)
-            delete _cl_runtime;
-            _cl_runtime = NULL;
-        #endif
+#ifdef FEATHER_OPENCL
+          if (_device_type == DeviceType::GPU_CL) 
+          {
+              delete _cl_runtime;
+              _cl_runtime = NULL;
+
+              if (_padded_input != NULL) 
+              {
+                  delete _padded_input;
+                  _padded_input = NULL;
+              }
+          }
+#endif
       }
 
       CommonMemPool<Dtype> *common_mempool() const
@@ -97,6 +118,12 @@ class RuntimeParameter
       {
           return _cl_runtime;
       }
+      size_t* padded_input_size_ptr() {
+          return &_padded_input_size;
+      }
+      feather::Blob<Dtype>* padded_input() {
+          return _padded_input;
+      }
 #endif
 
       private:
@@ -106,5 +133,7 @@ class RuntimeParameter
 
 #ifdef FEATHER_OPENCL
         clhpp_feather::OpenCLRuntime *_cl_runtime;
+        feather::Blob<Dtype>* _padded_input;
+        size_t _padded_input_size;
 #endif
 };

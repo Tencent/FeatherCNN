@@ -20,18 +20,31 @@
 
 namespace booster
 {
+
+int Insert(const std::string& cl_program_name,
+           const std::string& cl_kernel_name,
+           std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
+{
+    auto it_source = booster::opencl_kernel_string_map.find(cl_program_name);
+    if (it_source != booster::opencl_kernel_string_map.end()) {
+        cl_kernel_info_map[cl_kernel_name].program_name = cl_program_name;
+        cl_kernel_info_map[cl_kernel_name].kernel_name = cl_kernel_name;
+
+        std::string conv_kernel_source(it_source->second.begin(), it_source->second.end());
+        cl_kernel_info_map[cl_kernel_name].kernel_source = conv_kernel_source;
+    } else {
+        LOGE("can't find program %s!", cl_program_name.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
 //NAIVE Methods
 int NAIVE_Init_CL(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-    std::string program_name = "conv_1v1_buffer";
-    std::string kernel_name = "convolution";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end()) {
-        cl_kernel_info_map[kernel_name].program_name = program_name;
-        cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-    } else {
-        LOGE("can't find program %s!", program_name.c_str());
+    if (Insert("buffer_transform", "pad_int", cl_kernel_info_map) ||
+        Insert("conv_1v1_buffer", "convolution", cl_kernel_info_map)) {
         return -1;
     }
 
@@ -54,8 +67,8 @@ int NAIVE_Weight_Reform_CL(const ConvParam& param,
       for (int k = 0; k < w_channels; ++k) {
         for (int j = 0; j < w_hw; ++j) {
           int src_idx = (i * w_channels + k) * w_hw + j;
-          int dst_idx = (i / n_grp_size) * w_hw * param.ic_padded * n_grp_size +
-                      j * param.ic_padded * n_grp_size +
+          int dst_idx = (i / n_grp_size) * w_hw * param.padded_input_channels * n_grp_size +
+                      j * param.padded_input_channels * n_grp_size +
                       ( k / c_grp_size ) * n_grp_size * c_grp_size +
                       ( i % n_grp_size ) * c_grp_size +
                       k % c_grp_size;
@@ -68,15 +81,8 @@ int NAIVE_Weight_Reform_CL(const ConvParam& param,
 
 int DEPTHWISE_Init_CL(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-    std::string program_name = "depthwise_conv_1v1_buffer";
-    std::string kernel_name = "convolution_depthwise";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end()) {
-        cl_kernel_info_map[kernel_name].program_name = program_name;
-        cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-    } else {
-        LOGE("can't find program %s!", program_name.c_str());
+    if (Insert("buffer_transform", "pad_int", cl_kernel_info_map) ||
+        Insert("depthwise_conv_1v1_buffer", "convolution_depthwise", cl_kernel_info_map)) {
         return -1;
     }
 
@@ -110,7 +116,7 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
                     std::vector<std::string> kernel_names,
                     std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-  const clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+  const clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[1]];
   const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
   const std::vector<size_t>& conv_gws = conv_kernel_info.gws;
   const std::vector<size_t>& conv_lws = conv_kernel_info.lws;
@@ -167,7 +173,7 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
     int error_num;
     int param_idx = 0;
     bool set_kernel_arg_success = true;
-    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[1]];
     cl::Kernel& conv_kernel = conv_kernel_info.kernel;
 
     if (!is_reshape){
@@ -184,9 +190,9 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
           set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.bias_mem));
         }
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.output_mem));
-        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.ic_padded));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.padded_input_channels));
         if (param.group != param.input_channels) {
-          set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.oc_padded));
+          set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.padded_output_channels));
         }
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_h));
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_w));
@@ -227,7 +233,7 @@ int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
                                std::vector<std::string> kernel_names,
                                clhpp_feather::OpenCLRuntime* cl_runtime)
 {
-    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[1]];
     const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
     std::vector<size_t>& conv_gws = conv_kernel_info.gws;
     std::vector<size_t>& conv_lws = conv_kernel_info.lws;
@@ -242,13 +248,13 @@ int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
     int h_lws = param.output_h > 32 ? 16 : 8;
     int w_lws = param.output_w > 32 ? 16 : 8;
     int c_blk_size = 4;
-    if (param.ic_padded % 8 == 0 && param.oc_padded % 8 == 0) {
+    if (param.padded_input_channels % 8 == 0 && param.padded_output_channels % 8 == 0) {
       c_blk_size = 8;
     }
 
     size_t conv_gws_dim0 = (param.output_h / h_lws + !!(param.output_h % h_lws)) * h_lws;
     size_t conv_gws_dim1 = (param.output_w / w_lws + !!(param.output_w % w_lws)) * w_lws;
-    size_t conv_gws_dim2 = param.oc_padded / c_blk_size;
+    size_t conv_gws_dim2 = param.padded_output_channels / c_blk_size;
 
     size_t conv_lws_dim0 = h_lws;
     size_t conv_lws_dim1 = w_lws;
@@ -272,7 +278,10 @@ int BOTH_Set_Build_Opts(const ConvParam& param,
                         const std::vector<std::string>& kernel_names,
                         std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
-    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    clhpp_feather::CLKernelInfo& pad_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    std::vector<std::string>& pad_build_options = pad_kernel_info.build_options;
+
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[1]];
     std::vector<std::string>& build_options = conv_kernel_info.build_options;
     std::ostringstream ss;
     ss << param.channel_grp_size;
@@ -281,6 +290,8 @@ int BOTH_Set_Build_Opts(const ConvParam& param,
       build_options.push_back("-DDATA_TYPE=half");
     else
       build_options.push_back("-DDATA_TYPE=float");
+
+    pad_build_options = build_options;
 
     if (param.bias_term) {
       build_options.push_back("-DBIAS");
@@ -333,12 +344,12 @@ int ConvBoosterCL<Dtype>::SelectAlgo(ConvParam* param)
     if (param->group == param->input_channels)
     {
         this->algo = DEPTHWISE;
-        this->weight_size = param->kernel_h * param->kernel_w * param->oc_padded;
+        this->weight_size = param->kernel_h * param->kernel_w * param->padded_output_channels;
     }
     else if (param->group == 1)
     {
        this->algo = NAIVE;
-       this->weight_size = param->kernel_h * param->kernel_w * param->oc_padded * param->ic_padded;
+       this->weight_size = param->kernel_h * param->kernel_w * param->padded_output_channels * param->padded_input_channels;
     }
     else
     {
@@ -370,6 +381,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
         this->SetBuildOpts = BOTH_Set_Build_Opts;
+        this->kernel_names.push_back("pad_int");
         this->kernel_names.push_back("convolution");
         return 0;
     case DEPTHWISE:
@@ -379,6 +391,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
         this->SetBuildOpts = BOTH_Set_Build_Opts;
+        this->kernel_names.push_back("pad_int");
         this->kernel_names.push_back("convolution_depthwise");
         return 0;
     default:

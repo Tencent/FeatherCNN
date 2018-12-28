@@ -17,7 +17,7 @@
 namespace feather {
 
 template <class Dtype>
-InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param)
       : fuse_relu(false), Layer<Dtype>(layer_param, rt_param) {
     const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
     bias_term = inner_product_param->bias_term();

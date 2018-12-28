@@ -17,7 +17,7 @@ namespace feather {
 //#define USE_LEGACY_SGEMM
 
 template <class Dtype>
-ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param)
                         : Layer<Dtype>(layer_param, rt_param), conv_param(),
                         conv_booster(),
                         bias_data(NULL),
@@ -48,7 +48,6 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
         assert(this->_weight_blobs.size() == 2);
         this->bias_data = this->_weight_blobs[1]->data();
     }
-
 }
 
 
@@ -80,10 +79,10 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     this->_weight_blobs[0]->Free();
 
     if (this->conv_param.bias_term) {
-      this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), this->conv_param.oc_padded);
-      std::vector<Dtype> bias_padding(this->conv_param.oc_padded, 0);
+      this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), this->conv_param.padded_output_channels);
+      std::vector<Dtype> bias_padding(this->conv_param.padded_output_channels, 0);
       memcpy(bias_padding.data(), this->bias_data, this->conv_param.output_channels * sizeof(Dtype));
-      this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.oc_padded);
+      this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.padded_output_channels);
       this->_weight_blobs[1]->Free();
     }
 
@@ -141,7 +140,6 @@ int ConvLayerCL<Dtype>::ForwardCL()
 template <class Dtype>
 int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     //Conv layer has and only has one bottom blob.
-
     const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
     this->conv_param.input_w = bottom_blob->width();
@@ -152,12 +150,23 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->conv_param.output_channels, this->conv_param.output_h, this->conv_param.output_w);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
-    this->conv_param.oc_padded = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    this->conv_param.ic_padded = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    this->conv_param.padded_output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    this->conv_param.padded_input_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     this->conv_param.channel_grp_size = 4;
-    if (this->conv_param.ic_padded % 8 == 0 && this->conv_param.oc_padded % 8 == 0) {
+    if (this->conv_param.padded_input_channels % 8 == 0 && this->conv_param.padded_output_channels % 8 == 0) {
       this->conv_param.channel_grp_size = 8;
     }
+
+    this->conv_param.padded_output_h = this->conv_param.output_h;
+    this->conv_param.padded_output_w = this->conv_param.output_w;
+    this->conv_param.padded_input_h = this->conv_param.input_h + this->conv_param.pad_top + this->conv_param.pad_bottom;
+    this->conv_param.padded_input_w = (this->conv_param.padded_output_w - 1) * this->conv_param.stride_w + this->conv_param.kernel_w;
+    this->conv_param.padding_needed = (this->conv_param.padded_input_h != this->conv_param.input_h) ||
+                                      (this->conv_param.padded_input_w != this->conv_param.input_w);
+    size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
+    size_t* padded_input_size_ptr = this->rt_param->padded_input_size_ptr();
+    *padded_input_size_ptr = std::max(*padded_input_size_ptr, conv_padded_input_size);
+    LOGI("padded_input_size: %d", *padded_input_size_ptr);
 
     this->conv_booster.SelectAlgo(&this->conv_param);
     this->conv_booster.Init(this->cl_kernel_info_map);

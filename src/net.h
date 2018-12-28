@@ -52,7 +52,7 @@ class Net
         int PrintBlobData(std::string blob_name);
         int ExtractBlob(float* output_ptr, std::string blob_name);
         std::map<std::string, const Blob<Dtype> *> blob_map;
-        RuntimeParameter<float> *rt_param;
+        RuntimeParameter<Dtype> *rt_param;
 
       private:
         bool CheckDtype();

@@ -67,9 +67,10 @@ void DiffBlobData(feather::Net<float>* cpu_net, feather::Net<Dtype>* gpu_net, co
         if (cur_diff > threshold)
         {
             printf("Diff %d %f %f\n", i, cpu_data[i], gpu_data[i]);
-	    diff_sum += cur_diff;
+            diff_sum += cur_diff;
         }
     }
+
     std::string type_str = std::is_same<Dtype, uint16_t>::value ? "half" : "float";
     printf("GPU<%s> diff_sum %f\n", type_str.c_str(), diff_sum);
 }
@@ -85,7 +86,7 @@ void testPerf(const std::string& model_path, int input_size, const std::string& 
     float* input = (float*)malloc(sizeof(float) * input_size);
     for(int i = 0; i < input_size; i++)
     {
-       input[i] = (i % 256 - 127.5) / 128;
+        input[i] = (i % 256 - 127.5) / 128;
     }
     
     double total_time = 0;
@@ -100,17 +101,17 @@ void testPerf(const std::string& model_path, int input_size, const std::string& 
         double time = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
         time = time / 1000.0;
         printf("Prediction costs %lfms\n", time);
-	if (time > 400) continue;
+        if (time > 400) continue;
         if (i > 0) {
             total_time += time;
-	    ++timing_count;
-	}
+            ++timing_count;
+        }
     }
 
     if (timing_count > 0) {
-   	printf("Average %s runtime %lfms\n", device_str.c_str(), total_time / timing_count);
+        printf("Average %s<%s> runtime %lfms\n", device_str.c_str(), type_str.c_str(), total_time / timing_count);
     } else {
-	printf("Average runtime > 400ms!\n");
+        printf("Average runtime > 400ms!\n");
     }
 
     free(input);
@@ -130,7 +131,7 @@ void testDiff(const std::string& model_path, int input_size, const std::string& 
     float* input = (float*)malloc(sizeof(float) * input_size);
     for(int i = 0; i < input_size; ++i)
     {
-      input[i] = (rand() % 256 - 127.5) / 128;
+        input[i] = (rand() % 256 - 127.5) / 128;
     }
     forward_net_cpu.Forward(input);
     forward_net_gpu.Forward(input);
@@ -152,21 +153,19 @@ int main(int argc, char* argv[])
     if (argc >= 6)
     {
         std::string model_path = std::string(argv[1]);
-	int input_channels = atoi(argv[2]);
-	int input_height = atoi(argv[3]);
+        int input_channels = atoi(argv[2]);
+        int input_height = atoi(argv[3]);
         int input_width = atoi(argv[4]);
         std::string cpu_blob_name = std::string(argv[5]); // ReLU is always fused in the GPU conv/fc layers, 
         std::string gpu_blob_name = std::string(argv[6]); // which is not always the case for CPU conv/fc layers.
         int loop_count = argc > 7 ? atoi(argv[7]) : 2;
-	int input_size = input_channels * input_height * input_width;
+        int input_size = input_channels * input_height * input_width;
         testPerf<float>(model_path, input_size, cpu_blob_name, loop_count, DeviceType::CPU);
         testGPU<float>(model_path, input_size, cpu_blob_name, gpu_blob_name, loop_count);
         testGPU<uint16_t>(model_path, input_size, cpu_blob_name, gpu_blob_name, loop_count);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "Usage: ./feather_test [model_path] [input_channels] [input_height] [input_width] [cpu_blob_name] [gpu_blob_name] [loop_count]\n");
-	fprintf(stderr, "Example: ./feather_test nobn.feathermodel 3 224 192 \"fc5_classification_relu\" \"fc5_classification\" 100\n");
+        fprintf(stderr, "Example: ./feather_test nobn.feathermodel 3 224 192 \"fc5_classification_relu\" \"fc5_classification\" 100\n");
         return 0;
     }
     return 0;

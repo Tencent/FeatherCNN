@@ -61,9 +61,9 @@ class Blob
         ~Blob()
         {
             Free();
-            #ifdef FEATHER_OPENCL
-                FreeDevice();
-            #endif
+#ifdef FEATHER_OPENCL
+            FreeDevice();
+#endif
         }
 
         void Free();

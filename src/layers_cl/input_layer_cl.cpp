@@ -16,7 +16,7 @@
 namespace feather {
 
 template <class Dtype>
-InputLayerCL<Dtype>::InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param): Layer<Dtype>(layer_param, rt_param), _cl_fimage(NULL), _cl_img2d(NULL)
+InputLayerCL<Dtype>::InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param): Layer<Dtype>(layer_param, rt_param), _cl_fimage(NULL), _cl_img2d(NULL)
 {
     //From proto
     const InputParameter *input_param = layer_param->input_param();

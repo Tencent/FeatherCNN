@@ -26,7 +26,7 @@ namespace feather {
 template <class Dtype>
 class PoolingLayerCL : public Layer<Dtype> {
 public:
-    PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
+    PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
 
     int InitCL();
     virtual int SetBuildOptions();

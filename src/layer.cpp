@@ -21,7 +21,7 @@
 namespace feather
 {
 template<class Dtype>
-Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<float>* rt_param)
+Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<Dtype>* rt_param)
     : _fusible(false),
       _inplace(false),
       rt_param(rt_param),

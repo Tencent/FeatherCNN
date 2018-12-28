@@ -26,7 +26,7 @@ namespace feather {
 template <class Dtype>
 class InnerProductLayerCL : public Layer<Dtype> {
 public:
-  InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
+  InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
 
   int InitCL();
   virtual int SetBuildOptions();

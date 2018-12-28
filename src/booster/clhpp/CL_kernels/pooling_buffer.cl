@@ -5,7 +5,7 @@
 // N = 4, 8, or 16, which is the channel group size.
 __kernel void pooling(__global const DATA_TYPE* restrict in, /* [ih, iw, c] */
                       __global DATA_TYPE* restrict out,      /* [oh, ow, c] */
-                      __private const int channels,          /* a multiple of 4 */
+                      __private const int channels,          /* a multiple of N */
                       __private const int in_height,
                       __private const int in_width,
                       __private const int out_height,

@@ -16,7 +16,7 @@
 namespace feather {
 
 template <class Dtype>
-PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param)
       : stride_height(1),
         stride_width(1),
         Layer<Dtype>(layer_param, rt_param) {
