@@ -27,89 +27,23 @@ namespace feather {
 template <class Dtype>
 class InputLayerCL : public Layer<Dtype> {
 public:
-  InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
-      : Layer<Dtype>(layer_param, rt_param), _cl_fimage(NULL), _cl_img2d(NULL) {
-    //From proto
-    const InputParameter *input_param = layer_param->input_param();
-    size_t input_num = VectorLength(input_param->name());
-    size_t input_dim_num = VectorLength(input_param->dim());
-    assert(input_num > 0);
-    assert(input_dim_num == input_num * 4);
-    for (int i = 0; i < input_num; ++i) {
-      size_t num = input_param->dim()->Get(i * 4);
-      size_t channels = input_param->dim()->Get(i * 4 + 1);
-      size_t height = input_param->dim()->Get(i * 4 + 2);
-      size_t width = input_param->dim()->Get(i * 4 + 3);
-
-      std::string input_name = input_param->name()->Get(i)->str();
-      this->_top.push_back(input_name);
-      this->_top_blobs[input_name] = new Blob<Dtype>(num, channels, height, width);
-
-      this->output_height = height;
-      this->output_width = width;
-
-      //_top_blobs[input_name]->PrintBlobInfo();
-      LOGI("input_name cl %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
-      this->InitCL();
-    }
-  }
-
-  ~InputLayerCL() {}
-
+  InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param);
   int InitCL();
   int UintToDevice(const uint8_t* src_bgra);
   int FloatToDevice(const float* input_data);
-  int RunKernel(int type);
-
+  int CopyInput(std::string name, const float *input_data);
+  int CopyInput(std::string name, const uint8_t* src_bgra);
+  int ReshapeFloat(std::string name, int height, int width);
+  int ResetWorkSizeFloat();
+  int RunKernel(std::string kernel_type);
   virtual int SetWorkSize();
   virtual int SetBuildOptions();
   virtual int SetKernelParameters();
   int ResetInputAndArgs(size_t data_size);
 
-  int Reshape(std::string name, int height, int width)
+  size_t input_size()
   {
-      if (height == this->output_height && width == this->output_width) {
-          return 0;
-      }
-      bool set_kernel_arguments_success = true;
-      int num = this->_top_blobs[name]->num();
-      int channels = this->_top_blobs[name]->channels();
-      if (this->_top_blobs[name]->ReshapeWithReallocDevice(this->rt_param->context(), num, channels, height, width) == 2) {
-          cl::Buffer* layer_data_cl = this->_top_blobs[name]->data_cl();
-          set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(1, *layer_data_cl));
-      }
-      this->output_height = this->_top_blobs[name]->height();
-      this->output_width = this->_top_blobs[name]->width();
-
-      if (ResetInputAndArgs(num * channels * height * width) == 2) {
-          set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(0, this->_cl_fimage));
-      }
-      set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(2, this->output_height));
-      set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(3, this->output_width));
-      if (!set_kernel_arguments_success) {
-        LOGE("Failed setting normalinit OpenCL cl_kernels[0] arguments. %s: %s", __FILE__, __LINE__);
-        return -1;
-      }
-      this->SetWorkSize();
-      this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
-      // this->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width);
-      return 0;
-  }
-
-  int CopyInput(std::string name, const float *input_data) {
-    this->FloatToDevice(input_data);
-    this->RunKernel(0);
-    return 0;
-  }
-
-  int CopyInput(std::string name, const uint8_t* src_bgra) {
-    this->UintToDevice(src_bgra);
-    this->RunKernel(1);
-    return 0;
-  }
-
-  size_t input_size() {
-    return this->_top_blobs.size();
+      return this->_top_blobs.size();
   }
 
   std::string input_name(int idx) {
@@ -121,10 +55,11 @@ public:
   }
 
 private:
-  uint32_t output_height;
-  uint32_t output_width;
-  uint32_t output_channel;
-  uint32_t input_data_size;
+  size_t output_height;
+  size_t output_width;
+  size_t input_channels;
+  size_t input_data_size;
+  size_t channel_grp_size;
 
   cl::Image2D _cl_img2d;
   cl::Buffer _cl_fimage;

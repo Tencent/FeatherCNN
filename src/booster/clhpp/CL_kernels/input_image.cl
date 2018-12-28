@@ -1,6 +1,6 @@
 const sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP | CLK_FILTER_LINEAR;
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-__kernel void init1O42D(__read_only image2d_t input,
+__kernel void uint8_hwc_to_hwc(__read_only image2d_t input,
                         __global half* restrict output,
                         __private const int height,
                         __private const int width) {

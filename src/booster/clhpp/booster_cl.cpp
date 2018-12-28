@@ -106,7 +106,7 @@ int DEPTHWISE_Weight_Reform_CL(const ConvParam& param,
     return 0;
 }
 
-int BOTH_Forward_CL(cl::CommandQueue cmd_q, 
+int BOTH_Forward_CL(cl::CommandQueue cmd_q,
                     std::vector<std::string> kernel_names,
                     std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
@@ -157,10 +157,10 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
   return 0;
 }
 
-int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param, 
-                                   const CLBuffers& buffers, 
+int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
+                                   const CLBuffers& buffers,
                                    std::vector<std::string> kernel_names,
-                                   std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map, 
+                                   std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
                                    clhpp_feather::OpenCLRuntime* cl_runtime,
                                    bool is_reshape)
 {
@@ -169,15 +169,15 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
     bool set_kernel_arg_success = true;
     clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
     cl::Kernel& conv_kernel = conv_kernel_info.kernel;
-    const cl::Program& conv_program = conv_kernel_info.program;
-    const std::string& conv_kernel_name = conv_kernel_info.kernel_name;
-    cl_runtime->BuildKernel(conv_kernel_name, cl_kernel_info_map);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed to create conv OpenCL cl_conv_kernel.");
-      return 1;
-    }
 
     if (!is_reshape){
+        const cl::Program& conv_program = conv_kernel_info.program;
+        const std::string& conv_kernel_name = conv_kernel_info.kernel_name;
+        cl_runtime->BuildKernel(conv_kernel_name, cl_kernel_info_map);
+        if (!checkSuccess(error_num)) {
+          LOGE("Failed to create conv OpenCL cl_conv_kernel.");
+          return 1;
+        }
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers. input_mem));
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, *buffers.weight_mem));
         if (param.bias_term) {
@@ -206,8 +206,9 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
     else
     {
         param_idx = param.group != param.input_channels ? 6 : 5;
+        int out_idx = param.bias_term ? 3 : 2;
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(0, *buffers.input_mem));
-        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(3, *buffers.output_mem));
+        set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(out_idx, *buffers.output_mem));
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_h));
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.input_w));
         set_kernel_arg_success &= checkSuccess(conv_kernel.setArg(param_idx++, param.output_h));
@@ -221,7 +222,7 @@ int BOTH_Set_Conv_Kernel_Params_CL(const ConvParam& param,
     return 0;
 }
 
-int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param, 
+int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
                                std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
                                std::vector<std::string> kernel_names,
                                clhpp_feather::OpenCLRuntime* cl_runtime)
@@ -230,6 +231,13 @@ int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
     const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
     std::vector<size_t>& conv_gws = conv_kernel_info.gws;
     std::vector<size_t>& conv_lws = conv_kernel_info.lws;
+
+    if (conv_gws.size() != 0 || conv_lws.size() != 0)
+    {
+        conv_gws.clear();
+        conv_lws.clear();
+    }
+
 
     int h_lws = param.output_h > 32 ? 16 : 8;
     int w_lws = param.output_w > 32 ? 16 : 8;
@@ -256,8 +264,36 @@ int BOTH_Set_Conv_Work_Size_CL(const ConvParam& param,
 
     cl_runtime->FineTuneGroupSize(conv_kernel, param.output_h, param.output_w, conv_gws.data(), conv_lws.data());
 
-    conv_kernel_info.print();
+    return 0;
+}
 
+int BOTH_Set_Build_Opts(const ConvParam& param,
+                        bool is_fp16,
+                        const std::vector<std::string>& kernel_names,
+                        std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
+{
+    clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[0]];
+    std::vector<std::string>& build_options = conv_kernel_info.build_options;
+    std::ostringstream ss;
+    ss << param.channel_grp_size;
+    build_options.push_back("-DN=" + ss.str());
+    if (is_fp16)
+      build_options.push_back("-DDATA_TYPE=half");
+    else
+      build_options.push_back("-DDATA_TYPE=float");
+
+    if (param.bias_term) {
+      build_options.push_back("-DBIAS");
+    }
+    switch (param.activation) {
+      case booster::ReLU:
+        build_options.push_back("-DUSE_RELU");
+        break;
+      case booster::None:
+        break;
+      default:
+        break;
+    }
     return 0;
 }
 
@@ -286,9 +322,9 @@ size_t ConvBoosterCL<Dtype>::GetWeightSize()
 }
 
 template <class Dtype>
-std::vector<std::string> ConvBoosterCL<Dtype>::GetKernelNames()
+const std::vector<std::string>& ConvBoosterCL<Dtype>::GetKernelNames()
 {
-    return this->kernel_names; 
+    return this->kernel_names;
 }
 //Conditional algo selecter
 template <class Dtype>
@@ -333,6 +369,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->WeightReform = NAIVE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
+        this->SetBuildOpts = BOTH_Set_Build_Opts;
         this->kernel_names.push_back("convolution");
         return 0;
     case DEPTHWISE:
@@ -341,6 +378,7 @@ int ConvBoosterCL<Dtype>::SetFuncs()
         this->WeightReform = DEPTHWISE_Weight_Reform_CL;
         this->SetConvKernelParams = BOTH_Set_Conv_Kernel_Params_CL;
         this->SetConvWorkSize = BOTH_Set_Conv_Work_Size_CL;
+        this->SetBuildOpts = BOTH_Set_Build_Opts;
         this->kernel_names.push_back("convolution_depthwise");
         return 0;
     default:

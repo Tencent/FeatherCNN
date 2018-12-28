@@ -34,16 +34,15 @@ public:
   virtual int SetKernelParameters();
   virtual int ForwardCL();
   virtual int ForwardReshapeCL();
-  void FinetuneKernel();
   int GenerateTopBlobs();
   int Fuse(Layer<Dtype> *next_layer);
 
 protected:
-  uint32_t input_width;
-  uint32_t input_height;
-  uint32_t channel_grp_size;
+  size_t input_width;
+  size_t input_height;
+  size_t channel_grp_size;
 
-  uint32_t output_channels;
+  size_t output_channels;
 
   Dtype *kernel_data;
   Dtype *bias_data;

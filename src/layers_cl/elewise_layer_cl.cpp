@@ -11,8 +11,6 @@
 //under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
-#pragma once
-
 #include "elewise_layer_cl.h"
 
 using namespace std;
@@ -21,97 +19,121 @@ namespace feather {
 
 template <class Dtype>
 int EltwiseLayerCL<Dtype>::InitCL() {
-  string func_name = "eltwise";
-  string kernel_name_eltwise = "eltwise_buffer";
-  auto it_source = booster::opencl_kernel_string_map.find("eltwise_buffer");
-  std::string kernel_str_eltwise(it_source->second.begin(), it_source->second.end());
-
-  this->cl_kernel_names.push_back(func_name);
-  this->cl_program_names.push_back(kernel_name_eltwise);
-  this->cl_kernel_sources.push_back(kernel_str_eltwise);
-
-  cl::Kernel kernel;
-  this->cl_kernels.push_back(kernel);
-  cl::Event event;
-  this->cl_events.push_back(event);
-
-  return 0;
-}
-
-template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetBuildOptions() {
-  std::ostringstream ss;
-  ss << this->channel_grp_size;
-  this->cl_build_options.push_back("-DN=" + ss.str());
-  if(std::is_same<Dtype, uint16_t>::value)
-      this->cl_build_options.push_back("-DDATA_TYPE=half");
-  else
-      this->cl_build_options.push_back("-DDATA_TYPE=float");
+  std::string program_name = "eltwise_buffer";
+  std::string kernel_name = "eltwise";
+  auto it_source = booster::opencl_kernel_string_map.find(program_name);
+  if (it_source != booster::opencl_kernel_string_map.end()) {
+      this->cl_kernel_info_map[kernel_name].program_name = program_name;
+      this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
+      this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
+  } else {
+      LOGE("can't find program %s!", program_name.c_str());
+      return -1;
+  }
   return 0;
 }
 
 template <class Dtype>
 int EltwiseLayerCL<Dtype>::GenerateTopBlobs() {
-  assert(this->_bottom.size() == 2);
-  assert(this->_bottom_blobs.size() == 2);
-  assert(this->_bottom_blobs[this->_bottom[0]]->data_size() == this->_bottom_blobs[this->_bottom[1]]->data_size());
-  Blob<Dtype>* p_blob = new Blob<Dtype>();
-  p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
-  p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
-  this->output_height = p_blob->height();
-  this->output_width = p_blob->width();
-  int output_channel = p_blob->get_channels_padding();
-  this->_top_blobs[this->_top[0]] = p_blob;
+    assert(this->_bottom.size() == 2);
+    assert(this->_bottom_blobs.size() == 2);
+    assert(this->_bottom_blobs[this->_bottom[0]]->data_size() == this->_bottom_blobs[this->_bottom[1]]->data_size());
+    Blob<Dtype>* p_blob = new Blob<Dtype>();
+    p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
+    p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
+    this->output_height = p_blob->height();
+    this->output_width = p_blob->width();
+    this->output_channels = p_blob->get_channels_padding();
+    this->_top_blobs[this->_top[0]] = p_blob;
+    SetWorkSize();
 
-  FinetuneKernel();
-  SetWorkSize();
-
-  return 0;
-}
-
-template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetWorkSize() {
-    if (this->output_width > 32) this->group_size_w = 16;
-    if (this->output_height > 32) this->group_size_h = 16;
-    this->global_work_size[0] = (this->output_height / this->group_size_h + !!(this->output_height % this->group_size_h)) * this->group_size_h;
-    this->global_work_size[1] = (this->output_width / this->group_size_w  + !!(this->output_width % this->group_size_w)) * this->group_size_w;
-    this->local_work_size[0] = this->group_size_h;
-    this->local_work_size[1] = this->group_size_w;
-
-    if (this->global_work_size[2] > 4 && this->global_work_size[2] % 4 == 0) {
-      this->local_work_size[2] = 4;
-    } else {
-      this->local_work_size[2] = 1;
-    }
     return 0;
 }
 
 template <class Dtype>
+int EltwiseLayerCL<Dtype>::SetWorkSize() {
+    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
+    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
+    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
+
+    if (eltwise_gws.size() != 0 || eltwise_lws.size() != 0)
+    {
+        eltwise_gws.clear();
+        eltwise_lws.clear();
+    }
+
+    int h_lws = this->output_height > 32 ? 16 : 8;
+    int w_lws = this->output_width > 32 ? 16 : 8;
+
+    int c_blk_size = 4;
+    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
+      c_blk_size = 16;
+    } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
+      c_blk_size = 8;
+    }
+    this->channel_grp_size = c_blk_size;
+
+    size_t eltwise_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
+    size_t eltwise_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
+    size_t eltwise_gws_dim2 = padded_output_c / c_blk_size;
+
+    size_t eltwise_lws_dim0 = h_lws;
+    size_t eltwise_lws_dim1 = w_lws;
+    size_t eltwise_lws_dim2 = (eltwise_gws_dim2 > 4 && eltwise_gws_dim2 % 4 == 0) ? 4 : 1;
+
+    eltwise_gws.push_back(eltwise_gws_dim0);
+    eltwise_gws.push_back(eltwise_gws_dim1);
+    eltwise_gws.push_back(eltwise_gws_dim2);
+
+    eltwise_lws.push_back(eltwise_lws_dim0);
+    eltwise_lws.push_back(eltwise_lws_dim1);
+    eltwise_lws.push_back(eltwise_lws_dim2);
+
+    return 0;
+}
+
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::SetBuildOptions() {
+  std::ostringstream ss;
+  clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+  std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
+  ss << this->channel_grp_size;
+  build_options.push_back("-DN=" + ss.str());
+  if(std::is_same<Dtype, uint16_t>::value)
+      build_options.push_back("-DDATA_TYPE=half");
+  else
+      build_options.push_back("-DDATA_TYPE=float");
+  return 0;
+}
+
+
+
+template <class Dtype>
 int EltwiseLayerCL<Dtype>::SetKernelParameters() {
   int error_num;
-
-  this->cl_kernels[0] = cl::Kernel(this->cl_programs[0], this->cl_kernel_names[0].c_str(), &error_num);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed to create Elementwise OpenCL cl_kernels[0]. ");
-    return -1;
-  }
+  bool set_kernel_arguments_success = true;
+  int param_idx = 0;
+  this->rt_param->cl_runtime()->BuildKernel("eltwise", this->cl_kernel_info_map);
+  clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+  std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
+  std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
+  cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
 
   cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
   cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
   cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
 
-  uint32_t output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
-  bool set_kernel_arguments_success = true;
-  int param_idx = 0;
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *input_mem1));
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *input_mem2));
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, *output_mem));
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, output_height));
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, output_width));
-  set_kernel_arguments_success &= checkSuccess(this->cl_kernels[0].setArg(param_idx++, output_channels));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem1));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem2));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *output_mem));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_height));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_width));
+  set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_channels));
 
-  this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
+  this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, eltwise_gws.data(), eltwise_lws.data());
   if (!set_kernel_arguments_success) {
     LOGE("Failed setting inner product OpenCL cl_kernels[0] arguments. ");
     return -1;
@@ -121,38 +143,17 @@ int EltwiseLayerCL<Dtype>::SetKernelParameters() {
 }
 
 template <class Dtype>
-void EltwiseLayerCL<Dtype>::FinetuneKernel() {
-  string cur_kname;
-  string cur_kstr;
-  size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-  size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-
-  int group_size = 4;
-  if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
-    group_size = 16;
-  } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-    group_size = 8;
-  }
-
-  this->global_work_size[2] = padded_output_c / group_size;
-  cur_kname = this->cl_program_names[0];
-  cur_kstr = this->cl_kernel_sources[0];
-  this->channel_grp_size = group_size;
-
-  this->cl_program_names.clear();
-  this->cl_kernel_sources.clear();
-  this->cl_program_names.push_back(cur_kname);
-  this->cl_kernel_sources.push_back(cur_kstr);
-
-}
-
-template <class Dtype>
 int EltwiseLayerCL<Dtype>::ForwardReshapeCL() {
     if (this->output_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
         this->output_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
 
     bool set_kernel_arg_success = true;
+    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
+    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
+    cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
+
 
     this->output_height = this->_bottom_blobs[this->_bottom[0]]->height();
     this->output_width = this->_bottom_blobs[this->_bottom[0]]->width();
@@ -162,15 +163,15 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL() {
                                       this->output_height, this->output_width) == 2)
     {
         cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
-        set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(2, *output_mem));
+        set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(2, *output_mem));
     }
 
     cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
-    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(0, *input_mem1));
-    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(1, *input_mem2));
-    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(3, this->output_height));
-    set_kernel_arg_success &= checkSuccess(this->cl_kernels[0].setArg(4, this->output_width));
+    set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(0, *input_mem1));
+    set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(1, *input_mem2));
+    set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(3, this->output_height));
+    set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(4, this->output_width));
 
     if (!set_kernel_arg_success) {
       LOGE("Failed setting conv OpenCL cl_kernels[0] arguments.");
@@ -178,35 +179,37 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL() {
     }
 
     this->SetWorkSize();
-    this->rt_param->cl_runtime()->FineTuneGroupSize(this->cl_kernels[0], this->output_height, this->output_width, this->global_work_size, this->local_work_size);
-    // this->FineTuneGroupSize(this->cl_kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
+    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, eltwise_gws.data(), eltwise_lws.data());
     return this->ForwardCL();
 }
 
 template <class Dtype>
 int EltwiseLayerCL<Dtype>::ForwardCL() {
+    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
+    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
+    cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
+
 #ifdef TIMING_CL
   this->rt_param->command_queue().finish();
+  std::string cl_program_name = eltwise_kernel_info.program_name;
   timespec tpstart, tpend;
+  cl::Event event;
   clock_gettime(CLOCK_MONOTONIC, &tpstart);
-
-  // int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-  //     cl_kernels[0], cl::NullRange, cl::NDRange(global_work_size[0], global_work_size[1], global_work_size[2]),
-  //     cl::NDRange(local_work_size[0], local_work_size[1], local_work_size[2]), nullptr, &cl_events[0]);
   int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-      this->cl_kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
-      cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, &this->cl_events[0]);
+      cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
+      cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, &event);
   if (!checkSuccess(error_num)) {
     LOGE("Failed enqueuing the element wise kernel.");
     return -1;
   }
 
-  this->cl_events[0].wait();
+  event.wait();
   clock_gettime(CLOCK_MONOTONIC, &tpend);
   double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, this->cl_program_names[0].c_str());
+  LOGI("[%s] Execution time in %lf ms with %s\n", this->name().c_str(), timedif / 1000.0, cl_program_name.c_str());
 
-  cl::Event profileEvent = this->cl_events[0];
+  cl::Event profileEvent = event;
   double queued_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
   double submit_nanos_ = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
   double start_nanos_  = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
@@ -215,12 +218,12 @@ int EltwiseLayerCL<Dtype>::ForwardCL() {
   double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
   double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
   LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
-   this->name().c_str(), this->cl_program_names[0].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+   this->name().c_str(), cl_program_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-          this->cl_kernels[0], cl::NullRange, cl::NDRange(this->global_work_size[0], this->global_work_size[1], this->global_work_size[2]),
-          cl::NDRange(this->local_work_size[0], this->local_work_size[1], this->local_work_size[2]), nullptr, nullptr);
+          cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
+          cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
     if (!checkSuccess(error_num)) {
       LOGE("Failed enqueuing the element wise kernel.");
       return -1;

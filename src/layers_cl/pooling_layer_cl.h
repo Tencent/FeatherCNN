@@ -35,7 +35,6 @@ public:
     virtual int SetWorkSize();
     virtual int ForwardReshapeCL();
     inline void AssignOutputSize();
-    void FinetuneKernel();
     int GenerateTopBlobs();
 
   private:

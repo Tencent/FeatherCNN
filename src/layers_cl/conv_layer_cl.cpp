@@ -54,29 +54,11 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
 
 template <class Dtype>
 int ConvLayerCL<Dtype>::SetBuildOptions() {
-    clhpp_feather::CLKernelInfo& conv_kernel_info = this->cl_kernel_info_map[conv_booster.GetKernelNames()[0]];
-    std::vector<std::string>& build_options = conv_kernel_info.build_options;
-
-    std::ostringstream ss;
-    ss << channel_grp_size;
-    build_options.push_back("-DN=" + ss.str());
-    if (std::is_same<Dtype, uint16_t>::value)
-      build_options.push_back("-DDATA_TYPE=half");
-    else
-      build_options.push_back("-DDATA_TYPE=float");
-
-    if (this->conv_param.bias_term) {
-      build_options.push_back("-DBIAS");
-    }
-    switch (this->conv_param.activation) {
-      case booster::ReLU:
-        build_options.push_back("-DUSE_RELU");
-        break;
-      case booster::None:
-        break;
-      default:
-        break;
-    }
+    bool is_fp16 = std::is_same<Dtype, uint16_t>::value;
+    this->conv_booster.SetBuildOpts(this->conv_param,
+                                    is_fp16,
+                                    this->conv_booster.GetKernelNames(),
+                                    this->cl_kernel_info_map);
     return 0;
 }
 
@@ -84,7 +66,7 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::SetKernelParameters()
 {
     int error_num;
-    size_t n_grp_size = this->channel_grp_size;
+    size_t n_grp_size = this->conv_param.channel_grp_size;
     size_t real_weight_size = this->conv_booster.GetWeightSize();
     std::vector<Dtype> weight_reformed(real_weight_size, 0);
     this->conv_booster.WeightReform(this->conv_param,
@@ -129,6 +111,12 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
     this->conv_param.input_w = this->_bottom_blobs[this->_bottom[0]]->width();
 
     this->conv_param.AssignOutputDim();
+    if(this->conv_param.output_h < 1 || this->conv_param.output_w < 1)
+    {
+        LOGE("invalid output size in forward reshape");
+        return -1;
+    }
+
     this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
                                       this->_top_blobs[this->_top[0]]->num(),
                                       this->_top_blobs[this->_top[0]]->channels(),
@@ -166,9 +154,9 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
 
     this->conv_param.oc_padded = this->_top_blobs[this->_top[0]]->get_channels_padding();
     this->conv_param.ic_padded = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    this->channel_grp_size = 4;
+    this->conv_param.channel_grp_size = 4;
     if (this->conv_param.ic_padded % 8 == 0 && this->conv_param.oc_padded % 8 == 0) {
-      this->channel_grp_size = 8;
+      this->conv_param.channel_grp_size = 8;
     }
 
     this->conv_booster.SelectAlgo(&this->conv_param);

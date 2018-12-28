@@ -39,7 +39,6 @@ public:
   int Fuse(Layer<Dtype> *next_layer);
 
 private:
-  uint32_t channel_grp_size;
   booster::ConvBoosterCL<Dtype> conv_booster;
   booster::ConvParam conv_param;
 

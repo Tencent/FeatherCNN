@@ -340,7 +340,7 @@ int Net<Dtype>::Forward(float* input, int height, int width)
 #ifdef FEATHER_OPENCL
         {
             InputLayerCL<Dtype> *input_layer = (InputLayerCL<Dtype> *)layers[0];
-            input_layer->Reshape(input_layer->input_name(0), height, width);
+            input_layer->ReshapeFloat(input_layer->input_name(0), height, width);
             input_layer->CopyInput(input_layer->input_name(0), input);
             break;
         }

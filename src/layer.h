@@ -52,8 +52,6 @@ class Layer
 
         virtual int SetBuildOptions();
 
-        // int FineTuneGroupSize(const cl::Kernel& kernel, const size_t& height, const size_t& width);
-
         virtual int SetWorkSize();
 
         virtual int ForwardCL();

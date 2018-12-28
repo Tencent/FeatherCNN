@@ -41,7 +41,6 @@ public:
   virtual int SetWorkSize();
   virtual int SetKernelParameters();
   virtual int ForwardReshapeCL();
-  void FinetuneKernel();
   virtual int ForwardCL();
 
   int Fuse(Layer<Dtype> *next_layer) {
@@ -55,8 +54,9 @@ public:
   }
 
 private:
-  uint32_t output_height;
-  uint32_t output_width;
+  size_t output_height;
+  size_t output_width;
+  size_t output_channels;
   size_t channel_grp_size;
   bool fuse_relu;
 

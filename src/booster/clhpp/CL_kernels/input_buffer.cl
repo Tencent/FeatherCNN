@@ -1,7 +1,7 @@
 #include <common.h>
 
-// N = 4, 8, or 16, which is the channel group size. 
-__kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] */
+// N = 4, 8, or 16, which is the channel group size.
+__kernel void float_chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] */
                          __global DATA_TYPE* restrict out,         /* [h, w, (c+N-1)/N * N] */
                          __private const int height,
                          __private const int width) {
@@ -37,7 +37,7 @@ __kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] 
   const int in_channel_beg = mul24(channel_group_idx, N);
   const int channels_within_group = min(N, IN_CHANNELS - in_channel_beg);
   const int in_channel_end = in_channel_beg + channels_within_group;
-  const int height_x_width = mul24(height, width);  
+  const int height_x_width = mul24(height, width);
   const int height_width_idx = mad24(height_idx, width, width_idx);
   int idx = mad24(in_channel_end, height_x_width, height_width_idx);
   IN_DATA_TYPEN val = 0;
