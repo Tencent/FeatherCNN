@@ -699,18 +699,6 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               total_timedif_s1 += timedif;
               clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
-              if (layers[i]->BuildOpenCLProgram(rt_param->cl_runtime()->cl_program_map()))
-              {
-                  LOGE("Build layer programs failed");
-                  return false;
-              }
-#ifdef LAYER_INIT_TIMING
-              clock_gettime(CLOCK_MONOTONIC, &tpend);
-              timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-              LOGD("%s BuildOpenCLProgram spent %lfms\n", layers[i]->name().c_str(), timedif / 1000.0);
-              total_timedif_s2 += timedif;
-              clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
               if (layers[i]->SetKernelParameters())
               {
                   LOGE("Set up kernel parameters failed");
@@ -720,7 +708,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
               clock_gettime(CLOCK_MONOTONIC, &tpend);
               timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
               LOGD("%s SetKernelParameters spent %lfms\n",layers[i]->name().c_str(), timedif / 1000.0);
-              total_timedif_s3 += timedif;
+              total_timedif_s2 += timedif;
 #endif
 #else
               LOGE("Please compile OpenCL to use device type GPU_CL.");
@@ -741,8 +729,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
     total_timedif = 1000000.0 * (total_tpend.tv_sec - total_tpstart.tv_sec) + (total_tpend.tv_nsec - total_tpstart.tv_nsec) / 1000.0;
     LOGD("Net Layer Init spent %lfms\n", total_timedif / 1000.0);
     LOGD("Total SetBuildOptions spent %lfms\n", total_timedif_s1 / 1000.0);
-    LOGD("Total BuildOpenCLProgram spent %lfms\n", total_timedif_s2 / 1000.0);
-    LOGD("Total SetKernelParameters spent %lfms\n", total_timedif_s3 / 1000.0);
+    LOGD("Total SetKernelParameters spent %lfms\n", total_timedif_s2 / 1000.0);
 #endif
 
     //Allocate for common mempool.

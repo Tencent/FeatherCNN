@@ -243,58 +243,6 @@ bool Layer<Dtype>::fusible() const
 
 #ifdef FEATHER_OPENCL
 
-
-template<class Dtype>
-int Layer<Dtype>::BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map)
-{
-
-    if (cl_program_names.size() != cl_kernel_sources.size()){
-      LOGE("program str and names size not match.");
-      return -1;
-    }
-    int size = cl_program_names.size();
-    for (int i = 0; i < size; i++){
-        //LOGI("current program. %s", cl_program_names[i].c_str());
-        cl::Program cur_program;
-        std::string opt_str = "";
-        for (auto &opt : this->cl_build_options) {
-          opt_str += " " + opt;
-        }
-        std::string promap_key = this->cl_program_names[i] + opt_str;
-
-        if (cl_program_map.find(promap_key) != cl_program_map.end()){
-            cl_programs.push_back(cl_program_map[promap_key]);
-            //LOGI("exists current program. %s", cl_program_names[i].c_str());
-            continue;
-        }
-
-        std::string kernelAddr = promap_key + ".bin";
-        StringTool::RelaceString(kernelAddr, "/", "_");
-        StringTool::RelaceString(kernelAddr, ":", "_");
-        StringTool::RelaceString(kernelAddr, " ", "_");
-        StringTool::RelaceString(kernelAddr, "-", "_");
-        StringTool::RelaceString(kernelAddr, "=", "_");
-
-        kernelAddr = "no_save";
-
-        if (buildProgram(  this->rt_param->context(),
-                           this->rt_param->device(),
-                           cur_program,
-                           this->cl_kernel_sources[i],
-                           opt_str,
-                           kernelAddr) ) {
-            LOGE("Build program failed.");
-            return -1;
-        }
-
-
-        cl_programs.push_back(cur_program);
-        cl_program_map[promap_key] = cur_program;
-    }
-
-    return 0;
-}
-
 template<class Dtype>
 int Layer<Dtype>::SetBuildOptions()
 {
@@ -311,6 +259,13 @@ int Layer<Dtype>::SetKernelParameters()
 
 template<class Dtype>
 int Layer<Dtype>::SetWorkSize()
+{
+    //Base layer doesn't know settings.
+    return -1;
+}
+
+template<class Dtype>
+int Layer<Dtype>::ResetWorkSize()
 {
     //Base layer doesn't know settings.
     return -1;

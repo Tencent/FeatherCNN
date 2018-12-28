@@ -46,13 +46,13 @@ class Layer
         int TryFuse(Layer *next_layer);
 
 #ifdef FEATHER_OPENCL
-        int BuildOpenCLProgram(std::map<std::string, cl::Program>& cl_program_map);
-
         virtual int SetKernelParameters();
 
         virtual int SetBuildOptions();
 
         virtual int SetWorkSize();
+
+        virtual int ResetWorkSize();
 
         virtual int ForwardCL();
 
@@ -108,23 +108,7 @@ class Layer
         RuntimeParameter<float> *rt_param;
 
 #ifdef FEATHER_OPENCL
-        std::vector<std::string> cl_program_names;
-        std::vector<std::string> cl_kernel_names;
-        std::vector<std::string> cl_kernel_sources;
-        std::vector<cl::Program> cl_programs;
-        std::vector<cl::Kernel>  cl_kernels;
-        std::vector<cl::Event>   cl_events;
-        std::vector<std::string> cl_build_options;
-        std::vector<std::vector<size_t>> cl_gws;
-        std::vector<std::vector<size_t>> cl_lws;
-
-
         std::map<std::string, clhpp_feather::CLKernelInfo> cl_kernel_info_map;
-
-        size_t global_work_size[3];
-        size_t local_work_size[3];
-        int group_size_h = 8;
-        int group_size_w = 8;
 #endif
 };
 

@@ -115,6 +115,30 @@ int PoolingLayerCL<Dtype>::SetWorkSize()
 }
 
 template <class Dtype>
+int PoolingLayerCL<Dtype>::ResetWorkSize() {
+  clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
+  std::vector<size_t>& pool_gws = pool_kernel_info.gws;
+  std::vector<size_t>& pool_lws = pool_kernel_info.lws;
+
+  int h_lws = this->output_height > 32 ? 16 : 8;
+  int w_lws = this->output_width > 32 ? 16 : 8;
+
+  size_t pool_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
+  size_t pool_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
+
+  size_t pool_lws_dim0 = h_lws;
+  size_t pool_lws_dim1 = w_lws;
+
+  pool_gws[0] = pool_gws_dim0;
+  pool_gws[1] = pool_gws_dim1;
+  pool_lws[0] = pool_lws_dim0;
+  pool_lws[1] = pool_lws_dim1;
+
+  return 0;
+
+}
+
+template <class Dtype>
 int PoolingLayerCL<Dtype>::SetBuildOptions() {
   std::string ave_opt = "-DAVE_POOLING";
   clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
@@ -278,7 +302,7 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
       LOGE("Failed setting conv OpenCL cl_kernels[0] arguments.");
       return 1;
     }
-    SetWorkSize();
+    this->ResetWorkSize();
     this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, pool_gws.data(), pool_lws.data());
     return this->ForwardCL();
 }
