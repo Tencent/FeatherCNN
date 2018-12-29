@@ -1,5 +1,4 @@
-#ifndef CL_LOG_H
-#define CL_LOG_H
+#pragma once
 
 #if 0
     #include <android/log.h>
@@ -11,6 +10,4 @@
     #define LOGI(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
     #define LOGD(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
     #define LOGE(...) fprintf(stderr, __VA_ARGS__);fprintf(stderr,"\n");
-#endif
-
 #endif

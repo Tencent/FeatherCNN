@@ -14,6 +14,8 @@
 
 #pragma once
 #include <stdio.h>
+#include <booster/booster.h>
+#include <booster/thpool.h>
 
 enum WinogradOutType
 {
@@ -30,3 +32,10 @@ void winogradNonFusedTransform(float *output, int outChannels, float* WT, float*
 size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads);
 void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels);
 void winogradNonFusedTransform_F6x6_3x3(float *output, int outChannels, float* WT, float* VT, float* UT, float* input, int inChannels, int inputw, int inputh, WinogradOutType outType, float* biasArr, float* pack_array, int num_threads);
+
+namespace Winograd_F63_Fused{
+    void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels);
+
+    template <bool FuseReLU, bool FuseBias>
+    void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers, ThreadPool* thpool);
+};

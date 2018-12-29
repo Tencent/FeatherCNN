@@ -38,6 +38,7 @@ enum ConvAlgo{
     SGECONV,
     DEPTHWISE,
     WINOGRADF63,
+    WINOGRADF63FUSED,
     WINOGRADF23,
 };
 
@@ -46,10 +47,9 @@ enum ActivationType{
     ReLU,
 };
 
-
 struct ConvParam {
-    int input_channels;
     int output_channels;
+    int input_channels;
     int input_h;
     int input_w;
     int kernel_h;
@@ -58,10 +58,10 @@ struct ConvParam {
     int output_w;
     int stride_h;
     int stride_w;
-    int pad_top;
-    int pad_bottom;
     int pad_left;
+    int pad_bottom;
     int pad_right;
+    int pad_top;
     int group;
     bool bias_term;
     ActivationType activation;

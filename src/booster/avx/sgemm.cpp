@@ -362,7 +362,6 @@ void pack_B_avx(int kc, int nc, float* packB, float* B, int ldb)
 	
 template<bool fuseBias, bool fuseRelu>
 void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias, int num_threads, float* pack_array)
-// void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ldb, float *c, int ldc, int nc, int kc, float* bias)
 {
 	set_kernel(M % 6);
 	for(int i = 0; i < M; ++i){
@@ -375,8 +374,8 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	int NBlocks = (N_align + nc - 1) / nc;
 	int KBlocks = (K + kc - 1) / kc;
 	
-	//float* packB = (float *) _mm_malloc(sizeof(float) * kc * nc, 32);
-	//float* loadC = (float *) _mm_malloc(sizeof(float) * 6 * nc, 32);
+        float* packB = pack_array;
+        float* loadC = pack_array + kc * nc;
 	//printf("loadC %x %d\n", loadC, ((size_t) loadC) % 32);
 	
 	//Our GEMM is implemented in GEPB fashion, as the operands are row-major
@@ -384,12 +383,8 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	int n_len = nc;
 	for(int kt = 0; kt < KBlocks - 1; ++kt)
 	{
-		//k_len = (kt == KBlocks - 1) ? (K - kt * kc) : kc;
 		for(int nt = 0; nt < NBlocks; ++nt)
 		{
-			__attribute__((aligned(32))) float loadC[6 * nc];
-			__attribute__((aligned(32))) float packB[kc * nc];
-			//float* pA = packA + kt * kc * M_align;
 			float* pA = packA + kt * kc * M;
 			float* pB = b + kt * kc * ldb + nt * nc;
 			float* pC = c + nt * nc; 
@@ -405,13 +400,8 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 	{
 		int kt = KBlocks - 1;
 		k_len = (K - kt * kc);
-		__attribute__((aligned(32))) float loadC[6 * nc];
 		for(int nt = 0; nt < NBlocks; ++nt)
 		{
-			//float loadC[6 * nc];
-			//float* pA = packA + kt * kc * M_align;
-			__attribute__((aligned(32))) float loadC[6 * nc];
-			__attribute__((aligned(32))) float packB[kc * nc];
 			float* pA = packA + kt * kc * M;
 			float* pB = b + kt * kc * ldb + nt * nc;
 			float* pC = c + nt * nc; 
@@ -425,8 +415,6 @@ void packed_sgemm_activation(int M, int N, int K, float *packA, float *b, int ld
 			compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
 		}
 	}
-	//_mm_free(packB);
-	//_mm_free(loadC);
 }
 
 template void packed_sgemm_activation<false, false>(int, int, int, float *, float *, int, float *, int , int , int , float* , int, float*);

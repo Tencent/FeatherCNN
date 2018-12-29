@@ -119,8 +119,9 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
             {
                 if (std::is_same<Dtype, uint16_t>::value)
                 {
-
+                    #ifdef FEATHER_OPENCL
                     this->_data[i] = hs_floatToHalf(proto->data()->Get(i));
+                    #endif
                     // printf("%f, ", hs_halfToFloat(this->_data[i]));
                 }
                 else

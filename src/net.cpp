@@ -45,7 +45,8 @@ namespace feather
 {
 
 
-
+#ifdef FEATHER_OPENCL
+#include <sys/system_properties.h>
 bool judge_android7_opencl()
 {
     //libOpenCL.so
@@ -115,7 +116,7 @@ bool judge_android7_opencl()
     }
     return flage;
 }
-
+#endif
 
 template<class Dtype>
 bool Net<Dtype>::CheckDtype()

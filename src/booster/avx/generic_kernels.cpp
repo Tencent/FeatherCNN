@@ -205,6 +205,7 @@ void scale(const size_t channels, const size_t stride, const float* bias_data, c
     #pragma omp parallel for num_threads(num_threads) schedule(guided)
     for (int i = 0; i < channels; i++)
     {
+/*
         __m128 v_scale = _mm_set1_ps(scale_data[i]);
         __m128 v_bias = _mm_set1_ps(0.f);
         __m128 v_zero = _mm_set1_ps(0.f);
@@ -219,7 +220,8 @@ void scale(const size_t channels, const size_t stride, const float* bias_data, c
                 v_out = _mm_add_ps(v_out, v_bias);
             _mm_store_ps(output + i * stride + j, v_out);
         }
-        for (; j < stride; j++)
+ */
+        for (int j=0; j < stride; j++)
         {
             float scale = input[i * stride + j] * scale_data[i];
             if (has_bias)

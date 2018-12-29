@@ -18,8 +18,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-#ifdef FEATHER_OPENCL
 #include "CL/half.h"
+
+#ifdef FEATHER_OPENCL
 #include "CLHPP/clhpp_common.hpp"
 #endif
 

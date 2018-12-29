@@ -22,45 +22,38 @@
 #include <vector>
 #include <random>
 #include <sstream>
-#include <sys/system_properties.h>
+//#include <sys/system_properties.h>
 
 namespace feather
 {
 
 bool judge_android7_opencl();
 
-template<class Dtype>
+template <class Dtype>
 class Net
 {
-    public:
-        Net(size_t num_threads, DeviceType device_type);
+public:
+  Net(size_t num_threads, DeviceType device_type);
 
-        ~Net();
-        void InitFromPath(const char *model_path);
-        void InitFromStringPath(std::string model_path);
-        void InitFromFile(FILE *fp);
-        int SetProgMapFromNet(const Net<Dtype>* infer_net);
+  ~Net();
+  void InitFromPath(const char *model_path);
+  void InitFromStringPath(std::string model_path);
+  void InitFromFile(FILE *fp);
+  int SetProgMapFromNet(const Net<Dtype> *infer_net);
 
-        bool InitFromBuffer(const void *net_buffer);
+  bool InitFromBuffer(const void *net_buffer);
 
-        int  Forward(float* input);
-        int  Forward(float* input, int height, int width);
-        int RemoveLayer(Layer<Dtype>* layer);
-        int GenLayerTops();
-        void TraverseNet();
-        int GetBlobDataSize(size_t* data_size, std::string blob_name);
-        int PrintBlobData(std::string blob_name);
-        int ExtractBlob(float* output_ptr, std::string blob_name);
-        std::map<std::string, const Blob<Dtype> *> blob_map;
-        RuntimeParameter<Dtype> *rt_param;
-
-      private:
-        bool CheckDtype();
-        std::vector<Layer<Dtype>* > layers;
-
-
-
+  int Forward(float *input);
+  int Forward(float *input, int height, int width);
+  int RemoveLayer(Layer<Dtype> *layer);
+  int GenLayerTops();
+  void TraverseNet();
+  int GetBlobDataSize(size_t *data_size, std::string blob_name);
+  int PrintBlobData(std::string blob_name);
+  int ExtractBlob(float *output_ptr, std::string blob_name);
+  std::map<std::string, const Blob<Dtype> *> blob_map;
+  RuntimeParameter<Dtype> *rt_param;
+  bool CheckDtype();
+  std::vector<Layer<Dtype> *> layers;
 };
-
-
-};
+}; // namespace feather
