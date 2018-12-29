@@ -16,6 +16,7 @@
 #include "booster/generic_kernels.h"
 
 #include <math.h>
+#include <float.h>
 
 namespace feather
 {
