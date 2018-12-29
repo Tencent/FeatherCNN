@@ -28,9 +28,14 @@ int SoftmaxLayer::Forward()
     float* output = _top_blobs[_top[0]]->data();
 
     float sum = 0.0;
+    float max = -FLT_MAX;
+    for (size_t i = 0; i < data_size; ++i) 
+    {
+        max = std::max<float>(max, input[i]);
+    }
     for (size_t i = 0; i < data_size; ++i)
     {
-        output[i] = static_cast<float>(exp(input[i]));
+        output[i] = static_cast<float>(exp(input[i] - max));
         sum += output[i];
     }
     for (size_t i = 0; i < data_size; ++i)
