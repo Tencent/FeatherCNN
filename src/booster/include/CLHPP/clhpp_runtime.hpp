@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "CLHPP/clhpp_common.hpp"
+#include "CLHPP/clhpp_tuner.hpp"
 
 extern const std::string g_pre_kernel_dir;
 
@@ -93,6 +94,10 @@ public:
   {
     return *_cl_program_map;
   }
+  clhpp_feather::Tuner<size_t> &tuner() const
+  {
+    return *_tuner;
+  }
 
 
   std::string FeatherOpenclVersion() {
@@ -123,6 +128,7 @@ private:
   std::shared_ptr<cl::Device> _device;
   std::shared_ptr<cl::CommandQueue> _command_queue;
   std::shared_ptr<std::map<std::string, cl::Program> > _cl_program_map;
+  std::shared_ptr<clhpp_feather::Tuner<size_t> > _tuner;
 };
 
 

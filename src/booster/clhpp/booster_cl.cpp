@@ -114,7 +114,10 @@ int DEPTHWISE_Weight_Reform_CL(const ConvParam& param,
 
 int BOTH_Forward_CL(cl::CommandQueue cmd_q,
                     std::vector<std::string> kernel_names,
-                    std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
+                    std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                    const ConvParam& param,
+                    clhpp_feather::OpenCLRuntime* cl_runtime,
+                    std::string layer_name)
 {
   const clhpp_feather::CLKernelInfo& conv_kernel_info = cl_kernel_info_map[kernel_names[1]];
   const cl::Kernel& conv_kernel = conv_kernel_info.kernel;
@@ -151,13 +154,81 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
   LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
    this->name().c_str(), kernel_names[i].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 #else
-  int error_num = cmd_q.enqueueNDRangeKernel(
+
+  if (clhpp_feather::IsTuning()) {
+    //warm up
+    int error_num = cmd_q.enqueueNDRangeKernel(
       conv_kernel, cl::NullRange, cl::NDRange(conv_gws[0], conv_gws[1], conv_gws[2]),
       cl::NDRange(conv_lws[0], conv_lws[1], conv_lws[2]), nullptr, nullptr);
-  if (!checkSuccess(error_num)) {
-    LOGE("Failed enqueuing the conv kernel.");
-    return -1;
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+    //run
+    std::vector<std::vector<size_t> > gws_list;
+    std::vector<std::vector<size_t> > lws_list;
+    gws_list.push_back(conv_gws);
+    lws_list.push_back(conv_lws);
+    uint64_t kwg_size = 0;
+    cl_runtime->GetKernelMaxWorkGroupSize(conv_kernel, kwg_size);
+    cl_runtime->tuner().Tune(kwg_size, param.output_h, param.output_w, 
+            conv_gws, conv_lws, gws_list, lws_list);
+    double opt_time = std::numeric_limits<double>::max();
+    int min_tune = -1;
+    for(int j = 0; j < gws_list.size(); j++)
+    {
+      cmd_q.finish();
+      timespec tpstart, tpend;
+      clock_gettime(CLOCK_MONOTONIC, &tpstart);
+      int error_num = cmd_q.enqueueNDRangeKernel(
+        conv_kernel, cl::NullRange, cl::NDRange(gws_list[j][0], gws_list[j][1], gws_list[j][2]),
+        cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
+      if (!checkSuccess(error_num)) {
+        LOGE("Failed enqueuing the conv kernel.");
+        return -1;
+      }
+
+      cmd_q.finish();
+      clock_gettime(CLOCK_MONOTONIC, &tpend);
+      double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+      timedif /= 1000.0;
+      //LOGI("tuner kernel_name [%s] tuner %d cost %.3f ms", kernel_names[1].c_str(), j, timedif);
+      if(timedif < opt_time) {
+        opt_time = timedif;
+        min_tune = j;
+      }
+    }
+    std::string key_gws = layer_name + "_" + kernel_names[1] + "_gws";
+    std::string key_lws = layer_name + "_" + kernel_names[1] + "_lws";
+    cl_runtime->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune]);
+    cl_runtime->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune]);
+    //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);
   }
+  else if(clhpp_feather::IsTunned()) {
+    std::string key_gws = layer_name + "_" + kernel_names[1] + "_gws";
+    std::string key_lws = layer_name + "_" + kernel_names[1] + "_lws";
+    std::vector<size_t> tmp_gws;
+    std::vector<size_t> tmp_lws;
+    cl_runtime->tuner().get_layer_kernel_wks(key_gws, tmp_gws);
+    cl_runtime->tuner().get_layer_kernel_wks(key_lws, tmp_lws);
+    int error_num = cmd_q.enqueueNDRangeKernel(
+      conv_kernel, cl::NullRange, cl::NDRange(tmp_gws[0], tmp_gws[1], tmp_gws[2]),
+      cl::NDRange(tmp_lws[0], tmp_lws[1], tmp_lws[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+  }
+  else {
+    int error_num = cmd_q.enqueueNDRangeKernel(
+      conv_kernel, cl::NullRange, cl::NDRange(conv_gws[0], conv_gws[1], conv_gws[2]),
+      cl::NDRange(conv_lws[0], conv_lws[1], conv_lws[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num)) {
+      LOGE("Failed enqueuing the conv kernel.");
+      return -1;
+    }
+  }
+  
 #endif
 
   return 0;

@@ -132,7 +132,10 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
 template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardCL()
 {
-    this->conv_booster.Forward(this->rt_param->command_queue(), this->conv_booster.GetKernelNames(), this->cl_kernel_info_map);
+    //this->conv_booster.Forward(this->rt_param->command_queue(), this->conv_booster.GetKernelNames(), this->cl_kernel_info_map);
+    this->conv_booster.Forward(this->rt_param->command_queue(), this->conv_booster.GetKernelNames(),
+                            this->cl_kernel_info_map, this->conv_param, 
+                            this->rt_param->cl_runtime(), this->name());
     return 0;
 }
 

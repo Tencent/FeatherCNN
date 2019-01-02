@@ -151,7 +151,10 @@ public:
   typedef int (*INIT_FUNC_CL)(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
   typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q,
                                   std::vector<std::string> kernel_names,
-                                  std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
+                                  std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                                  const ConvParam& param,
+                                  clhpp_feather::OpenCLRuntime* cl_runtime,
+                                  std::string layer_name);
   typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam& param,
                                   size_t n_grp_size,
                                   size_t c_grp_size,
