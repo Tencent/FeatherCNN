@@ -10,7 +10,7 @@
 #include <string>
 
 #include "CL/cl.h"
-#include "log.h"
+#include "common.h"
 /**
  * \brief Create an OpenCL command queue for a given context.
  * \param[in] context The OpenCL context to use.

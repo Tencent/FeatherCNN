@@ -15,9 +15,7 @@
 #include "feather_generated.h"
 #include "blob.h"
 #include "fp16/fp16.h"
-#include "log.h"
 
-#include "common.h"
 
 namespace feather
 {

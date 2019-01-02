@@ -19,11 +19,9 @@
 #include "layer_factory_cl.h"
 #include "layers_cl/input_layer_cl.h"
 #endif
-// #include <CL/cl.h>
 #include "net.h"
 #include "layer.h"
 #include "layers/input_layer.h"
-//#include "log.h"
 
 #include "mempool.h"
 
