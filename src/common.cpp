@@ -29,6 +29,7 @@ int min(int a, int b)
     return (a < b) ? a : b;
 }
 
+#ifndef __linux__
 void* _mm_malloc(size_t sz, size_t align)
 {
     void *ptr;
@@ -52,6 +53,7 @@ void _mm_free(void* ptr)
         ptr = NULL;
     }
 }
+#endif
 
 void StringTool::SplitString(const std::string &input, const std::string &delim, std::vector<std::string> &parts)
 {

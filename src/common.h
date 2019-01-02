@@ -48,8 +48,13 @@ class StringTool
 
 
 int min(int a, int b);
+
+#ifndef __linux__
 void* _mm_malloc(size_t sz, size_t align);
 void _mm_free(void* ptr);
+#else
+#include <mm_malloc.h>
+#endif
 
 unsigned short hs_floatToHalf (float f);
 int hs_halfToFloatRep (unsigned short c);
