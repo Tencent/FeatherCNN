@@ -13,7 +13,7 @@
 #include <dirent.h>
 
 #include "CLHPP/cl2_head.hpp"
-#include "log.h"
+#include "common.h"
 
 const std::string g_pre_kernel_dir = "/sdcard/feather_cl/";
 

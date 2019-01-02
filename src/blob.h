@@ -17,8 +17,7 @@
 #include <string>
 #include <assert.h>
 #include <stdio.h>
-
-#include "CL/half.h"
+#include "common.h"
 
 #ifdef FEATHER_OPENCL
 #include "CLHPP/clhpp_common.hpp"
@@ -137,7 +136,7 @@ class Blob
         }
 
 #ifdef FEATHER_OPENCL
-        cl::Buffer* data_cl() const 
+        cl::Buffer* data_cl() const
         {
             return _data_cl;
         }

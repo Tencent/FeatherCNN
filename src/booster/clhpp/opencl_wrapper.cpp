@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "log.h"
+#include "common.h"
 
 /**
  * Wrapper of OpenCL 2.0, based on file opencl20/CL/cl.h
@@ -150,7 +150,7 @@ class OpenCLLibrary final {
                                                        cl_int *,
                                                        cl_int *);
 
-  using clCreateProgramWithBuiltInKernelsFunc = 
+  using clCreateProgramWithBuiltInKernelsFunc =
       cl_program (*) (cl_context, cl_uint, const cl_device_id *, const char *, cl_int *);
 
   using clRetainContextFunc = cl_int (*)(cl_context context);

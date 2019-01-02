@@ -24,10 +24,6 @@
 #include <map>
 #include "common.h"
 
-#ifdef FEATHER_OPENCL
-#include "CL/half.h"
-#endif
-
 namespace feather
 {
 
