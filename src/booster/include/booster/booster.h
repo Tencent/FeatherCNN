@@ -91,8 +91,8 @@ struct ConvParam {
     }
     void AssignPaddedDim()
     {
-        input_h = input_h + pad_left + pad_right;
-        input_w = input_w + pad_top + pad_bottom;
+        input_h = input_h + pad_top + pad_bottom;
+        input_w = input_w + pad_left + pad_right;
         pad_left = 0;
         pad_bottom = 0;
         pad_right = 0;
