@@ -13,15 +13,16 @@
 //specific language governing permissions and limitations under the License.
 #include "conv_layer_cl.h"
 
-namespace feather {
+namespace feather
+{
 //#define USE_LEGACY_SGEMM
 
 template <class Dtype>
 ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param)
-                        : Layer<Dtype>(layer_param, rt_param), conv_param(),
-                        conv_booster(),
-                        bias_data(NULL),
-                        kernel_data(NULL)
+    : Layer<Dtype>(layer_param, rt_param), conv_param(),
+      conv_booster(),
+      bias_data(NULL),
+      kernel_data(NULL)
 {
     this->_fusible = true;
     const ConvolutionParameter *conv_param_in = layer_param->convolution_param();
@@ -52,7 +53,8 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
 
 
 template <class Dtype>
-int ConvLayerCL<Dtype>::SetBuildOptions() {
+int ConvLayerCL<Dtype>::SetBuildOptions()
+{
     bool is_fp16 = std::is_same<Dtype, uint16_t>::value;
     this->conv_booster.SetBuildOpts(this->conv_param,
                                     is_fp16,
@@ -78,12 +80,13 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     this->_weight_blobs[0]->WriteToDevice(this->rt_param->command_queue(), weight_reformed.data(), real_weight_size);
     this->_weight_blobs[0]->Free();
 
-    if (this->conv_param.bias_term) {
-      this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), this->conv_param.padded_output_channels);
-      std::vector<Dtype> bias_padding(this->conv_param.padded_output_channels, 0);
-      memcpy(bias_padding.data(), this->bias_data, this->conv_param.output_channels * sizeof(Dtype));
-      this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.padded_output_channels);
-      this->_weight_blobs[1]->Free();
+    if (this->conv_param.bias_term)
+    {
+        this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), this->conv_param.padded_output_channels);
+        std::vector<Dtype> bias_padding(this->conv_param.padded_output_channels, 0);
+        memcpy(bias_padding.data(), this->bias_data, this->conv_param.output_channels * sizeof(Dtype));
+        this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.padded_output_channels);
+        this->_weight_blobs[1]->Free();
     }
 
     booster::CLBuffers buffers;
@@ -103,23 +106,23 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::ForwardReshapeCL()
 {
     if (this->conv_param.input_h == this->_bottom_blobs[this->_bottom[0]]->height() &&
-        this->conv_param.input_w == this->_bottom_blobs[this->_bottom[0]]->width())
+            this->conv_param.input_w == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
 
     this->conv_param.input_h = this->_bottom_blobs[this->_bottom[0]]->height();
     this->conv_param.input_w = this->_bottom_blobs[this->_bottom[0]]->width();
 
     this->conv_param.AssignOutputDim();
-    if(this->conv_param.output_h < 1 || this->conv_param.output_w < 1)
+    if (this->conv_param.output_h < 1 || this->conv_param.output_w < 1)
     {
         LOGE("invalid output size in forward reshape");
         return -1;
     }
 
     this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
-                                      this->_top_blobs[this->_top[0]]->num(),
-                                      this->_top_blobs[this->_top[0]]->channels(),
-                                      this->conv_param.output_h, this->conv_param.output_w);
+            this->_top_blobs[this->_top[0]]->num(),
+            this->_top_blobs[this->_top[0]]->channels(),
+            this->conv_param.output_h, this->conv_param.output_w);
 
     booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
@@ -134,14 +137,15 @@ int ConvLayerCL<Dtype>::ForwardCL()
 {
     //this->conv_booster.Forward(this->rt_param->command_queue(), this->conv_booster.GetKernelNames(), this->cl_kernel_info_map);
     this->conv_booster.Forward(this->rt_param->command_queue(), this->conv_booster.GetKernelNames(),
-                            this->cl_kernel_info_map, this->conv_param, 
-                            this->rt_param->cl_runtime(), this->name());
+                               this->cl_kernel_info_map, this->conv_param,
+                               this->rt_param->cl_runtime(), this->name());
     return 0;
 }
 
 
 template <class Dtype>
-int ConvLayerCL<Dtype>::GenerateTopBlobs() {
+int ConvLayerCL<Dtype>::GenerateTopBlobs()
+{
     //Conv layer has and only has one bottom blob.
     const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
@@ -156,8 +160,9 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     this->conv_param.padded_output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     this->conv_param.padded_input_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     this->conv_param.channel_grp_size = 4;
-    if (this->conv_param.padded_input_channels % 8 == 0 && this->conv_param.padded_output_channels % 8 == 0) {
-      this->conv_param.channel_grp_size = 8;
+    if (this->conv_param.padded_input_channels % 8 == 0 && this->conv_param.padded_output_channels % 8 == 0)
+    {
+        this->conv_param.channel_grp_size = 8;
     }
 
     this->conv_param.padded_output_h = this->conv_param.output_h;
@@ -180,13 +185,15 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
 template <class Dtype>
 int ConvLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
 {
-  if (next_layer->type().compare("ReLU") == 0)
-  {
-    this->conv_param.activation = booster::ReLU;
-    return 1;
-  } else {
-    return 0;
-  }
+    if (next_layer->type().compare("ReLU") == 0)
+    {
+        this->conv_param.activation = booster::ReLU;
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 template class ConvLayerCL<float>;

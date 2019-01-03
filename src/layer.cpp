@@ -53,7 +53,8 @@ Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<Dtype>* rt_para
 template<class Dtype>
 Layer<Dtype>::~Layer()
 {
-    if(!_inplace){
+    if (!_inplace)
+    {
         for (int i = 0; i < _top_blobs.size(); ++i)
         {
             delete _top_blobs[top(i)];
@@ -61,7 +62,7 @@ Layer<Dtype>::~Layer()
     }
     for (int i = 0; i < _weight_blobs.size(); ++i)
     {
-	    delete _weight_blobs[i];
+        delete _weight_blobs[i];
     }
 }
 

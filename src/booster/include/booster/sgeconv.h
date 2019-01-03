@@ -7,7 +7,8 @@
  * Allocation requirement: packA: M * K
  */
 
-namespace booster{
+namespace booster
+{
 void pad_input_neon(booster::ConvParam *conv_param, float* padded_input, float* input);
 
 template<int ROW_BATCH>

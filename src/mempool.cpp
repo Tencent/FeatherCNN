@@ -69,13 +69,13 @@ bool CommonMemPool<PTR_TYPE>::Alloc()
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::Alloc(size_t size_byte)
 {
-    if(size_byte > common_size)
+    if (size_byte > common_size)
     {
         free(common_memory);
         common_memory = NULL;
         common_size = size_byte;
         common_memory = (PTR_TYPE *) _mm_malloc(common_size, 128);
-        if(common_memory == NULL)
+        if (common_memory == NULL)
             return false;
     }
     return true;

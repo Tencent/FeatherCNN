@@ -23,26 +23,28 @@
 #include <assert.h>
 #include <stdio.h>
 
-namespace feather {
+namespace feather
+{
 //#define USE_LEGACY_SGEMM
 
 template <class Dtype>
-class ConvLayerCL: public Layer<Dtype> {
-public:
-  ConvLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
+class ConvLayerCL: public Layer<Dtype>
+{
+    public:
+        ConvLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
 
-  virtual int SetBuildOptions();
-  virtual int ForwardCL();
-  virtual int ForwardReshapeCL();
-  virtual int SetKernelParameters();
-  int GenerateTopBlobs();
-  int Fuse(Layer<Dtype> *next_layer);
+        virtual int SetBuildOptions();
+        virtual int ForwardCL();
+        virtual int ForwardReshapeCL();
+        virtual int SetKernelParameters();
+        int GenerateTopBlobs();
+        int Fuse(Layer<Dtype> *next_layer);
 
-private:
-  booster::ConvBoosterCL<Dtype> conv_booster;
-  booster::ConvParam conv_param;
+    private:
+        booster::ConvBoosterCL<Dtype> conv_booster;
+        booster::ConvParam conv_param;
 
-  Dtype *bias_data;
-  Dtype *kernel_data;
+        Dtype *bias_data;
+        Dtype *kernel_data;
 };
 }; // namespace feather

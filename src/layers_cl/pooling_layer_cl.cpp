@@ -13,13 +13,15 @@
 //specific language governing permissions and limitations under the License.
 #include "pooling_layer_cl.h"
 
-namespace feather {
+namespace feather
+{
 
 template <class Dtype>
 PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param)
-      : stride_height(1),
-        stride_width(1),
-        Layer<Dtype>(layer_param, rt_param) {
+    : stride_height(1),
+      stride_width(1),
+      Layer<Dtype>(layer_param, rt_param)
+{
     const PoolingParameter *pooling_param = layer_param->pooling_param();
     this->kernel_height = pooling_param->kernel_h();
     this->kernel_width = pooling_param->kernel_w();
@@ -33,19 +35,23 @@ PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, Runtime
     this->method = pooling_param->pool();
 
     InitCL();
-  }
+}
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::InitCL() {
+int PoolingLayerCL<Dtype>::InitCL()
+{
 
     std::string program_name = "pooling_buffer";
     std::string kernel_name = "pooling";
     auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end()) {
+    if (it_source != booster::opencl_kernel_string_map.end())
+    {
         this->cl_kernel_info_map[kernel_name].program_name = program_name;
         this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
         this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-    } else {
+    }
+    else
+    {
         LOGE("can't find program %s!", program_name.c_str());
         return -1;
     }
@@ -53,7 +59,8 @@ int PoolingLayerCL<Dtype>::InitCL() {
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::GenerateTopBlobs() {
+int PoolingLayerCL<Dtype>::GenerateTopBlobs()
+{
     //Only accept a single bottom blob.
     const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
     this->input_height = bottom_blob->height();
@@ -88,10 +95,13 @@ int PoolingLayerCL<Dtype>::SetWorkSize()
     int w_lws = this->output_width > 32 ? 16 : 8;
 
     int c_blk_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0) {
-      c_blk_size = 16;
-    } else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0) {
-      c_blk_size = 8;
+    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
+    {
+        c_blk_size = 16;
+    }
+    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
+    {
+        c_blk_size = 8;
     }
     this->channel_grp_size = c_blk_size;
 
@@ -115,65 +125,69 @@ int PoolingLayerCL<Dtype>::SetWorkSize()
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::ResetWorkSize() {
-  clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
-  std::vector<size_t>& pool_gws = pool_kernel_info.gws;
-  std::vector<size_t>& pool_lws = pool_kernel_info.lws;
+int PoolingLayerCL<Dtype>::ResetWorkSize()
+{
+    clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
+    std::vector<size_t>& pool_gws = pool_kernel_info.gws;
+    std::vector<size_t>& pool_lws = pool_kernel_info.lws;
 
-  int h_lws = this->output_height > 32 ? 16 : 8;
-  int w_lws = this->output_width > 32 ? 16 : 8;
+    int h_lws = this->output_height > 32 ? 16 : 8;
+    int w_lws = this->output_width > 32 ? 16 : 8;
 
-  size_t pool_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-  size_t pool_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
+    size_t pool_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
+    size_t pool_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
 
-  size_t pool_lws_dim0 = h_lws;
-  size_t pool_lws_dim1 = w_lws;
+    size_t pool_lws_dim0 = h_lws;
+    size_t pool_lws_dim1 = w_lws;
 
-  pool_gws[0] = pool_gws_dim0;
-  pool_gws[1] = pool_gws_dim1;
-  pool_lws[0] = pool_lws_dim0;
-  pool_lws[1] = pool_lws_dim1;
+    pool_gws[0] = pool_gws_dim0;
+    pool_gws[1] = pool_gws_dim1;
+    pool_lws[0] = pool_lws_dim0;
+    pool_lws[1] = pool_lws_dim1;
 
-  return 0;
+    return 0;
 
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::SetBuildOptions() {
-  std::string ave_opt = "-DAVE_POOLING";
-  clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
-  std::vector<std::string>& build_options = pool_kernel_info.build_options;
-  std::ostringstream ss;
-  ss << this->channel_grp_size;
+int PoolingLayerCL<Dtype>::SetBuildOptions()
+{
+    std::string ave_opt = "-DAVE_POOLING";
+    clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
+    std::vector<std::string>& build_options = pool_kernel_info.build_options;
+    std::ostringstream ss;
+    ss << this->channel_grp_size;
 
-  switch (this->method) {
-    case PoolingParameter_::PoolMethod_MAX_:
-      if (std::is_same<Dtype, uint16_t>::value)
-        build_options.push_back("-DMIN_VAL=-HALF_MAX");
-      else
-        build_options.push_back("-DMIN_VAL=-FLT_MAX");
+    switch (this->method)
+    {
+        case PoolingParameter_::PoolMethod_MAX_:
+            if (std::is_same<Dtype, uint16_t>::value)
+                build_options.push_back("-DMIN_VAL=-HALF_MAX");
+            else
+                build_options.push_back("-DMIN_VAL=-FLT_MAX");
 
-      break;
-    case PoolingParameter_::PoolMethod_AVE:
-      build_options.push_back(ave_opt);
+            break;
+        case PoolingParameter_::PoolMethod_AVE:
+            build_options.push_back(ave_opt);
 
-      break;
-    default:
-      LOGE("Unsupported pool method\n");
+            break;
+        default:
+            LOGE("Unsupported pool method\n");
 
-      break;
-  }
+            break;
+    }
 
-  build_options.push_back("-DN=" + ss.str());
-  if (std::is_same<Dtype, uint16_t>::value)
-    build_options.push_back("-DDATA_TYPE=half");
-  else
-    build_options.push_back("-DDATA_TYPE=float");
-  return 0;
+    build_options.push_back("-DN=" + ss.str());
+    if (std::is_same<Dtype, uint16_t>::value)
+        build_options.push_back("-DDATA_TYPE=half");
+    else
+        build_options.push_back("-DDATA_TYPE=float");
+    return 0;
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::SetKernelParameters() {
+int PoolingLayerCL<Dtype>::SetKernelParameters()
+{
     int error_num;
     bool set_kernel_arguments_success = true;
     int param_idx = 0;
@@ -201,19 +215,21 @@ int PoolingLayerCL<Dtype>::SetKernelParameters() {
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->stride_width));
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->pad_height));
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->pad_width));
-    if (!set_kernel_arguments_success) {
-      LOGE("Failed setting pooling OpenCL cl_kernels[0] arguments.");
-      return 1;
+    if (!set_kernel_arguments_success)
+    {
+        LOGE("Failed setting pooling OpenCL cl_kernels[0] arguments.");
+        return 1;
     }
 
     this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, pool_gws.data(), pool_lws.data());
 
     // this->FineTuneGroupSize(this->cl_kernels[0], this->_top_blobs[this->_top[0]]->height(), this->_top_blobs[this->_top[0]]->width());
     return 0;
-  }
+}
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::ForwardCL() {
+int PoolingLayerCL<Dtype>::ForwardCL()
+{
     clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
     std::vector<size_t>& pool_gws = pool_kernel_info.gws;
     std::vector<size_t>& pool_lws = pool_kernel_info.lws;
@@ -226,10 +242,11 @@ int PoolingLayerCL<Dtype>::ForwardCL() {
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
 
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
-        cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, &event);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the pooling kernel. %d", error_num);
-      return -1;
+                    cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, &event);
+    if (!checkSuccess(error_num))
+    {
+        LOGE("Failed enqueuing the pooling kernel. %d", error_num);
+        return -1;
     }
 
     this->cl_events[0].wait();
@@ -246,14 +263,15 @@ int PoolingLayerCL<Dtype>::ForwardCL() {
     double start_kerel_time = (start_nanos_ - submit_nanos_) / 1000.0 / 1000.0;
     double stop_kerel_time = (stop_nanos_ - start_nanos_) / 1000.0 / 1000.0;
     LOGI("[%s] [%s] Execution time in kernel: %0.5f, %0.5f, %0.5f\n",
-     this->name().c_str(), cl_program_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
+         this->name().c_str(), cl_program_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 #else
 
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
-        cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
-    if (!checkSuccess(error_num)) {
-      LOGE("Failed enqueuing the pooling kernel. %d", error_num);
-      return -1;
+                    cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
+    if (!checkSuccess(error_num))
+    {
+        LOGE("Failed enqueuing the pooling kernel. %d", error_num);
+        return -1;
     }
 
 #endif
@@ -261,9 +279,10 @@ int PoolingLayerCL<Dtype>::ForwardCL() {
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
+int PoolingLayerCL<Dtype>::ForwardReshapeCL()
+{
     if (this->input_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
-        this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
+            this->input_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
 
     bool set_kernel_arg_success = true;
@@ -275,15 +294,15 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
     this->input_height = this->_bottom_blobs[this->_bottom[0]]->height();
     this->input_width = this->_bottom_blobs[this->_bottom[0]]->width();
     AssignOutputSize();
-    if(this->output_height <= 1 || this->output_width < 1)
+    if (this->output_height <= 1 || this->output_width < 1)
     {
         LOGE("invalid output size in forward reshape");
         return -1;
     }
     if (this->_top_blobs[this->_top[0]]->ReshapeWithReallocDevice(this->rt_param->context(),
-                                      this->_top_blobs[this->_top[0]]->num(),
-                                      this->_top_blobs[this->_top[0]]->channels(),
-                                      this->output_height, this->output_width) == 2)
+            this->_top_blobs[this->_top[0]]->num(),
+            this->_top_blobs[this->_top[0]]->channels(),
+            this->output_height, this->output_width) == 2)
     {
         cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
         set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(1, *output_mem));
@@ -298,9 +317,10 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_width));
 
 
-    if (!set_kernel_arg_success) {
-      LOGE("Failed setting conv OpenCL cl_kernels[0] arguments.");
-      return 1;
+    if (!set_kernel_arg_success)
+    {
+        LOGE("Failed setting conv OpenCL cl_kernels[0] arguments.");
+        return 1;
     }
     this->ResetWorkSize();
     this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, pool_gws.data(), pool_lws.data());
@@ -311,15 +331,18 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL() {
 template <class Dtype>
 inline void PoolingLayerCL<Dtype>::AssignOutputSize()
 {
-    if (this->global_pooling) {
-      this->kernel_height = this->input_height;
-      this->kernel_width = this->input_width;
-      this->output_height = 1;
-      this->output_width = 1;
-    } else {
-      //General pooling.
-      this->output_height = static_cast<int>(ceil(static_cast<float>(this->input_height + 2 * this->pad_height - this->kernel_height) / this->stride_height)) + 1;
-      this->output_width = static_cast<int>(ceil(static_cast<float>(this->input_width + 2 * this->pad_width - this->kernel_width) / this->stride_width)) + 1;
+    if (this->global_pooling)
+    {
+        this->kernel_height = this->input_height;
+        this->kernel_width = this->input_width;
+        this->output_height = 1;
+        this->output_width = 1;
+    }
+    else
+    {
+        //General pooling.
+        this->output_height = static_cast<int>(ceil(static_cast<float>(this->input_height + 2 * this->pad_height - this->kernel_height) / this->stride_height)) + 1;
+        this->output_width = static_cast<int>(ceil(static_cast<float>(this->input_width + 2 * this->pad_width - this->kernel_width) / this->stride_width)) + 1;
     }
 }
 

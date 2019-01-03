@@ -34,14 +34,14 @@ class Blob
 #ifdef FEATHER_OPENCL
             , _data_cl(NULL)
 #endif
-            {}
+        {}
 
         explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
             : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name()
 #ifdef FEATHER_OPENCL
             , _data_cl(NULL)
 #endif
-            {}
+        {}
 
 
         explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
@@ -49,14 +49,14 @@ class Blob
 #ifdef FEATHER_OPENCL
             , _data_cl(NULL)
 #endif
-            {}
+        {}
 
         explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
             : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name)
 #ifdef FEATHER_OPENCL
             , _data_cl(NULL)
 #endif
-            {}
+        {}
 
         ~Blob()
         {

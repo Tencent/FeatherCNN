@@ -26,11 +26,11 @@ void Blob<Dtype>::Alloc()
 template<class Dtype>
 void Blob<Dtype>::Free()
 {
-	if (this->_data)
-	{
-		free(this->_data);
-		this->_data = NULL;
-	}
+    if (this->_data)
+    {
+        free(this->_data);
+        this->_data = NULL;
+    }
 }
 
 template<class Dtype>
@@ -59,7 +59,7 @@ void Blob<Dtype>::ReshapeWithRealloc(int num, int channels, int height, int widt
 template<class Dtype>
 void Blob<Dtype>::Realloc(size_t elem_size)
 {
-    if(elem_size > this->data_size())
+    if (elem_size > this->data_size())
     {
         Free();
         _data = (Dtype*) _mm_malloc(elem_size * sizeof(Dtype), 32);
@@ -78,20 +78,20 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
     size_t data_length;
     data_length = VectorLength(proto->data());
     //printf("data length %d & %d\n", data_length, VectorLength(proto->data_fp16()));
-    if(data_length == 0)
+    if (data_length == 0)
     {
-	    data_length = VectorLength(proto->data_fp16());
-	    //printf("LOADING FROM FP16 DATA LEN %zu\n", data_length);
-	    use_fp16_data = true;
+        data_length = VectorLength(proto->data_fp16());
+        //printf("LOADING FROM FP16 DATA LEN %zu\n", data_length);
+        use_fp16_data = true;
     }
     else
     {
-	if(VectorLength(proto->data_fp16()) > 0)
-	{
-    //printf("LOADING FROM FP16 DATA LEN %zu\n", VectorLength(proto->data_fp16()));
-		fprintf(stderr, "Fatal error: this model have FP16 and FP32 data in the same blob, aborting...\n");
-		exit(-1);
-	}
+        if (VectorLength(proto->data_fp16()) > 0)
+        {
+            //printf("LOADING FROM FP16 DATA LEN %zu\n", VectorLength(proto->data_fp16()));
+            fprintf(stderr, "Fatal error: this model have FP16 and FP32 data in the same blob, aborting...\n");
+            exit(-1);
+        }
     }
 
 
@@ -115,16 +115,16 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
             {
                 if (std::is_same<Dtype, uint16_t>::value)
                 {
-                    #ifdef FEATHER_OPENCL
+#ifdef FEATHER_OPENCL
                     this->_data[i] = hs_floatToHalf(proto->data()->Get(i));
-                    #endif
+#endif
                     // printf("%f, ", hs_halfToFloat(this->_data[i]));
                 }
                 else
                 {
                     this->_data[i] = proto->data()->Get(i);
                 }
-              //this->_data[i] = proto->data()->Get(i);
+                //this->_data[i] = proto->data()->Get(i);
             }
         }
     }
@@ -140,22 +140,23 @@ template<class Dtype>
 int Blob<Dtype>::WriteToDevice(cl::CommandQueue queue, const Dtype* data, size_t data_size)
 {
     cl_int error_num;
-    Dtype *mapped_ptr = (Dtype* )
-      queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                             0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
+    Dtype *mapped_ptr = (Dtype*)
+                        queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                                0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
     if (!checkSuccess(error_num))
     {
-      LOGE("fatal error: WriteBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      mapped_ptr = nullptr;
-      return 1;
+        LOGE("fatal error: WriteBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        mapped_ptr = nullptr;
+        return 1;
     }
     memcpy(mapped_ptr, data, data_size * sizeof(Dtype));
 
     error_num = queue.enqueueUnmapMemObject(*_data_cl, mapped_ptr,
-                                             nullptr, nullptr);
-    if (!checkSuccess(error_num)){
-      LOGE("fatal error: WriteBuffer Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      return 1;
+                                            nullptr, nullptr);
+    if (!checkSuccess(error_num))
+    {
+        LOGE("fatal error: WriteBuffer Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        return 1;
     }
     return 0;
 
@@ -185,21 +186,22 @@ int Blob<Dtype>::ReadFromDevice(cl::CommandQueue queue, Dtype* data, size_t data
 {
 
     cl_int error_num;
-    Dtype*  mapped_ptr = (Dtype* )
-      queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                             0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
+    Dtype*  mapped_ptr = (Dtype*)
+                         queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                                 0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
     if (!checkSuccess(error_num))
     {
-      LOGE("fatal error: ReadFromDevice Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      mapped_ptr = nullptr;
-      return 1;
+        LOGE("fatal error: ReadFromDevice Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        mapped_ptr = nullptr;
+        return 1;
     }
     memcpy(data, mapped_ptr, data_size * sizeof(Dtype));
     error_num = queue.enqueueUnmapMemObject(*_data_cl, mapped_ptr,
-                                             nullptr, nullptr);
-    if (!checkSuccess(error_num)){
-      LOGE("fatal error: ReadFromDevice Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      return 1;
+                                            nullptr, nullptr);
+    if (!checkSuccess(error_num))
+    {
+        LOGE("fatal error: ReadFromDevice Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        return 1;
     }
     return 0;
 
@@ -211,33 +213,36 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
     cl_int error_num;
     size_t data_size = this->data_size_padded_c();
     Dtype *data_half =
-      (Dtype*)(queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                             0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num) );
+        (Dtype*)(queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                                        0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num));
     if (!checkSuccess(error_num))
     {
-      LOGE("fatal error: ReadBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      data_half = nullptr;
-      return 1;
+        LOGE("fatal error: ReadBuffer Mapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        data_half = nullptr;
+        return 1;
     }
 
-    for (int i = 0; i < _channels; ++i) {
-      for (int j = 0; j < _height * _width; ++j) {
-        int dst_idx = i * _height * _width + j;
-        int src_idx = j * this->get_channels_padding() + i;
-        if(std::is_same<Dtype, uint16_t>::value)
-            data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
-        else
-            data[dst_idx] = data_half[src_idx];
+    for (int i = 0; i < _channels; ++i)
+    {
+        for (int j = 0; j < _height * _width; ++j)
+        {
+            int dst_idx = i * _height * _width + j;
+            int src_idx = j * this->get_channels_padding() + i;
+            if (std::is_same<Dtype, uint16_t>::value)
+                data[dst_idx] = hs_halfToFloat(data_half[src_idx]);
+            else
+                data[dst_idx] = data_half[src_idx];
 
-      }
+        }
     }
 
 
     error_num = queue.enqueueUnmapMemObject(*_data_cl, data_half,
-                                             nullptr, nullptr);
-    if (!checkSuccess(error_num)){
-      LOGE("fatal error: ReadFromDevice Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
-      return 1;
+                                            nullptr, nullptr);
+    if (!checkSuccess(error_num))
+    {
+        LOGE("fatal error: ReadFromDevice Unmapping memory objects failed. %s: %s", __FILE__, __LINE__);
+        return 1;
     }
     return 0;
 
@@ -246,9 +251,10 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
 template<class Dtype>
 int Blob<Dtype>::FreeDevice()
 {
-    if(this->_data_cl) {
+    if (this->_data_cl)
+    {
         delete this->_data_cl;
-        this->_data_cl= NULL;
+        this->_data_cl = NULL;
     }
     return 0;
 }
@@ -266,7 +272,8 @@ int Blob<Dtype>::ReshapeWithReallocDevice(cl::Context context, size_t num, size_
     if (new_size > old_size)
     {
         this->FreeDevice();
-        if(this->AllocDevice(context, this->data_size_padded_c())) {
+        if (this->AllocDevice(context, this->data_size_padded_c()))
+        {
             LOGE("reallocate cl memory failed.");
             return -1;
         }

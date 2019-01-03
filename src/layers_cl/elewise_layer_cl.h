@@ -22,44 +22,51 @@
 #include <assert.h>
 #include <stdio.h>
 
-namespace feather {
+namespace feather
+{
 //#define USE_LEGACY_SGEMM
 
 template <class Dtype>
-class EltwiseLayerCL: public Layer<Dtype> {
-public:
-  EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
-      : Layer<Dtype>(layer_param, rt_param) {
-    this->_fusible = true;
-    fuse_relu = false;
-    InitCL();
-  }
+class EltwiseLayerCL: public Layer<Dtype>
+{
+    public:
+        EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
+            : Layer<Dtype>(layer_param, rt_param)
+        {
+            this->_fusible = true;
+            fuse_relu = false;
+            InitCL();
+        }
 
-  int InitCL();
-  int GenerateTopBlobs();
-  virtual int SetBuildOptions();
-  virtual int SetWorkSize();
-  virtual int ResetWorkSize();
-  virtual int SetKernelParameters();
-  virtual int ForwardReshapeCL();
-  virtual int ForwardCL();
+        int InitCL();
+        int GenerateTopBlobs();
+        virtual int SetBuildOptions();
+        virtual int SetWorkSize();
+        virtual int ResetWorkSize();
+        virtual int SetKernelParameters();
+        virtual int ForwardReshapeCL();
+        virtual int ForwardCL();
 
-  int Fuse(Layer<Dtype> *next_layer) {
-    if (next_layer->type().compare("ReLU") == 0) {
-      printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
-      fuse_relu = true;
-      return 1;
-    } else {
-      return 0;
-    }
-  }
+        int Fuse(Layer<Dtype> *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
+                fuse_relu = true;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
 
-private:
-  size_t output_height;
-  size_t output_width;
-  size_t output_channels;
-  size_t channel_grp_size;
-  bool fuse_relu;
+    private:
+        size_t output_height;
+        size_t output_width;
+        size_t output_channels;
+        size_t channel_grp_size;
+        bool fuse_relu;
 
 };
 }; // namespace feather

@@ -65,7 +65,7 @@ class ConvLayer : public Layer<float>
         {
             //Conv layer has and only has one bottom blob.
             const Blob<float> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
-	        conv_param.input_w = bottom_blob->width();
+            conv_param.input_w = bottom_blob->width();
             conv_param.input_h = bottom_blob->height();
             conv_param.input_channels = bottom_blob->channels();
             conv_param.AssignOutputDim();
@@ -73,8 +73,8 @@ class ConvLayer : public Layer<float>
             this->_top_blobs[this->_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             this->_top_blobs[this->_top[0]]->Alloc();
             conv_booster.SelectAlgo(&this->conv_param);
-	    //conv_booster.ForceSelectAlgo(booster::NAIVE);
-	    //conv_booster.ForceSelectAlgo(booster::IM2COL);
+            //conv_booster.ForceSelectAlgo(booster::NAIVE);
+            //conv_booster.ForceSelectAlgo(booster::IM2COL);
             return 0;
         }
 
@@ -90,7 +90,7 @@ class ConvLayer : public Layer<float>
 
         int Forward()
         {
-	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
+            //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
             //_top_blobs[_top[0]]->PrintBlobInfo();
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
@@ -100,7 +100,7 @@ class ConvLayer : public Layer<float>
             return 0;
         }
 
-         int Init()
+        int Init()
         {
             int buffer_size = 0;
             int processed_kernel_size = 0;
@@ -125,13 +125,13 @@ class ConvLayer : public Layer<float>
             }
         }
 
-          protected:
-            booster::ConvBooster conv_booster;
-            booster::ConvParam conv_param;
+    protected:
+        booster::ConvBooster conv_booster;
+        booster::ConvParam conv_param;
 
-            float *bias_data;
+        float *bias_data;
 
-            float *kernel_data;
-            float *processed_kernel;
+        float *kernel_data;
+        float *processed_kernel;
 };
 };

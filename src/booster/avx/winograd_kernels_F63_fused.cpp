@@ -98,7 +98,7 @@ inline __m128i get_mm_tail_mask(int zero_lane_cnt)
 
 inline void mm_store_leftovers(float* &dst, __m128& left, __m128& right, const int& store_cnt, const __m128i& mask)
 {
-    if(store_cnt > 4)
+    if (store_cnt > 4)
     {
         _mm_storeu_ps(dst, left);
         _mm_maskstore_ps(dst + 4, mask, right);
@@ -112,7 +112,7 @@ inline void mm_store_leftovers(float* &dst, __m128& left, __m128& right, const i
 
 inline void mm_load_leftovers(const float* &src, __m128& left, __m128& right, const int& load_cnt, const __m128i& mask)
 {
-    if(load_cnt > 4)
+    if (load_cnt > 4)
     {
         left = _mm_loadu_ps(src);
         right = _mm_maskload_ps(src + 4, mask);
@@ -173,13 +173,13 @@ static inline void winograd_f6k3_output_transform_inplace(
     __m128 &m7)
 {
     /*
-	 * s0 = m0 + (m1 + m2) +      (m3 + m4) + 32 * (m5 + m6)
-	 * s1 =      (m1 - m2) +  2 * (m3 - m4) + 16 * (m5 - m6)
-	 * s2 =      (m1 + m2) +  4 * (m3 + m4) +  8 * (m5 + m6)
-	 * s3 =      (m1 - m2) +  8 * (m3 - m4) +  4 * (m5 - m6)
-	 * s4 =      (m1 + m2) + 16 * (m3 + m4) +  2 * (m5 + m6)
-	 * s5 =      (m1 - m2) + 32 * (m3 - m4) +      (m5 - m6) + m7
-	 */
+     * s0 = m0 + (m1 + m2) +      (m3 + m4) + 32 * (m5 + m6)
+     * s1 =      (m1 - m2) +  2 * (m3 - m4) + 16 * (m5 - m6)
+     * s2 =      (m1 + m2) +  4 * (m3 + m4) +  8 * (m5 + m6)
+     * s3 =      (m1 - m2) +  8 * (m3 - m4) +  4 * (m5 - m6)
+     * s4 =      (m1 + m2) + 16 * (m3 + m4) +  2 * (m5 + m6)
+     * s5 =      (m1 - m2) + 32 * (m3 - m4) +      (m5 - m6) + m7
+     */
 
     const __m128 m1_add_m2 = m1 + m2;
     const __m128 m1_sub_m2 = m1 - m2;
@@ -309,15 +309,16 @@ void transpose_temp(size_t m, size_t n, float *in, float *out) //  A[m][n] -> A[
 void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
 {
     float ktm[24] =
-        {
-            1.0f, 0.0f, 0.0f,
-            -2.0f / 9, -2.0f / 9, -2.0f / 9,
-            -2.0f / 9, 2.0f / 9, -2.0f / 9,
-            1.0f / 90, 1.0f / 45, 2.0f / 45,
-            1.0f / 90, -1.0f / 45, 2.0f / 45,
-            1.0f / 45, 1.0f / 90, 1.0f / 180,
-            1.0f / 45, -1.0f / 90, 1.0f / 180,
-            0.0f, 0.0f, 1.0f};
+    {
+        1.0f, 0.0f, 0.0f,
+        -2.0f / 9, -2.0f / 9, -2.0f / 9,
+        -2.0f / 9, 2.0f / 9, -2.0f / 9,
+        1.0f / 90, 1.0f / 45, 2.0f / 45,
+        1.0f / 90, -1.0f / 45, 2.0f / 45,
+        1.0f / 45, 1.0f / 90, 1.0f / 180,
+        1.0f / 45, -1.0f / 90, 1.0f / 180,
+        0.0f, 0.0f, 1.0f
+    };
 
     float midBlock[24];
     float outBlock[24];
@@ -340,15 +341,16 @@ void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
 void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride, float *base, int oi, int oj)
 {
     float ktm[24] =
-        {
-            1.0f, 0.0f, 0.0f,
-            -2.0f / 9, -2.0f / 9, -2.0f / 9,
-            -2.0f / 9, 2.0f / 9, -2.0f / 9,
-            1.0f / 90, 1.0f / 45, 2.0f / 45,
-            1.0f / 90, -1.0f / 45, 2.0f / 45,
-            1.0f / 45, 1.0f / 90, 1.0f / 180,
-            1.0f / 45, -1.0f / 90, 1.0f / 180,
-            0.0f, 0.0f, 1.0f};
+    {
+        1.0f, 0.0f, 0.0f,
+        -2.0f / 9, -2.0f / 9, -2.0f / 9,
+        -2.0f / 9, 2.0f / 9, -2.0f / 9,
+        1.0f / 90, 1.0f / 45, 2.0f / 45,
+        1.0f / 90, -1.0f / 45, 2.0f / 45,
+        1.0f / 45, 1.0f / 90, 1.0f / 180,
+        1.0f / 45, -1.0f / 90, 1.0f / 180,
+        0.0f, 0.0f, 1.0f
+    };
 
     float midBlock[24];
     float outBlock[24];
@@ -490,8 +492,8 @@ inline void input_transform_avx(
     r5 = p1 + p2;
     r6 = p1 - p2;
 
-    r1 = t1+t2;
-    r2 = t1-t2;
+    r1 = t1 + t2;
+    r2 = t1 - t2;
 }
 
 union MM256_ARRAY_UNION
@@ -504,11 +506,11 @@ __m256i feather_mm256_get_mask(const int left_zeros, const int right_zeros)
 {
     MM256_ARRAY_UNION mask;
     mask.vec = _mm256_set1_epi32(0xFFFFFFFF);
-    for(int i = 0; i < left_zeros; ++i)
+    for (int i = 0; i < left_zeros; ++i)
     {
         mask.arr[i] = 0x0;
     }
-    for(int i = 0; i < right_zeros; ++i)
+    for (int i = 0; i < right_zeros; ++i)
     {
         mask.arr[7 - i] = 0x0;
     }
@@ -516,21 +518,21 @@ __m256i feather_mm256_get_mask(const int left_zeros, const int right_zeros)
 }
 
 inline void feather_avx_load_padded_registers_8x8(
-        const float* ptr,
-        const int ldin,
-        __m256 &r0,
-        __m256 &r1,
-        __m256 &r2,
-        __m256 &r3,
-        __m256 &r4,
-        __m256 &r5,
-        __m256 &r6,
-        __m256 &r7,
-        const int pad_left,
-        const int pad_bottom,
-        const int pad_right,
-        const int pad_top
-        )
+    const float* ptr,
+    const int ldin,
+    __m256 &r0,
+    __m256 &r1,
+    __m256 &r2,
+    __m256 &r3,
+    __m256 &r4,
+    __m256 &r5,
+    __m256 &r6,
+    __m256 &r7,
+    const int pad_left,
+    const int pad_bottom,
+    const int pad_right,
+    const int pad_top
+)
 {
 
     //ptr points to a virtual address where data doesn't exist.
@@ -541,43 +543,43 @@ inline void feather_avx_load_padded_registers_8x8(
         r0 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 1 || pad_bottom > 6)
+    if (pad_top > 1 || pad_bottom > 6)
         r1 = _mm256_set1_ps(0.f);
     else
         r1 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 2 || pad_bottom > 5)
+    if (pad_top > 2 || pad_bottom > 5)
         r2 = _mm256_set1_ps(0.f);
     else
         r2 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 3 || pad_bottom > 4)
+    if (pad_top > 3 || pad_bottom > 4)
         r3 = _mm256_set1_ps(0.f);
     else
         r3 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 4 || pad_bottom > 3)
+    if (pad_top > 4 || pad_bottom > 3)
         r4 = _mm256_set1_ps(0.f);
     else
         r4 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 5 || pad_bottom > 2)
+    if (pad_top > 5 || pad_bottom > 2)
         r5 = _mm256_set1_ps(0.f);
     else
         r5 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 6 || pad_bottom > 1)
+    if (pad_top > 6 || pad_bottom > 1)
         r6 = _mm256_set1_ps(0.f);
     else
         r6 = _mm256_maskload_ps(ptr, mask);
     ptr += ldin;
 
-    if(pad_top > 7 || pad_bottom > 0)
+    if (pad_top > 7 || pad_bottom > 0)
         r7 = _mm256_set1_ps(0.f);
     else
         r7 = _mm256_maskload_ps(ptr, mask);
@@ -589,7 +591,7 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
     //Constants in transformation matrices.
     int nRowBlocks = (conv_param->output_w + 5) / 6;
     int nColBlocks = (conv_param->output_h + 5) / 6;
- 
+
     const int ldin = conv_param->input_w;
     const int inChannels = conv_param->input_channels;
     //Constants in transformation matrices.
@@ -615,7 +617,7 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
             __m256 l0, l1, l2, l3, l4, l5, l6, l7;
             __m256 m1, m2, s1, s2, t1, t2; //Auxiliary registers
 
-            for(int t = 0; t < 4; ++t)
+            for (int t = 0; t < 4; ++t)
             {
                 int i = (bid + t) % nRowBlocks; //x coord along the rows
                 int j = (bid + t) / nRowBlocks; //y coord along the columns
@@ -635,30 +637,30 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
 
                 int row_offset  = i * 6 - conv_param->pad_left;
 
-                if(row_offset < 0)
+                if (row_offset < 0)
                 {
                     block_pad_left = 0 - row_offset;
                 }
-                if(row_offset + 8 >= conv_param->input_w)
+                if (row_offset + 8 >= conv_param->input_w)
                 {
                     block_pad_right = row_offset + 8 - conv_param->input_w;
                 }
-                
+
                 int col_offset  = j * 6 - conv_param->pad_top;
 
-                if(col_offset < 0)
+                if (col_offset < 0)
                 {
                     block_pad_top = 0 - col_offset;
                 }
-                if(col_offset + 8 >= conv_param->input_h)
+                if (col_offset + 8 >= conv_param->input_h)
                 {
                     block_pad_bottom = col_offset + 8 - conv_param->input_h;
                 }
                 if (block_pad_left || block_pad_right || block_pad_top || block_pad_bottom)
                 {
                     feather_avx_load_padded_registers_8x8(
-                            p0, ldin, l0, l1, l2, l3, l4, l5, l6, l7, 
-                            block_pad_left, block_pad_bottom, block_pad_right, block_pad_top);
+                        p0, ldin, l0, l1, l2, l3, l4, l5, l6, l7,
+                        block_pad_left, block_pad_bottom, block_pad_right, block_pad_top);
                 }
                 else
                 {
@@ -674,12 +676,12 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
 
 
                 input_transform_avx(l0, l1, l2, l3, l4, l5, l6, l7,                  //Target
-                        t1, t2, s1, s2, m1, m2,                          //Auxiliary
-                        f5_25, f4_25, f4, f2_5, f2, f1_25, f0_5, f0_25); //Constants
+                                    t1, t2, s1, s2, m1, m2,                          //Auxiliary
+                                    f5_25, f4_25, f4, f2_5, f2, f1_25, f0_5, f0_25); //Constants
                 transpose8_avx_ps(l0, l1, l2, l3, l4, l5, l6, l7);
                 input_transform_avx(l0, l1, l2, l3, l4, l5, l6, l7,                  //Target
-                        t1, t2, s1, s2, m1, m2,                          //Auxiliary
-                        f5_25, f4_25, f4, f2_5, f2, f1_25, f0_5, f0_25); //Constants
+                                    t1, t2, s1, s2, m1, m2,                          //Auxiliary
+                                    f5_25, f4_25, f4, f2_5, f2, f1_25, f0_5, f0_25); //Constants
                 size_t inner_offset = t << 2;
                 float* block_outp = quad_blocks + inner_offset;
                 /*
@@ -687,7 +689,7 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
                  * 1) Every four blocks (tiles) are batched together: (bid & 0x3) * 4
                  * 2) Elements from different channels are packed together: ic * 16
                  * 3) In each block, vectors should offset by 4 * inChannels.
-                 * 4) The 4 blocks batches should be offset by 4 * 4 * inChannels: 
+                 * 4) The 4 blocks batches should be offset by 4 * 4 * inChannels:
                  *    (bid / 4) * 16 * inChannels
                  */
                 _mm_store_ps(block_outp, _mm256_extractf128_ps(l0, 0x0));
@@ -713,7 +715,7 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
             size_t bid_offset = bid - startIdx;
             float *outp = VT + ic * 16 + (bid_offset / 4) * 16 * 16 * inChannels;
 #pragma unroll
-            for(int t = 0; t < 16; ++t)
+            for (int t = 0; t < 16; ++t)
             {
                 _mm256_storeu_ps(outp + inChannels * 16 * t, _mm256_load_ps(quad_blocks + t * 16));
                 _mm256_storeu_ps(outp + inChannels * 16 * t + 8, _mm256_load_ps(quad_blocks + t * 16 + 8));
@@ -731,15 +733,15 @@ void WinogradOutputTransformBlockAVX(const float *WT, float *output, const int l
     vBias = _mm256_set1_ps(bias);
     const float *wp = WT;
     const int stride = block_stride;
-    
-    _l0 = _mm256_loadu2_m128(wp+ 1*stride, wp);
-    _l1 = _mm256_loadu2_m128(wp+ 3*stride, wp +2*stride);
-    _l2 = _mm256_loadu2_m128(wp+ 5*stride, wp +4*stride);
-    _l3 = _mm256_loadu2_m128(wp+ 7*stride, wp +6*stride);
-    _l4 = _mm256_loadu2_m128(wp+ 9*stride, wp +8*stride);
-    _l5 = _mm256_loadu2_m128(wp+11*stride, wp+10*stride);
-    _l6 = _mm256_loadu2_m128(wp+13*stride, wp+12*stride);
-    _l7 = _mm256_loadu2_m128(wp+15*stride, wp+14*stride);
+
+    _l0 = _mm256_loadu2_m128(wp + 1 * stride, wp);
+    _l1 = _mm256_loadu2_m128(wp + 3 * stride, wp + 2 * stride);
+    _l2 = _mm256_loadu2_m128(wp + 5 * stride, wp + 4 * stride);
+    _l3 = _mm256_loadu2_m128(wp + 7 * stride, wp + 6 * stride);
+    _l4 = _mm256_loadu2_m128(wp + 9 * stride, wp + 8 * stride);
+    _l5 = _mm256_loadu2_m128(wp + 11 * stride, wp + 10 * stride);
+    _l6 = _mm256_loadu2_m128(wp + 13 * stride, wp + 12 * stride);
+    _l7 = _mm256_loadu2_m128(wp + 15 * stride, wp + 14 * stride);
 
     winograd_f6k3_output_transform_inplace_avx(_l0, _l1, _l2, _l3, _l4, _l5, _l6, _l7);
     transpose8_avx_ps(_l0, _l1, _l2, _l3, _l4, _l5, _l6, _l7);
@@ -748,29 +750,29 @@ void WinogradOutputTransformBlockAVX(const float *WT, float *output, const int l
 
     float *outp = output;
 
-     if (HAS_BIAS)
-     {
-         _l0 = _mm256_add_ps(_l0, vBias);
-         _l1 = _mm256_add_ps(_l1, vBias);
-         _l2 = _mm256_add_ps(_l2, vBias);
-         _l3 = _mm256_add_ps(_l3, vBias);
-         _l4 = _mm256_add_ps(_l4, vBias);
-         _l5 = _mm256_add_ps(_l5, vBias);
-         _l6 = _mm256_add_ps(_l6, vBias);
-         _l7 = _mm256_add_ps(_l7, vBias);
-     }
+    if (HAS_BIAS)
+    {
+        _l0 = _mm256_add_ps(_l0, vBias);
+        _l1 = _mm256_add_ps(_l1, vBias);
+        _l2 = _mm256_add_ps(_l2, vBias);
+        _l3 = _mm256_add_ps(_l3, vBias);
+        _l4 = _mm256_add_ps(_l4, vBias);
+        _l5 = _mm256_add_ps(_l5, vBias);
+        _l6 = _mm256_add_ps(_l6, vBias);
+        _l7 = _mm256_add_ps(_l7, vBias);
+    }
 
-     if (HAS_RELU)
-     {
-         _l0 = _mm256_max_ps(_l0, vZero);
-         _l1 = _mm256_max_ps(_l1, vZero);
-         _l2 = _mm256_max_ps(_l2, vZero);
-         _l3 = _mm256_max_ps(_l3, vZero);
-         _l4 = _mm256_max_ps(_l4, vZero);
-         _l5 = _mm256_max_ps(_l5, vZero);
-         _l6 = _mm256_max_ps(_l6, vZero);
-         _l7 = _mm256_max_ps(_l7, vZero);
-     }
+    if (HAS_RELU)
+    {
+        _l0 = _mm256_max_ps(_l0, vZero);
+        _l1 = _mm256_max_ps(_l1, vZero);
+        _l2 = _mm256_max_ps(_l2, vZero);
+        _l3 = _mm256_max_ps(_l3, vZero);
+        _l4 = _mm256_max_ps(_l4, vZero);
+        _l5 = _mm256_max_ps(_l5, vZero);
+        _l6 = _mm256_max_ps(_l6, vZero);
+        _l7 = _mm256_max_ps(_l7, vZero);
+    }
 
     if (vx == 0 && vy == 0)
     {
@@ -851,15 +853,15 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
         //u3 = _mm256_permute2f128_ps(u2, u3, 0x11);
         //u2 = _mm256_permute2f128_ps(u2, u3, 0x00);
 
-	u2 = _mm256_broadcast_ps(vup + 2);
-	u3 = _mm256_broadcast_ps(vup + 3);
+        u2 = _mm256_broadcast_ps(vup + 2);
+        u3 = _mm256_broadcast_ps(vup + 3);
 
         vc00 = _mm256_fmadd_ps(u0, v0, vc00);
         vc01 = _mm256_fmadd_ps(u0, v1, vc01);
         vc10 = _mm256_fmadd_ps(u1, v0, vc10);
         vc11 = _mm256_fmadd_ps(u1, v1, vc11);
-	u0 = _mm256_broadcast_ps(vup + 4);
-	u1 = _mm256_broadcast_ps(vup + 5);
+        u0 = _mm256_broadcast_ps(vup + 4);
+        u1 = _mm256_broadcast_ps(vup + 5);
         vc20 = _mm256_fmadd_ps(u2, v0, vc20);
         vc21 = _mm256_fmadd_ps(u2, v1, vc21);
         vc30 = _mm256_fmadd_ps(u3, v0, vc30);
@@ -868,8 +870,8 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
 
         v0 = _mm256_load_ps(vp + 16);
         v1 = _mm256_load_ps(vp + 24);
-	u2 = _mm256_broadcast_ps(vup + 6);
-	u3 = _mm256_broadcast_ps(vup + 7);
+        u2 = _mm256_broadcast_ps(vup + 6);
+        u3 = _mm256_broadcast_ps(vup + 7);
 
         vp += 32;
         vup += 8;
@@ -878,8 +880,8 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
         vc01 = _mm256_fmadd_ps(u0, v1, vc01);
         vc10 = _mm256_fmadd_ps(u1, v0, vc10);
         vc11 = _mm256_fmadd_ps(u1, v1, vc11);
-	u0 = _mm256_broadcast_ps(vup);
-	u1 = _mm256_broadcast_ps(vup + 1);
+        u0 = _mm256_broadcast_ps(vup);
+        u1 = _mm256_broadcast_ps(vup + 1);
         vc20 = _mm256_fmadd_ps(u2, v0, vc20);
         vc21 = _mm256_fmadd_ps(u2, v1, vc21);
         vc30 = _mm256_fmadd_ps(u3, v0, vc30);
@@ -891,9 +893,9 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
         v0 = _mm256_load_ps(vp);
         v1 = _mm256_load_ps(vp + 8);
         vc00 = _mm256_fmadd_ps(u0, v0, vc00);
-	u2 = _mm256_broadcast_ps(vup + 2);
+        u2 = _mm256_broadcast_ps(vup + 2);
         vc01 = _mm256_fmadd_ps(u0, v1, vc01);
-	u3 = _mm256_broadcast_ps(vup + 3);
+        u3 = _mm256_broadcast_ps(vup + 3);
         vc10 = _mm256_fmadd_ps(u1, v0, vc10);
         vc11 = _mm256_fmadd_ps(u1, v1, vc11);
 
@@ -941,7 +943,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     Timer tmr;
 
     //assert(nBlocks % 4 == 0);
-    
+
     //int pass = nBlocksAligned / cache_block;
     //int r = nBlocksAligned % cache_block;
     int pass = nBlocks / cache_block;
@@ -956,7 +958,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
         int tid = 0;
         float* VT = buffers + tid * (cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * gemm_cache_block / 4);
         float* WT = VT + cache_block * 64 * conv_param->input_channels;
-        const float* UT = transformed_weights;  
+        const float* UT = transformed_weights;
         // __m128 v0, v1, v2, v3;
 
         int start_block_id = p * cache_block;
@@ -969,7 +971,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
         tmr.startBench();
 #endif
         //Winograd Input Transform
-       winogradInputTransformSeqFusedAVX4(conv_param, VT, input, start_block_id, end_block_id, gemm_cache_block);
+        winogradInputTransformSeqFusedAVX4(conv_param, VT, input, start_block_id, end_block_id, gemm_cache_block);
 #ifdef ENABLE_KERNEL_TIMERS
         input_transform_time += tmr.endBench();
 #endif
@@ -985,7 +987,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                 for (int oc = 0; oc < conv_param->output_channels; oc += 4)
                 {
                     //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
-		    for (int i = g; i < i_end; i += 4)
+                    for (int i = g; i < i_end; i += 4)
                     {
 
                         const float *UTp = UT + d * 16 * conv_param->input_channels + oc / 4 * conv_param->input_channels * 16 * depth;
@@ -995,11 +997,11 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                         * 2) First 4 floats in each tile from all inChannels are consecutive.
                         * Therefore, depth should stride by 16 * inChannels.
                         * 3) 4 tiles have 16 * inChannels * 16 floats in total:
-                        *     bid / 4 * (inChannels * 16 * 16) 
+                        *     bid / 4 * (inChannels * 16 * 16)
                         */
 #if 1
                         const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 16 * 16;
-#else                   
+#else
                         const float *vp = VT + d * 16 * conv_param->input_channels * gemm_cache_block + ((i - start_block_id) / 4) * 16 * conv_param->input_channels;
 #endif
                         /* WT layout by fused very small buffer
@@ -1029,32 +1031,32 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
             * Traverse all output channels in a GEMM cache block.
             */
 #ifdef ENABLE_KERNEL_TIMERS
-           tmr.startBench();
+            tmr.startBench();
 #endif
-           for (int oc = 0; oc < conv_param->output_channels; oc += 4)
-           {
-               for (int i = g; i < i_end; i += 4)
-               {
-                   for (int tc = 0; tc < 4; ++tc)
-                   {
-                       for (int ti = 0; ti < 4; ++ti)
-                       {
-                           const int ldout = conv_param->output_w;
-                           const int ldchannel = conv_param->output_h * conv_param->output_w;
-                           int bidx = (i + ti) % nRowBlocks;
-                           int bidy = (i + ti) / nRowBlocks;
-                           float *outp = output + bidx * 6 + bidy * 6 * ldout + (oc + tc) * ldchannel;
-                           int vx = conv_param->output_h - bidx * 6 - 6;
-                           int vy = conv_param->output_w - bidy * 6 - 6;
-                           vx = std::min<int>(vx, 0);
-                           vy = std::min<int>(vy, 0);
-                           if(vx < -6 || vy < -6)
+            for (int oc = 0; oc < conv_param->output_channels; oc += 4)
+            {
+                for (int i = g; i < i_end; i += 4)
+                {
+                    for (int tc = 0; tc < 4; ++tc)
+                    {
+                        for (int ti = 0; ti < 4; ++ti)
+                        {
+                            const int ldout = conv_param->output_w;
+                            const int ldchannel = conv_param->output_h * conv_param->output_w;
+                            int bidx = (i + ti) % nRowBlocks;
+                            int bidy = (i + ti) / nRowBlocks;
+                            float *outp = output + bidx * 6 + bidy * 6 * ldout + (oc + tc) * ldchannel;
+                            int vx = conv_param->output_h - bidx * 6 - 6;
+                            int vy = conv_param->output_w - bidy * 6 - 6;
+                            vx = std::min<int>(vx, 0);
+                            vy = std::min<int>(vy, 0);
+                            if (vx < -6 || vy < -6)
                                 continue;
-                           WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WT + (i - g) * 64 * 16 + ti * 4 + tc * 16 + oc * gemm_cache_block * 64 * 16 / 4, outp, ldout, ldchannel, vx, vy, 64, bias_arr[oc + tc]);
-                       }
-                   }
-               }
-           }
+                            WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WT + (i - g) * 64 * 16 + ti * 4 + tc * 16 + oc * gemm_cache_block * 64 * 16 / 4, outp, ldout, ldchannel, vx, vy, 64, bias_arr[oc + tc]);
+                        }
+                    }
+                }
+            }
 #ifdef ENABLE_KERNEL_TIMERS
             output_transform_time += tmr.endBench();
 #endif
@@ -1065,7 +1067,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     printf("Multiplication spent %.3lfms %.2lfGFLOPS\n", multiplication_time, nBlocks * 64 * conv_param->input_channels * conv_param->output_channels * 2 / multiplication_time / 1e6);
     printf("Output transform spent %.3lfms\n", output_transform_time);
 #endif
-}  
+}
 
 template void WinogradF63Fused<false, false>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers, ThreadPool* thpool);
 template void WinogradF63Fused<false, true>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers, ThreadPool* thpool);

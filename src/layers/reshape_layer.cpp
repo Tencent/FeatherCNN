@@ -20,7 +20,7 @@ namespace feather
 int ReshapeLayer::Forward()
 {
     const  Blob<float>* bottom_blob = _bottom_blobs[_bottom[0]];
-    const float* input = bottom_blob->data();     
+    const float* input = bottom_blob->data();
 
     size_t num = bottom_blob->num();
     size_t channels = bottom_blob->channels();
@@ -30,7 +30,7 @@ int ReshapeLayer::Forward()
     float *output = _top_blobs[_top[0]]->data();
     float *p = output;
 
-    memcpy(p, input, num*channels*height*width*(sizeof(float)));
+    memcpy(p, input, num * channels * height * width * (sizeof(float)));
 
     return 0;
 }
@@ -46,20 +46,20 @@ int ReshapeLayer::GenerateTopBlobs()
     size_t height = bottom_blob->height();
     size_t width = bottom_blob->width();
     size_t total = num * channels * height * width;
-   
 
-    if(dim[0]==0)	dim[0] = num;
-    if(dim[1]==0)	dim[1] = channels;
-    if(dim[2]==0)	dim[2] = height;
-    if(dim[3]==0)	dim[3] = width;
+
+    if (dim[0] == 0)   dim[0] = num;
+    if (dim[1] == 0)   dim[1] = channels;
+    if (dim[2] == 0)   dim[2] = height;
+    if (dim[3] == 0)   dim[3] = width;
 
     size_t sum = 1;
-    for(int i=0;i<4;i++)	
-        if(dim[i]!=-1)  sum *= dim[i];	
-    
-    for(int i=0;i<4;i++)	
-	if(dim[i]==-1)	dim[i] = total/sum;  
-  
+    for (int i = 0; i < 4; i++)
+        if (dim[i] != -1)  sum *= dim[i];
+
+    for (int i = 0; i < 4; i++)
+        if (dim[i] == -1)  dim[i] = total / sum;
+
     _top_blobs[_top[0]] = new Blob<float>(dim[0], dim[1], dim[2], dim[3]);
     _top_blobs[_top[0]]->Alloc();
 
@@ -78,14 +78,14 @@ int ReshapeLayer::ForwardReshape()
     size_t width = bottom_blob->width();
 
     size_t total = num * channels * height * width;
-   
+
     size_t sum = 1;
-    for(int i=0;i<4;i++)	
-        if(dim[i]!=0)  sum *= dim[i];	
-    
-    for(int i=0;i<4;i++)	
-	if(dim[i]==0)	dim[i] = total/sum;  
-    
+    for (int i = 0; i < 4; i++)
+        if (dim[i] != 0)  sum *= dim[i];
+
+    for (int i = 0; i < 4; i++)
+        if (dim[i] == 0)   dim[i] = total / sum;
+
     _top_blobs[_top[0]]->ReshapeWithRealloc(dim[0], dim[1], dim[2], dim[3]);
     return this->Forward();
 }

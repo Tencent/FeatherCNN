@@ -30,7 +30,7 @@ int SoftmaxLayer::Forward()
 
     float sum = 0.0;
     float max = -FLT_MAX;
-    for (size_t i = 0; i < data_size; ++i) 
+    for (size_t i = 0; i < data_size; ++i)
     {
         max = std::max<float>(max, input[i]);
     }

@@ -21,7 +21,7 @@ namespace feather
 int FilterLayer::Forward()
 {
     const  Blob<float>* bottom_blob = _bottom_blobs[_bottom[0]];
-    const float* input = bottom_blob->data();     
+    const float* input = bottom_blob->data();
 
     size_t num = bottom_blob->num();
     size_t channels = bottom_blob->channels();
@@ -32,11 +32,11 @@ int FilterLayer::Forward()
     float *p = output;
 
     size_t page_size = height * width;
-    for(int i=0;i<channels;i++)
+    for (int i = 0; i < channels; i++)
     {
-        if(fabs(select_weights[i]-1.0)<1e-5)    
-        {    
-            memcpy(p, input+i*page_size, page_size*(sizeof(float)));
+        if (fabs(select_weights[i] - 1.0) < 1e-5)
+        {
+            memcpy(p, input + i * page_size, page_size * (sizeof(float)));
             p += page_size;
         }
     }
@@ -79,7 +79,7 @@ int FilterLayer::ForwardReshape()
 int FilterLayer::Init()
 {
     select_weights = _weight_blobs[0]->data();
-    
+
     const Blob<float>* bottom_blob = _bottom_blobs[_bottom[0]];
     size_t channels = bottom_blob->channels();
     return 0;

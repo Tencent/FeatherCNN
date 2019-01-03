@@ -26,28 +26,28 @@ class InterpLayer : public Layer<float>
         InterpLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
             : Layer<float>(layer_param, rt_param)
         {
-	    	height_out_ = layer_param->interp_param()->height();
-	    	width_out_ = layer_param->interp_param()->width();
-			pad_beg_ = layer_param->interp_param()->pad_beg();
-			pad_end_ = layer_param->interp_param()->pad_end();
+            height_out_ = layer_param->interp_param()->height();
+            width_out_ = layer_param->interp_param()->width();
+            pad_beg_ = layer_param->interp_param()->pad_beg();
+            pad_end_ = layer_param->interp_param()->pad_end();
 
-			LOGI("Interp layer only supports height & width formula.");
+            LOGI("Interp layer only supports height & width formula.");
         }
         int Forward();
-		int GenerateTopBlobs();
+        int GenerateTopBlobs();
     private:
-	int num_;
-	int channels_;
-	int height_in_;
-	int width_in_;
-	int height_in_eff_;
-	int width_in_eff_;
-	int height_out_;
-	int width_out_;
-	int pad_beg_;
-	int pad_end_;
+        int num_;
+        int channels_;
+        int height_in_;
+        int width_in_;
+        int height_in_eff_;
+        int width_in_eff_;
+        int height_out_;
+        int width_out_;
+        int pad_beg_;
+        int pad_end_;
 
-	LayerParameter *layer_param_;
-	
+        LayerParameter *layer_param_;
+
 };
 };

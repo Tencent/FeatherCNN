@@ -22,47 +22,51 @@
 #include <map>
 #include <sstream>
 
-namespace feather {
+namespace feather
+{
 
 template <class Dtype>
-class InputLayerCL : public Layer<Dtype> {
-public:
-  InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
-  int InitCL();
-  int UintToDevice(const uint8_t* src_bgra);
-  int FloatToDevice(const float* input_data);
-  int CopyInput(std::string name, const float *input_data);
-  int CopyInput(std::string name, const uint8_t* src_bgra);
-  int ReshapeFloat(std::string name, int height, int width);
-  int ResetWorkSizeFloat();
-  int RunKernel(std::string kernel_type);
-  virtual int SetWorkSize();
-  virtual int SetBuildOptions();
-  virtual int SetKernelParameters();
-  int ResetInputAndArgs(size_t data_size);
+class InputLayerCL : public Layer<Dtype>
+{
+    public:
+        InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
+        int InitCL();
+        int UintToDevice(const uint8_t* src_bgra);
+        int FloatToDevice(const float* input_data);
+        int CopyInput(std::string name, const float *input_data);
+        int CopyInput(std::string name, const uint8_t* src_bgra);
+        int ReshapeFloat(std::string name, int height, int width);
+        int ResetWorkSizeFloat();
+        int RunKernel(std::string kernel_type);
+        virtual int SetWorkSize();
+        virtual int SetBuildOptions();
+        virtual int SetKernelParameters();
+        int ResetInputAndArgs(size_t data_size);
 
-  size_t input_size()
-  {
-      return this->_top_blobs.size();
-  }
+        size_t input_size()
+        {
+            return this->_top_blobs.size();
+        }
 
-  std::string input_name(int idx) {
-    auto it = this->_top_blobs.begin();
-    for (int i = 0; i < idx; ++i) {
-        ++it;
-    }
-    return it->first;
-  }
+        std::string input_name(int idx)
+        {
+            auto it = this->_top_blobs.begin();
+            for (int i = 0; i < idx; ++i)
+            {
+                ++it;
+            }
+            return it->first;
+        }
 
-private:
-  size_t output_height;
-  size_t output_width;
-  size_t input_channels;
-  size_t input_data_size;
-  size_t channel_grp_size;
+    private:
+        size_t output_height;
+        size_t output_width;
+        size_t input_channels;
+        size_t input_data_size;
+        size_t channel_grp_size;
 
-  cl::Image2D _cl_img2d;
-  cl::Buffer _cl_fimage;
+        cl::Image2D _cl_img2d;
+        cl::Buffer _cl_fimage;
 
 };
 }; // namespace feather

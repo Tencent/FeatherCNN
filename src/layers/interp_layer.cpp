@@ -39,7 +39,7 @@ int InterpLayer::GenerateTopBlobs()
     width_in_eff_ = width_in_ + pad_beg_ + pad_end_;
     // InterpParameter *interp_param = this->layer_param_->interp_param();
 
-    
+
     // else if (interp_param.has_height() && interp_param.has_width())
     // {
     //     height_out_ = interp_param->height();

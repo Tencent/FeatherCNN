@@ -115,35 +115,35 @@ class PoolingLayer : public Layer<float>
                     int x_min = MAX(tmp_pos, 0);
                     int x_max = MIN((int)(tmp_pos + kernel_height), (int) input_height);
 
-		    for (int k = 0; k < output_width; k ++)
-		    {
-			    int counter = 0;
-			    float total = (this->method != PoolingParameter_::PoolMethod_MAX_ ? 0 : -1 * std::numeric_limits<float>::max());
-			    for (int x = x_min; x < x_max; ++x)
-			    {
-				    int xpos = i * input_height * input_width + x * input_width;
+                    for (int k = 0; k < output_width; k ++)
+                    {
+                        int counter = 0;
+                        float total = (this->method != PoolingParameter_::PoolMethod_MAX_ ? 0 : -1 * std::numeric_limits<float>::max());
+                        for (int x = x_min; x < x_max; ++x)
+                        {
+                            int xpos = i * input_height * input_width + x * input_width;
 
 
-				    int local_pos = k * (int)stride_width - (int)pad_width;
-				    int y_min     = MAX(local_pos, 0);
-				    int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width);
+                            int local_pos = k * (int)stride_width - (int)pad_width;
+                            int y_min     = MAX(local_pos, 0);
+                            int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width);
 
-				    for (int y = y_min; y < y_max; ++y)
-				    {
-					    float value = input[xpos + y];
-					    if (this->method != PoolingParameter_::PoolMethod_MAX_)        total += value, counter++;
-					    else                                          total = total > value ? total : value;
-				    }
-			    }
-			    if (this->method != PoolingParameter_::PoolMethod_MAX_)
-				    p[k] += total / (counter);
-			    else    p[k]  = (p[k] > total) ? p[k] : total;
-		    }
+                            for (int y = y_min; y < y_max; ++y)
+                            {
+                                float value = input[xpos + y];
+                                if (this->method != PoolingParameter_::PoolMethod_MAX_)        total += value, counter++;
+                                else                                          total = total > value ? total : value;
+                            }
+                        }
+                        if (this->method != PoolingParameter_::PoolMethod_MAX_)
+                            p[k] += total / (counter);
+                        else    p[k]  = (p[k] > total) ? p[k] : total;
+                    }
                 }
             }
             return 0;
         }
-       
+
         int ForwardReshape()
         {
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];

@@ -49,8 +49,8 @@ class InnerProductLayer : public Layer<float>
 
         int Forward()
         {
-	    //this->bottom_blob(0)->PrintBlobInfo(); 
-	    //this->top_blob(0)->PrintBlobInfo(); 
+            //this->bottom_blob(0)->PrintBlobInfo();
+            //this->top_blob(0)->PrintBlobInfo();
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
 
@@ -76,20 +76,20 @@ class InnerProductLayer : public Layer<float>
             input_size = bottom_blob->data_size();
             _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, 1, 1);
             output_size = _top_blobs[_top[0]]->data_size();
-            return this->Forward();   
+            return this->Forward();
         }
-	int Fuse(Layer *next_layer)
-	{
-		if (next_layer->type().compare("ReLU") == 0)
-		{
-			fuse_relu = true;
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+        int Fuse(Layer *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                fuse_relu = true;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         int Init()
         {
             float* buffer = NULL;

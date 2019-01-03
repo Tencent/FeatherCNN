@@ -25,14 +25,14 @@ class FlattenLayer : public Layer<float>
         FlattenLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
             : Layer<float>(layer_param, rt_param)
         {
-		    axis = layer_param->flatten_param()->axis();
-		    end_axis = layer_param->flatten_param()->end_axis();
-            if(!(axis == 1 && end_axis == -1))
-		        LOGE("axis %d end_axis %d\n", axis, end_axis);
+            axis = layer_param->flatten_param()->axis();
+            end_axis = layer_param->flatten_param()->end_axis();
+            if (!(axis == 1 && end_axis == -1))
+                LOGE("axis %d end_axis %d\n", axis, end_axis);
         }
         int Forward();
     private:
-	int axis;
-	int end_axis;
+        int axis;
+        int end_axis;
 };
 };

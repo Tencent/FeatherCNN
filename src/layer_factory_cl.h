@@ -78,7 +78,7 @@ class LayerRegistererCL
 {
     public:
         LayerRegistererCL(const string &type,
-                        Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<Dtype>*))
+                          Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<Dtype>*))
         {
             LayerRegistryCL<Dtype>::AddCreator(type, creator);
         }

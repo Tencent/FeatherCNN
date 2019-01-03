@@ -85,9 +85,10 @@
 __constant sampler_t SAMPLER =
     CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
-inline float4 do_sigmoid(float4 in) {
-  // native_func not support half
-  return native_recip(1.0f + native_exp(-in));
+inline float4 do_sigmoid(float4 in)
+{
+    // native_func not support half
+    return native_recip(1.0f + native_exp(-in));
 }
 
 #ifdef DATA_TYPE
@@ -95,43 +96,48 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #ifdef USE_PRELU
                                 DATA_TYPE4 prelu_alpha,
 #endif
-                                __private const float relux_max_limit) {
-  DATA_TYPE4 out;
+                                __private const float relux_max_limit)
+{
+    DATA_TYPE4 out;
 #ifdef USE_RELU
-  out = fmax(in, (DATA_TYPE)0);
+    out = fmax(in, (DATA_TYPE)0);
 #endif
 #ifdef USE_RELUX
-  out = clamp(in, (DATA_TYPE4)0, relux_max_limit);
+    out = clamp(in, (DATA_TYPE4)0, relux_max_limit);
 #endif
 #ifdef USE_PRELU
-  out = select(prelu_alpha * in, in, in >= (DATA_TYPE)0);
+    out = select(prelu_alpha * in, in, in >= (DATA_TYPE)0);
 #endif
 #ifdef USE_TANH
-  out = tanh(in);
+    out = tanh(in);
 #endif
 #ifdef USE_SIGMOID
-  out = do_sigmoid(in);
+    out = do_sigmoid(in);
 #endif
-  return out;
+    return out;
 }
 #endif
 
 inline void check_out_of_range_for_image2d(__write_only image2d_t image,
-                                           __private const int x,
-                                           __private const int y,
-                                           __global int *oorc_flag) {
-  int2 image_dim = get_image_dim(image);
-  if (x >= image_dim.x || y >= image_dim.y) {
-    *oorc_flag = 1;
-  }
+        __private const int x,
+        __private const int y,
+        __global int *oorc_flag)
+{
+    int2 image_dim = get_image_dim(image);
+    if (x >= image_dim.x || y >= image_dim.y)
+    {
+        *oorc_flag = 1;
+    }
 }
 
 inline void check_out_of_range_for_buffer(__private const int length,
-                                          __private const int idx,
-                                          __global int *oorc_flag) {
-  if (idx >= length) {
-    *oorc_flag = idx - length + 1;
-  }
+        __private const int idx,
+        __global int *oorc_flag)
+{
+    if (idx >= length)
+    {
+        *oorc_flag = idx - length + 1;
+    }
 }
 
 

@@ -283,18 +283,18 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     }
     else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
     {
-         this->algo = WINOGRADF63FUSED;
-         //this->algo = WINOGRADF63;
+        this->algo = WINOGRADF63FUSED;
+        //this->algo = WINOGRADF63;
     }
     else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
     {
-       //this->algo = SGECONV;
-       this->algo = IM2COL;
+        //this->algo = SGECONV;
+        this->algo = IM2COL;
     }
     else if (param->group == 1)
     {
-       this->algo = IM2COL;
-       //this->algo = NAIVE;
+        this->algo = IM2COL;
+        //this->algo = NAIVE;
     }
     else
     {
@@ -315,37 +315,37 @@ int ConvBooster::SetFuncs()
 {
     switch (this->algo)
     {
-    case NAIVE:
-        this->GetBufferSize = NAIVE_GetBufferSize;
-        this->Init = NAIVE_Init;
-        this->Forward = NAIVE_Forward;
-        return 0;
-    case IM2COL:
-        this->GetBufferSize = IM2COL_GetBufferSize;
-        this->Init = IM2COL_Init;
-        this->Forward = IM2COL_Forward;
-        return 0;
-    case WINOGRADF63:
-        this->GetBufferSize = WINOGRADF63_GetBufferSize;
-        this->Init = WINOGRADF63_Init;
-        this->Forward = WINOGRADF63_Forward;
-        return 0;
-    case WINOGRADF63FUSED:
-        this->GetBufferSize = WINOGRADF63FUSED_GetBufferSize;
-        this->Init = WINOGRADF63FUSED_Init;
-        this->Forward = WINOGRADF63FUSED_Forward;
-        return 0;
-    case DEPTHWISE:
-        this->GetBufferSize = DEPTHWISE_GetBufferSize;
-        this->Init = DEPTHWISE_Init;
-        this->Forward = DEPTHWISE_Forward;
-        return 0;
-    default:
-        LOGE("This algo is not supported on AVX2.");
-        this->GetBufferSize = NULL;
-        this->Init = NULL;
-        this->Forward = NULL;
-        return -1;
+        case NAIVE:
+            this->GetBufferSize = NAIVE_GetBufferSize;
+            this->Init = NAIVE_Init;
+            this->Forward = NAIVE_Forward;
+            return 0;
+        case IM2COL:
+            this->GetBufferSize = IM2COL_GetBufferSize;
+            this->Init = IM2COL_Init;
+            this->Forward = IM2COL_Forward;
+            return 0;
+        case WINOGRADF63:
+            this->GetBufferSize = WINOGRADF63_GetBufferSize;
+            this->Init = WINOGRADF63_Init;
+            this->Forward = WINOGRADF63_Forward;
+            return 0;
+        case WINOGRADF63FUSED:
+            this->GetBufferSize = WINOGRADF63FUSED_GetBufferSize;
+            this->Init = WINOGRADF63FUSED_Init;
+            this->Forward = WINOGRADF63FUSED_Forward;
+            return 0;
+        case DEPTHWISE:
+            this->GetBufferSize = DEPTHWISE_GetBufferSize;
+            this->Init = DEPTHWISE_Init;
+            this->Forward = DEPTHWISE_Forward;
+            return 0;
+        default:
+            LOGE("This algo is not supported on AVX2.");
+            this->GetBufferSize = NULL;
+            this->Init = NULL;
+            this->Forward = NULL;
+            return -1;
     }
 }
 }; // namespace booster

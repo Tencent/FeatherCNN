@@ -34,16 +34,16 @@ void print_arr(float* vp);
 #ifndef __APPLE__
 //static inline float32x4_t vfmaq_f32(float32x4_t _s, float32x4_t _a, float32x4_t _b)
 //{
-//	return vmlaq_f32(_s, _a, _b);
+//  return vmlaq_f32(_s, _a, _b);
 //}
 #endif
 static inline float32x4_t vfmaq_laneq_f32(float32x4_t _s, float32x4_t _a, float32x4_t _b, int lane)
 {
-	if(lane == 0)      return vmlaq_lane_f32(_s, _a, vget_low_f32(_b), 0);
-	else if(lane == 1) return vmlaq_lane_f32(_s, _a, vget_low_f32(_b), 1);
-	else if(lane == 2) return vmlaq_lane_f32(_s, _a, vget_high_f32(_b), 0);
-	else if(lane == 3) return vmlaq_lane_f32(_s, _a, vget_high_f32(_b), 1);
-	else return vdupq_n_f32(0.f);
+    if (lane == 0)      return vmlaq_lane_f32(_s, _a, vget_low_f32(_b), 0);
+    else if (lane == 1) return vmlaq_lane_f32(_s, _a, vget_low_f32(_b), 1);
+    else if (lane == 2) return vmlaq_lane_f32(_s, _a, vget_high_f32(_b), 0);
+    else if (lane == 3) return vmlaq_lane_f32(_s, _a, vget_high_f32(_b), 1);
+    else return vdupq_n_f32(0.f);
 }
 #endif
 #endif

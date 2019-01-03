@@ -126,7 +126,7 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 {
     // param->AssignPaddedDim();
     ConvParam padded_param = *param;
-	padded_param.AssignPaddedDim();
+    padded_param.AssignPaddedDim();
     // padded_param.LogParams("PADDED DIM");
     float* padded_input = buffer;
     int M = param->output_channels;
@@ -175,7 +175,7 @@ int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* proc
         dwConv = dwConv_template<false, true>;
     else if (!param->bias_term && !(param->activation == ReLU))
         dwConv = dwConv_template<false, false>;
-    
+
     if (param->pad_left > 0 || param->pad_right > 0 || param->pad_top > 0 || param->pad_bottom > 0)
     {
         ConvParam padded_param = *param;
@@ -282,7 +282,7 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     // }
     else if (param->group == 1)
     {
-       this->algo = IM2COL;
+        this->algo = IM2COL;
     }
     else
     {
@@ -303,37 +303,37 @@ int ConvBooster::SetFuncs()
 {
     switch (this->algo)
     {
-    case NAIVE:
-        this->GetBufferSize = NAIVE_GetBufferSize;
-        this->Init = NAIVE_Init;
-        this->Forward = NAIVE_Forward;
-        return 0;
-    case IM2COL:
-        this->GetBufferSize = IM2COL_GetBufferSize;
-        this->Init = IM2COL_Init;
-        this->Forward = IM2COL_Forward;
-        return 0;
-    case SGECONV:
-        this->GetBufferSize = SGECONV_GetBufferSize;
-        this->Init = SGECONV_Init;
-        this->Forward = SGECONV_Forward;
-        return 0;
-    case WINOGRADF63:
-        this->GetBufferSize = WINOGRADF63_GetBufferSize;
-        this->Init = WINOGRADF63_Init;
-        this->Forward = WINOGRADF63_Forward;
-        return 0;
-    case DEPTHWISE:
-        this->GetBufferSize = DEPTHWISE_GetBufferSize;
-        this->Init = DEPTHWISE_Init;
-        this->Forward = DEPTHWISE_Forward;
-        return 0;
-    default:
-        LOGE("This algo is not supported on Arm CPUs.");
-        this->GetBufferSize = NULL;
-        this->Init = NULL;
-        this->Forward = NULL;
-        return -1;
+        case NAIVE:
+            this->GetBufferSize = NAIVE_GetBufferSize;
+            this->Init = NAIVE_Init;
+            this->Forward = NAIVE_Forward;
+            return 0;
+        case IM2COL:
+            this->GetBufferSize = IM2COL_GetBufferSize;
+            this->Init = IM2COL_Init;
+            this->Forward = IM2COL_Forward;
+            return 0;
+        case SGECONV:
+            this->GetBufferSize = SGECONV_GetBufferSize;
+            this->Init = SGECONV_Init;
+            this->Forward = SGECONV_Forward;
+            return 0;
+        case WINOGRADF63:
+            this->GetBufferSize = WINOGRADF63_GetBufferSize;
+            this->Init = WINOGRADF63_Init;
+            this->Forward = WINOGRADF63_Forward;
+            return 0;
+        case DEPTHWISE:
+            this->GetBufferSize = DEPTHWISE_GetBufferSize;
+            this->Init = DEPTHWISE_Init;
+            this->Forward = DEPTHWISE_Forward;
+            return 0;
+        default:
+            LOGE("This algo is not supported on Arm CPUs.");
+            this->GetBufferSize = NULL;
+            this->Init = NULL;
+            this->Forward = NULL;
+            return -1;
     }
 }
 }; // namespace booster

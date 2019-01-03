@@ -66,13 +66,13 @@ required for FlatBuffers.
 #ifndef nullptr_t
 const class nullptr_t
 {
-public:
-    template<class T> inline operator T*() const
-    {
-        return 0;
-    }
-private:
-    void operator&() const;
+    public:
+        template<class T> inline operator T*() const
+        {
+            return 0;
+        }
+    private:
+        void operator&() const;
 } nullptr = {};
 #endif
 #ifndef constexpr

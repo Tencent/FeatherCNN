@@ -38,95 +38,97 @@ template<typename Dtype>
 class RuntimeParameter
 {
     public:
-      RuntimeParameter() : _common_mempool(NULL),
-                           _device_type(DeviceType::CPU),
-                           _num_threads(1)
+        RuntimeParameter() : _common_mempool(NULL),
+            _device_type(DeviceType::CPU),
+            _num_threads(1)
 #ifdef FEATHER_OPENCL
-                           , _padded_input(NULL)
-                           , _padded_input_size(0)
+            , _padded_input(NULL)
+            , _padded_input_size(0)
 #endif
-      {
+        {
 #ifdef FEATHER_OPENCL
-          if (_device_type == DeviceType::GPU_CL) 
-          {
-              _cl_runtime = new clhpp_feather::OpenCLRuntime();
-          }
+            if (_device_type == DeviceType::GPU_CL)
+            {
+                _cl_runtime = new clhpp_feather::OpenCLRuntime();
+            }
 #endif
-      }
-      RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
-          : _common_mempool(common_mempool),
-          _num_threads(num_threads),
-          _device_type(device_type)
+        }
+        RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
+            : _common_mempool(common_mempool),
+              _num_threads(num_threads),
+              _device_type(device_type)
 #ifdef FEATHER_OPENCL
-          , _padded_input(NULL)
-          , _padded_input_size(0)
+            , _padded_input(NULL)
+            , _padded_input_size(0)
 #endif
-      {
+        {
 #ifdef FEATHER_OPENCL
-          if (_device_type == DeviceType::GPU_CL) 
-          {
-              _cl_runtime = new clhpp_feather::OpenCLRuntime();
-          }
+            if (_device_type == DeviceType::GPU_CL)
+            {
+                _cl_runtime = new clhpp_feather::OpenCLRuntime();
+            }
 #endif
-      }
-      ~RuntimeParameter()
-      {
+        }
+        ~RuntimeParameter()
+        {
 #ifdef FEATHER_OPENCL
-          if (_device_type == DeviceType::GPU_CL) 
-          {
-              delete _cl_runtime;
-              _cl_runtime = NULL;
+            if (_device_type == DeviceType::GPU_CL)
+            {
+                delete _cl_runtime;
+                _cl_runtime = NULL;
 
-              if (_padded_input != NULL) 
-              {
-                  delete _padded_input;
-                  _padded_input = NULL;
-              }
-          }
+                if (_padded_input != NULL)
+                {
+                    delete _padded_input;
+                    _padded_input = NULL;
+                }
+            }
 #endif
-      }
+        }
 
-      CommonMemPool<Dtype> *common_mempool() const
-      {
-          return _common_mempool;
-      }
-      size_t num_threads() const
-      {
-          return _num_threads;
-      }
+        CommonMemPool<Dtype> *common_mempool() const
+        {
+            return _common_mempool;
+        }
+        size_t num_threads() const
+        {
+            return _num_threads;
+        }
 
 
-      DeviceType device_type() const
-      {
-          return _device_type;
-      }
+        DeviceType device_type() const
+        {
+            return _device_type;
+        }
 
 #ifdef FEATHER_OPENCL
-      cl::Context context() const
-      {
-          return _cl_runtime->context();
-      }
-      cl::CommandQueue command_queue() const
-      {
-          return _cl_runtime->command_queue();
-      }
-      cl::Device device() const
-      {
-          return _cl_runtime->device();
-      }
-      clhpp_feather::OpenCLRuntime* cl_runtime() const
-      {
-          return _cl_runtime;
-      }
-      size_t* padded_input_size_ptr() {
-          return &_padded_input_size;
-      }
-      feather::Blob<Dtype>* padded_input() {
-          return _padded_input;
-      }
+        cl::Context context() const
+        {
+            return _cl_runtime->context();
+        }
+        cl::CommandQueue command_queue() const
+        {
+            return _cl_runtime->command_queue();
+        }
+        cl::Device device() const
+        {
+            return _cl_runtime->device();
+        }
+        clhpp_feather::OpenCLRuntime* cl_runtime() const
+        {
+            return _cl_runtime;
+        }
+        size_t* padded_input_size_ptr()
+        {
+            return &_padded_input_size;
+        }
+        feather::Blob<Dtype>* padded_input()
+        {
+            return _padded_input;
+        }
 #endif
 
-      private:
+    private:
         CommonMemPool<Dtype> *_common_mempool;
         size_t _num_threads;
         DeviceType _device_type;

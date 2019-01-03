@@ -56,6 +56,6 @@ void _mm_free(void* ptr);
 #include <mm_malloc.h>
 #endif
 
-unsigned short hs_floatToHalf (float f);
-int hs_halfToFloatRep (unsigned short c);
-float hs_halfToFloat (unsigned short c);
+unsigned short hs_floatToHalf(float f);
+int hs_halfToFloatRep(unsigned short c);
+float hs_halfToFloat(unsigned short c);

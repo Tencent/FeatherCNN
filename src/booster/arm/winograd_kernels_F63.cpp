@@ -360,7 +360,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     const int nBlocks = nRowBlocks * nColBlocks;
     const int rem = nBlocks & 0x3;
     int nBlocksAligned = nBlocks & 0xFFFFFFFC;
-    
+
     //memset(VT, 0, sizeof(float) * 64 * nBlocksAligned * inChannels);
     int hdiff = nColBlocks * 6 + 2 - inputh;
     int wdiff = nRowBlocks * 6 + 2 - inputw;
@@ -374,7 +374,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
 #else
 #ifdef _OPENMP
 #ifdef __aarch64__
-#pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
+    #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
 #endif
 #endif
     for (int ic = 0; ic < inChannels; ++ic)
@@ -1212,8 +1212,8 @@ size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 
 void winogradNonFusedTransform_inner(float *output, int ldout, float *WT, float *VT, float *UT, int inChannels, int outChannels, float *input, int inputh, int inputw, int frameStride, int ldin, int nRowBlocks, int nColBlocks, WinogradOutType outType, float *biasArr, float* pack_array, int num_threads)
 {
-	float* ext = pack_array;
-	pack_array += 64;
+    float* ext = pack_array;
+    pack_array += 64;
     int nBlocks = nRowBlocks * nColBlocks;
     int depth = 16;
     //float *pack_arr = (float*)malloc(cache_block * inChannels * depth * sizeof(float32x4_t));

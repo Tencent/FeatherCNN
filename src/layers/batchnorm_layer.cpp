@@ -88,7 +88,7 @@ int BatchNormLayer::Init()
             scale_bias_data = NULL;
     }
     SetKernel();
-    
+
     return 0;
 }
 

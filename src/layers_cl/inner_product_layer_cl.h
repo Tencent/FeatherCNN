@@ -21,34 +21,36 @@
 #include <stdio.h>
 #include <vector>
 
-namespace feather {
+namespace feather
+{
 
 template <class Dtype>
-class InnerProductLayerCL : public Layer<Dtype> {
-public:
-  InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
+class InnerProductLayerCL : public Layer<Dtype>
+{
+    public:
+        InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
 
-  int InitCL();
-  virtual int SetBuildOptions();
-  virtual int SetWorkSize();
-  virtual int SetKernelParameters();
-  virtual int ForwardCL();
-  virtual int ForwardReshapeCL();
-  int GenerateTopBlobs();
-  int Fuse(Layer<Dtype> *next_layer);
+        int InitCL();
+        virtual int SetBuildOptions();
+        virtual int SetWorkSize();
+        virtual int SetKernelParameters();
+        virtual int ForwardCL();
+        virtual int ForwardReshapeCL();
+        int GenerateTopBlobs();
+        int Fuse(Layer<Dtype> *next_layer);
 
-protected:
-  size_t input_width;
-  size_t input_height;
-  size_t channel_grp_size;
+    protected:
+        size_t input_width;
+        size_t input_height;
+        size_t channel_grp_size;
 
-  size_t output_channels;
+        size_t output_channels;
 
-  Dtype *kernel_data;
-  Dtype *bias_data;
+        Dtype *kernel_data;
+        Dtype *bias_data;
 
-  bool bias_term;
+        bool bias_term;
 
-  bool fuse_relu;
+        bool fuse_relu;
 };
 }; // namespace feather

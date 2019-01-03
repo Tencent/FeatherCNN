@@ -23,13 +23,13 @@ class ReshapeLayer : public Layer<float>
 {
     public:
         ReshapeLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
-              : Layer<float>(layer_param, rt_param)
+            : Layer<float>(layer_param, rt_param)
         {
-           dim[0] = layer_param->reshape_param()->shape()->dim()->Get(0);
-           dim[1] = layer_param->reshape_param()->shape()->dim()->Get(1);
-           dim[2] = layer_param->reshape_param()->shape()->dim()->Get(2);
-           dim[3] = layer_param->reshape_param()->shape()->dim()->Get(3);
-	printf("dim %d %d %d %d\n", dim[0], dim[1], dim[2], dim[3]);
+            dim[0] = layer_param->reshape_param()->shape()->dim()->Get(0);
+            dim[1] = layer_param->reshape_param()->shape()->dim()->Get(1);
+            dim[2] = layer_param->reshape_param()->shape()->dim()->Get(2);
+            dim[3] = layer_param->reshape_param()->shape()->dim()->Get(3);
+            printf("dim %d %d %d %d\n", dim[0], dim[1], dim[2], dim[3]);
         }
 
         int GenerateTopBlobs();
@@ -38,8 +38,8 @@ class ReshapeLayer : public Layer<float>
         int Init();
 
     private:
-        int    dim[4];	
-	
+        int    dim[4];
+
 //        int    num_output;
 //        float* select_weights;
 };
