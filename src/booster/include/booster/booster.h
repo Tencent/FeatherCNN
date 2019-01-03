@@ -30,6 +30,12 @@
 #include "CLHPP/clhpp_runtime.hpp"
 #endif
 
+#ifdef _WIN32
+	#define FEATHER_MEN_ALIGN(alignment) __declspec(align(alignment))
+#else
+	#define FEATHER_MEN_ALIGN(alignment) __attribute__((aligned(alignment)))
+#endif
+
 namespace booster
 {
 

@@ -78,6 +78,14 @@ void diff(float* arr1, float* arr2, int M, int N)
 
 #include <time.h>
 
+#ifdef _WIN32
+#define CLOCK_MONOTONIC 0
+int clock_gettime(int no_use, struct timespec *spec)
+{
+	return timespec_get(spec, TIME_UTC);
+}
+#endif
+
 void Timer::startBench()
 {
     clock_gettime(CLOCK_MONOTONIC, &start);

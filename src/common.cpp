@@ -33,7 +33,7 @@ int min(int a, int b)
 void* _mm_malloc(size_t sz, size_t align)
 {
     void *ptr;
-#ifdef __APPLE__
+#if (defined __APPLE__) || (defined _WIN32)
     return malloc(sz);
 #else
     int alloc_result = posix_memalign(&ptr, align, sz);

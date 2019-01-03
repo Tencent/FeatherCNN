@@ -425,7 +425,7 @@ void pack_B_im2col_stride_1_avx(booster::ConvParam *conv_param, int kc, int nc, 
 }
 #include <assert.h>
 template<bool fuseBias, bool fuseRelu>
-void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias)
+void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *packA, float *B, const int ldb, float *C, const int ldc, const int nc, const int kc, float* bias)
 {
     //nc = nc - nc % (kernel_h * kernel_w);
     int M = conv_param->output_channels;
@@ -459,8 +459,8 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
-            __attribute__((aligned(32))) float loadC[6 * nc];
-            __attribute__((aligned(32))) float packB[kc * nc];
+			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
             //float* pA = packA + kt * kc * M_align;
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
@@ -478,14 +478,14 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
     {
         int kt = KBlocks - 1;
         k_len = (K - kt * kc);
-        __attribute__((aligned(32))) float loadC[6 * nc];
+		FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
             //float loadC[6 * nc];
             //float* pA = packA + kt * kc * M_align;
-            __attribute__((aligned(32))) float loadC[6 * nc];
-            __attribute__((aligned(32))) float packB[kc * nc];
+			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
             float* pC = C + nt * nc;
@@ -503,7 +503,7 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
     //_mm_free(loadC);
 }
 
-template void packed_sgeconv_im2col_activation<false, false>(booster::ConvParam *conv_param, float *packA, float *B, int ldb, float *C, int ldc, int nc, int kc, float* bias);
+template void packed_sgeconv_im2col_activation<false, false>(booster::ConvParam *conv_param, float *packA, float *B, const int ldb, float *C, const int ldc, const int nc, const int kc, float* bias);
 // template void packed_sgeconv_im2col_activation<false,  true>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);
 // template void packed_sgeconv_im2col_activation<true,  false>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);
 // template void packed_sgeconv_im2col_activation<true,   true>(int, int, int, int, int, int, float*, float*, int, float*, int, int, int, float*);

@@ -1,0 +1,264 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="源文件\booster">
+      <UniqueIdentifier>{ca227566-15f8-4db3-b8f7-40dd9ace80da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\flatbuffers">
+      <UniqueIdentifier>{2a0d228a-9b5b-4593-a7e5-4f4d3d569e68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\general">
+      <UniqueIdentifier>{618a34cc-64bb-45c4-a024-6dd7fd60eba5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\layers">
+      <UniqueIdentifier>{a642f053-a377-44ff-a003-2abc5818d6c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\booster\avx">
+      <UniqueIdentifier>{a6f21460-150a-43ed-91a0-645ac0ce80ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\booster\include">
+      <UniqueIdentifier>{4b7363dd-5452-49e4-a637-0805b3db6c64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\booster\include\booster">
+      <UniqueIdentifier>{6ff31c76-07ac-4a31-a7b8-6560f02231fb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\blob.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\common.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layer_factory.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layer_factory_cl.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\mempool.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\net.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\booster.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\caffe_interp.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\depthwise.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\generic_kernels.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\helper.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\sgemm.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\sgemv.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\winograd_kernels_F63.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\winograd_kernels_F63_fused.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\general\generic_kernels.cpp">
+      <Filter>源文件\general</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\general\sgemv.cpp">
+      <Filter>源文件\general</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\batchnorm_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\concat_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\filter_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\flatten_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\interp_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\lrn_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\prelu_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\relu_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\reshape_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\scale_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\slice_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\layers\softmax_layer.cpp">
+      <Filter>源文件\layers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\blob.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\common.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\feather_generated.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layer.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layer_factory.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layer_factory_cl.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\mempool.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\net.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rt_param.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\booster.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\caffe_interp.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\depthwise.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\generic_kernels.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\helper.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\opencl_kernels.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\power.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\sgemm.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\sgemv.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\thpool.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\booster\include\booster\winograd_kernels.h">
+      <Filter>源文件\booster\include\booster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\flatbuffers\base.h">
+      <Filter>源文件\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\flatbuffers\flatbuffers.h">
+      <Filter>源文件\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\flatbuffers\stl_emulation.h">
+      <Filter>源文件\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\general\generic_kernels.h">
+      <Filter>源文件\general</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\general\power.h">
+      <Filter>源文件\general</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\general\sgemv.h">
+      <Filter>源文件\general</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\batchnorm_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\concat_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\conv_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\dropout_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\eltwise_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\filter_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\flatten_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\inner_product_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\input_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\interp_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\lrn_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\pooling_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\prelu_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\relu_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\reshape_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\scale_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\slice_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\layers\softmax_layer.h">
+      <Filter>源文件\layers</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
