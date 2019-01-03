@@ -272,7 +272,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                         cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the element wise kernel.");
+            LOGE("Failed enqueuing the element eltwise kernel.");
             return -1;
         }
         //run
@@ -296,7 +296,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                                 cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
             if (!checkSuccess(error_num))
             {
-                LOGE("Failed enqueuing the conv kernel.");
+                LOGE("Failed enqueuing the eltwise kernel.");
                 return -1;
             }
 
@@ -327,7 +327,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                             cl::NDRange(tmp_lws[0], tmp_lws[1], tmp_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the conv kernel.");
+            LOGE("Failed enqueuing the eltwise kernel.");
             return -1;
         }
     }
@@ -351,7 +351,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                             cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the conv kernel.");
+            LOGE("Failed enqueuing the eltwise kernel.");
             return -1;
         }
         this->rt_param->command_queue().finish();
@@ -367,7 +367,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                         cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the element wise kernel.");
+            LOGE("Failed enqueuing the element eltwise kernel.");
             return -1;
         }
     }  
