@@ -328,6 +328,13 @@ int Net<Dtype>::Forward(float *input)
         LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
     }
+
+#ifdef FEATHER_OPENCL
+    if(rt_param->device_type() == DeviceType::GPU_CL)
+    {
+        rt_param->cl_runtime()->tuner().SetTunerPram();
+    }
+#endif 
     return 0;
 }
 
@@ -400,6 +407,13 @@ int Net<Dtype>::Forward(float* input, int height, int width)
         LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
     }
+
+#ifdef FEATHER_OPENCL
+    if(rt_param->device_type() == DeviceType::GPU_CL)
+    {
+        rt_param->cl_runtime()->tuner().SetTunerPram();
+    }
+#endif 
     return 0;
 }
 

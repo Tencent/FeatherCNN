@@ -35,8 +35,14 @@ inline bool IsTuning()
 inline bool IsTunned()
 {
     const char *tuning = getenv("FEATHER_TUNING");
+    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '100';
+}
+inline bool IsTunerInProcess()
+{
+    const char *tuning = getenv("FEATHER_TUNING");
     return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '2';
 }
+
 
 template <typename param_type>
 class Tuner
@@ -47,9 +53,47 @@ class Tuner
         {
             tuned_param_file_path_.clear();
             path_ = nullptr;
+            frame_ = 0;
+            tuner_size_ = 10; //default
         }
 
-        int Tune(size_t kwg_size,
+        //net forward finish call
+        void SetTunerPram() {
+            if(clhpp_feather::IsTunerInProcess()) 
+            {
+                frame_++;
+                if(frame_ >= tuner_size_)
+                {
+                    setenv("FEATHER_TUNING", "100", 1);
+                    LOGI("SET FEATHER_TUNING = 100");
+                }
+                //LOGI("frame_ is %d", frame_);
+            }
+            if(clhpp_feather::IsTuning())
+            {
+                setenv("FEATHER_TUNING", "100", 1);
+                //LOGI("SET FEATHER_TUNING = 100");
+            }
+        }
+
+        int IsTunerInProcess(size_t kwg_size,
+                 const size_t& height,
+                 const size_t& width,
+                 std::vector<param_type> gws,
+                 std::vector<param_type> lws,
+                 std::vector<std::vector<param_type> >& gws_list,
+                 std::vector<std::vector<param_type> >& lws_list)
+        {
+            int index = frame_ % tuner_size_;
+            std::vector<param_type> gws_list_tm;
+            std::vector<param_type> lws_list_tm;
+            TunerArry(kwg_size, height, width, gws, lws, gws_list_tm, lws_list_tm);
+            gws_list.push_back(gws_list_tm[index]);
+            lws_list.push_back(lws_list_tm[index]);
+            return 0;
+        }
+
+        int TunerArry(size_t kwg_size,
                  const size_t& height,
                  const size_t& width,
                  std::vector<param_type> gws,
@@ -80,6 +124,7 @@ class Tuner
                 lws_list.push_back({lws[0], lws[1], lws[2]});
                 gws_list.push_back({gws[0], gws[1], gws[2]});
             }
+            tuner_size_ = tuner_size_ < gws_list.size() ? gws_list.size() : tuner_size_;
             return 0;
         }
 
@@ -160,13 +205,20 @@ class Tuner
             }
         }
 
-        bool set_layer_kernel_wks(const std::string &key, std::vector<param_type>& value)
+        bool set_layer_kernel_wks(const std::string &key, std::vector<param_type>& value, double time = 1.0)
         {
-            if (param_table_.find(key) != param_table_.end())
+            if (this->param_time_.find(key) != this->param_time_.end())
             {
-                LOGE("Tuner already set %s, update it", key.c_str());
+                if(this->param_time_[key] > time)
+                {
+                    this->param_table_[key] = value;
+                    this->param_time_[key] = time; 
+                }
             }
-            this->param_table_[key] = value;
+            else {
+                this->param_table_[key] = value;
+                this->param_time_[key] = time;
+            }
             return true;
         }
 
@@ -185,6 +237,9 @@ class Tuner
         std::string tuned_param_file_path_;
         char *path_;
         std::unordered_map<std::string, std::vector<param_type>> param_table_;
+        std::unordered_map<std::string, double> param_time_;
+        int frame_;
+        int tuner_size_;
 };
 
 }  // namespace clhpp_feather

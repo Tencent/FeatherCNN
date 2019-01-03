@@ -166,6 +166,8 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
          this->name().c_str(), kernel_names[i].c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 #else
 
+    std::string key_gws = layer_name + "_" + kernel_names[1] + "_gws";
+    std::string key_lws = layer_name + "_" + kernel_names[1] + "_lws";
     if (clhpp_feather::IsTuning())
     {
         //warm up
@@ -184,7 +186,7 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
         lws_list.push_back(conv_lws);
         uint64_t kwg_size = 0;
         cl_runtime->GetKernelMaxWorkGroupSize(conv_kernel, kwg_size);
-        cl_runtime->tuner().Tune(kwg_size, param.output_h, param.output_w,
+        cl_runtime->tuner().TunerArry(kwg_size, param.output_h, param.output_w,
                                  conv_gws, conv_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
@@ -213,16 +215,13 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
                 min_tune = j;
             }
         }
-        std::string key_gws = layer_name + "_" + kernel_names[1] + "_gws";
-        std::string key_lws = layer_name + "_" + kernel_names[1] + "_lws";
-        cl_runtime->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune]);
-        cl_runtime->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune]);
+        
+        cl_runtime->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune], opt_time);
+        cl_runtime->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune], opt_time);
         //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);
     }
     else if (clhpp_feather::IsTunned())
     {
-        std::string key_gws = layer_name + "_" + kernel_names[1] + "_gws";
-        std::string key_lws = layer_name + "_" + kernel_names[1] + "_lws";
         std::vector<size_t> tmp_gws;
         std::vector<size_t> tmp_lws;
         cl_runtime->tuner().get_layer_kernel_wks(key_gws, tmp_gws);
@@ -235,6 +234,36 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
             LOGE("Failed enqueuing the conv kernel.");
             return -1;
         }
+    }
+    else if (clhpp_feather::IsTunerInProcess())
+    {
+        //run
+        std::vector<std::vector<size_t> > gws_list;
+        std::vector<std::vector<size_t> > lws_list;
+        gws_list.push_back(conv_gws);
+        lws_list.push_back(conv_lws);
+        uint64_t kwg_size = 0;
+        cl_runtime->GetKernelMaxWorkGroupSize(conv_kernel, kwg_size);
+        cl_runtime->tuner().TunerArry(kwg_size, param.output_h, param.output_w,
+                                 conv_gws, conv_lws, gws_list, lws_list);
+        cmd_q.finish();
+        timespec tpstart, tpend;
+        clock_gettime(CLOCK_MONOTONIC, &tpstart);
+        int j = 0;
+        int error_num = cmd_q.enqueueNDRangeKernel(
+                            conv_kernel, cl::NullRange, cl::NDRange(gws_list[j][0], gws_list[j][1], gws_list[j][2]),
+                            cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
+        if (!checkSuccess(error_num))
+        {
+            LOGE("Failed enqueuing the conv kernel.");
+            return -1;
+        }
+        cmd_q.finish();
+        clock_gettime(CLOCK_MONOTONIC, &tpend);
+        double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
+        timedif /= 1000.0;
+        cl_runtime->tuner().set_layer_kernel_wks(key_gws, gws_list[j], timedif);
+        cl_runtime->tuner().set_layer_kernel_wks(key_lws, lws_list[j], timedif);
     }
     else
     {
