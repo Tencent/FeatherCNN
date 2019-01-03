@@ -14,8 +14,6 @@
 
 #include "feather_generated.h"
 #include "blob.h"
-#include "fp16/fp16.h"
-
 
 namespace feather
 {
@@ -110,7 +108,7 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
                 }
                 else
                 {
-                    this->_data[i] = fp16_ieee_to_fp32_value(proto->data_fp16()->Get(i));
+                    this->_data[i] = hs_halfToFloat(proto->data_fp16()->Get(i));
                 }
             }
             else
