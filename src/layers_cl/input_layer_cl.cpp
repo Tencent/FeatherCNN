@@ -53,7 +53,7 @@ int InputLayerCL<Dtype>::InitCL()
 {
 
     std::string program_name_float = "input_buffer";
-    std::string kernel_name_float = "float_chw_to_hwc";
+    std::string kernel_name_float = "chw_to_hwc";
     auto it_source_float = booster::opencl_kernel_string_map.find(program_name_float);
     if (it_source_float != booster::opencl_kernel_string_map.end())
     {
@@ -86,9 +86,8 @@ int InputLayerCL<Dtype>::InitCL()
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetWorkSize()
-{
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["float_chw_to_hwc"];
+int InputLayerCL<Dtype>::SetWorkSize() {
+    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<size_t>& float_gws = float_kernel_info.gws;
     std::vector<size_t>& float_lws = float_kernel_info.lws;
 
@@ -115,7 +114,7 @@ int InputLayerCL<Dtype>::SetWorkSize()
     {
         c_blk_size = 8;
     }
-    this->channel_grp_size = c_blk_size;
+    this->channel_block_size = c_blk_size;
 
     size_t float_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
     size_t float_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
@@ -139,7 +138,7 @@ int InputLayerCL<Dtype>::SetWorkSize()
 template <class Dtype>
 int InputLayerCL<Dtype>::ResetWorkSizeFloat()
 {
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["float_chw_to_hwc"];
+    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<size_t>& float_gws = float_kernel_info.gws;
     std::vector<size_t>& float_lws = float_kernel_info.lws;
 
@@ -182,9 +181,8 @@ int InputLayerCL<Dtype>::ResetInputAndArgs(size_t data_size)
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetBuildOptions()
-{
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["float_chw_to_hwc"];
+int InputLayerCL<Dtype>::SetBuildOptions() {
+    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<std::string>& float_build_options = float_kernel_info.build_options;
 
     clhpp_feather::CLKernelInfo& uint8_kernel_info = this->cl_kernel_info_map["uint8_hwc_to_hwc"];
@@ -194,7 +192,7 @@ int InputLayerCL<Dtype>::SetBuildOptions()
     ss0 << this->input_channels;
     float_build_options.push_back("-DIN_CHANNELS=" + ss0.str());
     std::ostringstream ss1;
-    ss1 << this->channel_grp_size;
+    ss1 << this->channel_block_size;
     float_build_options.push_back("-DN=" + ss1.str());
     float_build_options.push_back("-DIN_DATA_TYPE=float");
     if (std::is_same<Dtype, uint16_t>::value)
@@ -206,30 +204,29 @@ int InputLayerCL<Dtype>::SetBuildOptions()
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetKernelParameters()
-{
-    int error_num;
-    size_t data_size;
-    bool set_kernel_arguments_success = true;
-    int param_idx = 0;
+int InputLayerCL<Dtype>::SetKernelParameters() {
+  int error_num;
+  size_t data_size;
+  bool set_kernel_arguments_success = true;
+  int param_idx = 0;
 
-    this->rt_param->cl_runtime()->BuildKernel("float_chw_to_hwc", this->cl_kernel_info_map);
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["float_chw_to_hwc"];
-    std::vector<size_t>& float_gws = float_kernel_info.gws;
-    std::vector<size_t>& float_lws = float_kernel_info.lws;
-    cl::Kernel& float_cl_kernel = float_kernel_info.kernel;
+  this->rt_param->cl_runtime()->BuildKernel("chw_to_hwc", this->cl_kernel_info_map);
+  clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
+  std::vector<size_t>& float_gws = float_kernel_info.gws;
+  std::vector<size_t>& float_lws = float_kernel_info.lws;
+  cl::Kernel& float_cl_kernel = float_kernel_info.kernel;
 
-    this->rt_param->cl_runtime()->BuildKernel("uint8_hwc_to_hwc", this->cl_kernel_info_map);
-    clhpp_feather::CLKernelInfo& uint8_kernel_info = this->cl_kernel_info_map["uint8_hwc_to_hwc"];
-    std::vector<size_t>& uint8_gws = uint8_kernel_info.gws;
-    std::vector<size_t>& uint8_lws = uint8_kernel_info.lws;
-    cl::Kernel& uint8_cl_kernel = uint8_kernel_info.kernel;
+  this->rt_param->cl_runtime()->BuildKernel("uint8_hwc_to_hwc", this->cl_kernel_info_map);
+  clhpp_feather::CLKernelInfo& uint8_kernel_info = this->cl_kernel_info_map["uint8_hwc_to_hwc"];
+  std::vector<size_t>& uint8_gws = uint8_kernel_info.gws;
+  std::vector<size_t>& uint8_lws = uint8_kernel_info.lws;
+  cl::Kernel& uint8_cl_kernel = uint8_kernel_info.kernel;
 
-    Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
-    data_size = layer_blob->data_size_padded_c();
-    layer_blob->AllocDevice(this->rt_param->context(), data_size);
-    data_size = layer_blob->data_size();
-    this->_cl_fimage = cl::Buffer(this->rt_param->context(),
+  Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
+  data_size = layer_blob->data_size_padded_c();
+  layer_blob->AllocDevice(this->rt_param->context(), data_size);
+  data_size = layer_blob->data_size();
+  this->_cl_fimage = cl::Buffer(this->rt_param->context(),
                                   CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                   data_size * sizeof(float), nullptr, &error_num);
     if (!checkSuccess(error_num))
@@ -397,7 +394,7 @@ template <class Dtype>
 int InputLayerCL<Dtype>::CopyInput(std::string name, const float *input_data)
 {
     this->FloatToDevice(input_data);
-    this->RunKernel("float_chw_to_hwc");
+    this->RunKernel("chw_to_hwc");
     return 0;
 }
 template <class Dtype>
@@ -416,7 +413,7 @@ int InputLayerCL<Dtype>::ReshapeFloat(std::string name, int height, int width)
         return 0;
     }
     bool set_kernel_arguments_success = true;
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["float_chw_to_hwc"];
+    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<size_t>& float_gws = float_kernel_info.gws;
     std::vector<size_t>& float_lws = float_kernel_info.lws;
     cl::Kernel& cl_kernel = float_kernel_info.kernel;
@@ -535,7 +532,7 @@ int InputLayerCL<Dtype>::RunKernel(std::string kernel_type)
                 min_tune = j;
             }
         }
-        
+
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune], opt_time);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune], opt_time);
         //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);

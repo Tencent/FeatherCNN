@@ -59,7 +59,7 @@ int InnerProductLayerCL<Dtype>::SetWorkSize()
     {
         c_blk_size = 8;
     }
-    this->channel_grp_size = c_blk_size;
+    this->channel_block_size = c_blk_size;
     size_t fc_gws_dim0 = 1;
     size_t fc_gws_dim1 = 1;
     size_t fc_gws_dim2 = padded_output_c / c_blk_size;
@@ -102,7 +102,7 @@ int InnerProductLayerCL<Dtype>::SetBuildOptions()
     std::ostringstream ss;
     clhpp_feather::CLKernelInfo& fc_kernel_info = this->cl_kernel_info_map["inner_product"];
     std::vector<std::string>& build_options = fc_kernel_info.build_options;
-    ss << this->channel_grp_size;
+    ss << this->channel_block_size;
 
     build_options.push_back("-DN=" + ss.str());
     if (std::is_same<Dtype, uint16_t>::value)
@@ -146,9 +146,9 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters()
 
     uint32_t kernel_size = this->input_height * this->input_width * b_channel_padding;
     uint32_t hw_size = this->input_height * this->input_width;
-    uint32_t num_channel_grp = b_channel_padding / this->channel_grp_size;
-    uint32_t c_grp_size = 1 /* this->channel_grp_size */;
-    uint32_t n_grp_size = this->channel_grp_size;
+    uint32_t num_channel_grp = b_channel_padding / this->channel_block_size;
+    uint32_t c_grp_size = 1 /* this->channel_block_size */;
+    uint32_t n_grp_size = this->channel_block_size;
 
     for (int n = 0; n < w_num; ++n)
     {

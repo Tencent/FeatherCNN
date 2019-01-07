@@ -65,7 +65,7 @@ class EltwiseLayerCL: public Layer<Dtype>
         size_t output_height;
         size_t output_width;
         size_t output_channels;
-        size_t channel_grp_size;
+        size_t channel_block_size;
         bool fuse_relu;
 
 };

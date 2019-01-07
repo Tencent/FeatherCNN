@@ -76,14 +76,38 @@ struct ConvParam
     bool bias_term;
     ActivationType activation;
 #ifdef FEATHER_OPENCL
-    int channel_grp_size;
+    int channel_block_size;
     int padded_input_channels;
     int padded_output_channels;
+    int height_block_size;
+    int width_block_size;
     int padded_input_h;
     int padded_input_w;
     int padded_output_h;
     int padded_output_w;
     bool padding_needed;
+
+    void AssignCLPaddedDim()
+    {
+        channel_block_size = 4;
+        if (padded_input_channels % 8 == 0 && padded_output_channels % 8 == 0)
+        {
+            channel_block_size = 8;
+        }
+
+        height_block_size = 1;
+        width_block_size = 1;
+        padding_needed = false;
+        if (input_w >= 12)
+        {
+            width_block_size = 2;
+            padded_output_h = (output_h + height_block_size - 1) / height_block_size * height_block_size;
+            padded_output_w = (output_w + width_block_size - 1) / width_block_size * width_block_size;
+            padded_input_h = (padded_output_h - 1) * stride_h + kernel_h;
+            padded_input_w = (padded_output_w - 1) * stride_w + kernel_w;
+            padding_needed = (padded_input_h != input_h) || (padded_input_w != input_w);
+        }
+    }
 #endif
 
     void AssignOutputDim()
@@ -146,6 +170,7 @@ class ConvBooster
 struct CLBuffers
 {
     cl::Buffer* input_mem;
+    cl::Buffer* padded_input_mem;
     cl::Buffer* output_mem;
     cl::Buffer* weight_mem;
     cl::Buffer* bias_mem;
@@ -157,52 +182,56 @@ struct CLBuffers
 template <class Dtype>
 class ConvBoosterCL
 {
-    public:
+public:
 
-        typedef int (*INIT_FUNC_CL)(std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
-        typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q,
-                                       std::vector<std::string> kernel_names,
+  typedef int (*INIT_FUNC_CL)(const std::vector<std::string>& program_names,
+                              const std::vector<std::string>& kernel_names,
+                              std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
+	typedef int (*FORWARD_FUNC_CL)(cl::CommandQueue cmd_q,
+																 std::vector<std::string> kernel_names,
+																 std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+																 const ConvParam& param,
+																 clhpp_feather::OpenCLRuntime* cl_runtime,
+																 std::string layer_name);
+  typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam& param,
+                                       size_t n_grp_size,
+                                       size_t c_grp_size,
+                                       const Dtype* weight,
+                                       Dtype* weight_reformed);
+  typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam& param,
+                                           const CLBuffers& buffers,
+                                           const std::vector<std::string>& kernel_names,
+                                           std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                                           clhpp_feather::OpenCLRuntime* cl_runtime,
+                                           bool is_reshape);
+  typedef int (*SET_CONV_WORK_SIZE_CL)(const ConvParam& param,
                                        std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
-                                       const ConvParam& param,
-                                       clhpp_feather::OpenCLRuntime* cl_runtime,
-                                       std::string layer_name);
-        typedef int (*WEIGHT_REFORM_FUNC_CL)(const ConvParam& param,
-                                             size_t n_grp_size,
-                                             size_t c_grp_size,
-                                             const Dtype* weight,
-                                             Dtype* weight_reformed);
-        typedef int (*SET_CONV_KERNEL_PARAMS_CL)(const ConvParam& param,
-                const CLBuffers& buffers,
-                std::vector<std::string> kernel_names,
-                std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
-                clhpp_feather::OpenCLRuntime* cl_runtime,
-                bool is_reshape);
-        typedef int (*SET_CONV_WORK_SIZE_CL)(const ConvParam& param,
-                                             std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
-                                             std::vector<std::string> kernel_names,
-                                             clhpp_feather::OpenCLRuntime* cl_runtime);
-        typedef int (*SET_BUILD_OPTS_CL)(const ConvParam& param,
-                                         bool is_fp16,
-                                         const std::vector<std::string>& kernel_names,
-                                         std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
+                                       const std::vector<std::string>& kernel_names,
+                                       clhpp_feather::OpenCLRuntime* cl_runtime);
+  typedef int (*SET_BUILD_OPTS_CL)(const ConvParam& param,
+                                   bool is_fp16,
+                                   const std::vector<std::string>& kernel_names,
+                                   std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map);
 
-        ConvBoosterCL();
-        ~ConvBoosterCL() {}
-        int SelectAlgo(ConvParam* param);
-        int ForceSelectAlgo(ConvAlgo algo);
-        int SetFuncs();
-        size_t GetWeightSize();
-        const std::vector<std::string>& GetKernelNames();
-        INIT_FUNC_CL Init;
-        FORWARD_FUNC_CL Forward;
-        WEIGHT_REFORM_FUNC_CL WeightReform;
-        SET_CONV_KERNEL_PARAMS_CL SetConvKernelParams;
-        SET_CONV_WORK_SIZE_CL SetConvWorkSize;
-        SET_BUILD_OPTS_CL SetBuildOpts;
-    private:
-        ConvAlgo algo;
-        size_t weight_size;
-        std::vector<std::string> kernel_names;
+  ConvBoosterCL();
+  ~ConvBoosterCL() {}
+  int SelectAlgo(ConvParam* param);
+  int ForceSelectAlgo(ConvAlgo algo);
+  int SetFuncs();
+  size_t GetWeightSize();
+  const std::vector<std::string>& GetProgramNames();
+  const std::vector<std::string>& GetKernelNames();
+  INIT_FUNC_CL Init;
+  FORWARD_FUNC_CL Forward;
+  WEIGHT_REFORM_FUNC_CL WeightReform;
+  SET_CONV_KERNEL_PARAMS_CL SetConvKernelParams;
+  SET_CONV_WORK_SIZE_CL SetConvWorkSize;
+  SET_BUILD_OPTS_CL SetBuildOpts;
+private:
+  ConvAlgo algo;
+  size_t weight_size;
+  std::vector<std::string> program_names;
+  std::vector<std::string> kernel_names;
 
 };
 #endif

@@ -103,7 +103,7 @@ int PoolingLayerCL<Dtype>::SetWorkSize()
     {
         c_blk_size = 8;
     }
-    this->channel_grp_size = c_blk_size;
+    this->channel_block_size = c_blk_size;
 
     size_t pool_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
     size_t pool_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
@@ -150,39 +150,37 @@ int PoolingLayerCL<Dtype>::ResetWorkSize()
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::SetBuildOptions()
-{
-    std::string ave_opt = "-DAVE_POOLING";
-    clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
-    std::vector<std::string>& build_options = pool_kernel_info.build_options;
-    std::ostringstream ss;
-    ss << this->channel_grp_size;
+int PoolingLayerCL<Dtype>::SetBuildOptions() {
+  std::string ave_opt = "-DAVE_POOLING";
+  clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
+  std::vector<std::string>& build_options = pool_kernel_info.build_options;
+  std::ostringstream ss;
+  ss << this->channel_block_size;
 
-    switch (this->method)
-    {
-        case PoolingParameter_::PoolMethod_MAX_:
-            if (std::is_same<Dtype, uint16_t>::value)
-                build_options.push_back("-DMIN_VAL=-HALF_MAX");
-            else
-                build_options.push_back("-DMIN_VAL=-FLT_MAX");
+  switch (this->method) {
+    case PoolingParameter_::PoolMethod_MAX_:
+      if (std::is_same<Dtype, uint16_t>::value)
+        build_options.push_back("-DMIN_VAL=-HALF_MAX");
+      else
+        build_options.push_back("-DMIN_VAL=-FLT_MAX");
 
-            break;
-        case PoolingParameter_::PoolMethod_AVE:
-            build_options.push_back(ave_opt);
+      break;
+    case PoolingParameter_::PoolMethod_AVE:
+      build_options.push_back(ave_opt);
 
-            break;
-        default:
-            LOGE("Unsupported pool method\n");
+      break;
+    default:
+      LOGE("Unsupported pool method\n");
 
-            break;
-    }
+      break;
+  }
 
-    build_options.push_back("-DN=" + ss.str());
-    if (std::is_same<Dtype, uint16_t>::value)
-        build_options.push_back("-DDATA_TYPE=half");
-    else
-        build_options.push_back("-DDATA_TYPE=float");
-    return 0;
+  build_options.push_back("-DN=" + ss.str());
+  if (std::is_same<Dtype, uint16_t>::value)
+    build_options.push_back("-DDATA_TYPE=half");
+  else
+    build_options.push_back("-DDATA_TYPE=float");
+  return 0;
 }
 
 template <class Dtype>
@@ -315,7 +313,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
                 min_tune = j;
             }
         }
-        
+
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune], opt_time);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune], opt_time);
         //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);
@@ -365,7 +363,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[j], timedif);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[j], timedif);
     }
-    else 
+    else
     {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
                     cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);

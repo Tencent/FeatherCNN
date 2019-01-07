@@ -41,7 +41,7 @@ ConvLayerCL<Dtype>::ConvLayerCL(const LayerParameter *layer_param, RuntimeParame
     this->conv_param.activation = booster::None;
     assert(this->_weight_blobs.size() > 0);
 
-    if (this->conv_param.stride_w  == 0) this->conv_param.stride_w = 1;
+    if (this->conv_param.stride_w == 0) this->conv_param.stride_w = 1;
     if (this->conv_param.stride_h == 0) this->conv_param.stride_h = 1;
     if (this->conv_param.group == 0) this->conv_param.group = 1;
     if (this->conv_param.bias_term)
@@ -67,7 +67,7 @@ template <class Dtype>
 int ConvLayerCL<Dtype>::SetKernelParameters()
 {
     int error_num;
-    size_t n_grp_size = this->conv_param.channel_grp_size;
+    size_t n_grp_size = this->conv_param.channel_block_size;
     size_t real_weight_size = this->conv_booster.GetWeightSize();
     std::vector<Dtype> weight_reformed(real_weight_size, 0);
     this->conv_booster.WeightReform(this->conv_param,
@@ -89,13 +89,16 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
         this->_weight_blobs[1]->Free();
     }
 
+    this->rt_param->alloc_padded_input();
+
     booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    buffers.padded_input_mem = this->rt_param->padded_input() ? this->rt_param->padded_input()->data_cl() : NULL;
     buffers.weight_mem = this->_weight_blobs[0]->data_cl();
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
     buffers.bias_mem = this->_weight_blobs[1]->data_cl();
-    buffers.input_trans_mem = nullptr;
-    buffers.out_trans_mem = nullptr;
+    buffers.input_trans_mem = NULL;
+    buffers.out_trans_mem = NULL;
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->conv_booster.GetKernelNames(), this->cl_kernel_info_map, this->rt_param->cl_runtime(), false);
     this->conv_booster.SetConvWorkSize(this->conv_param, this->cl_kernel_info_map, this->conv_booster.GetKernelNames(), this->rt_param->cl_runtime());
 
@@ -124,8 +127,16 @@ int ConvLayerCL<Dtype>::ForwardReshapeCL()
             this->_top_blobs[this->_top[0]]->channels(),
             this->conv_param.output_h, this->conv_param.output_w);
 
+    this->conv_param.AssignCLPaddedDim();
+    if (this->conv_param.padding_needed)
+    {
+        size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
+        this->rt_param->realloc_padded_input(conv_padded_input_size);
+    }
+
     booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    buffers.padded_input_mem = this->rt_param->padded_input() ? this->rt_param->padded_input()->data_cl() : NULL;
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->conv_booster.GetKernelNames(), this->cl_kernel_info_map, this->rt_param->cl_runtime(), true);
     this->conv_booster.SetConvWorkSize(this->conv_param, this->cl_kernel_info_map, this->conv_booster.GetKernelNames(), this->rt_param->cl_runtime());
@@ -144,40 +155,27 @@ int ConvLayerCL<Dtype>::ForwardCL()
 
 
 template <class Dtype>
-int ConvLayerCL<Dtype>::GenerateTopBlobs()
-{
-    //Conv layer has and only has one bottom blob.
+int ConvLayerCL<Dtype>::GenerateTopBlobs() {
+    // Conv layer has and only has one bottom blob.
     const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
     this->conv_param.input_w = bottom_blob->width();
     this->conv_param.input_h = bottom_blob->height();
     this->conv_param.input_channels = bottom_blob->channels();
     this->conv_param.AssignOutputDim();
-
     this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->conv_param.output_channels, this->conv_param.output_h, this->conv_param.output_w);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
-    this->conv_param.padded_output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     this->conv_param.padded_input_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    this->conv_param.channel_grp_size = 4;
-    if (this->conv_param.padded_input_channels % 8 == 0 && this->conv_param.padded_output_channels % 8 == 0)
-    {
-        this->conv_param.channel_grp_size = 8;
+    this->conv_param.padded_output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    this->conv_param.AssignCLPaddedDim();
+    if (this->conv_param.padding_needed) {
+      size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
+      this->rt_param->update_padded_input_size(conv_padded_input_size);
     }
 
-    this->conv_param.padded_output_h = this->conv_param.output_h;
-    this->conv_param.padded_output_w = this->conv_param.output_w;
-    this->conv_param.padded_input_h = this->conv_param.input_h + this->conv_param.pad_top + this->conv_param.pad_bottom;
-    this->conv_param.padded_input_w = (this->conv_param.padded_output_w - 1) * this->conv_param.stride_w + this->conv_param.kernel_w;
-    this->conv_param.padding_needed = (this->conv_param.padded_input_h != this->conv_param.input_h) ||
-                                      (this->conv_param.padded_input_w != this->conv_param.input_w);
-    size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
-    size_t* padded_input_size_ptr = this->rt_param->padded_input_size_ptr();
-    *padded_input_size_ptr = std::max(*padded_input_size_ptr, conv_padded_input_size);
-    LOGI("padded_input_size: %d", *padded_input_size_ptr);
-
     this->conv_booster.SelectAlgo(&this->conv_param);
-    this->conv_booster.Init(this->cl_kernel_info_map);
+    this->conv_booster.Init(this->conv_booster.GetProgramNames(), this->conv_booster.GetKernelNames(), this->cl_kernel_info_map);
     return 0;
 }
 

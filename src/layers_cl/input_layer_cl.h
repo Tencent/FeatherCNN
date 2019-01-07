@@ -63,7 +63,7 @@ class InputLayerCL : public Layer<Dtype>
         size_t output_width;
         size_t input_channels;
         size_t input_data_size;
-        size_t channel_grp_size;
+        size_t channel_block_size;
 
         cl::Image2D _cl_img2d;
         cl::Buffer _cl_fimage;

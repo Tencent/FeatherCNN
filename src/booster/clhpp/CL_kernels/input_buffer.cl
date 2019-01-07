@@ -1,7 +1,7 @@
 #include <common.h>
 
-// N = 4, 8, or 16, which is the channel group size.
-__kernel void float_chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] */
+// N = 4, 8, or 16, which is the channel block size.
+__kernel void chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, h, w] */
                          __global DATA_TYPE* restrict out,         /* [h, w, (c+N-1)/N * N] */
                          __private const int height,
                          __private const int width) {
@@ -29,14 +29,14 @@ __kernel void float_chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, 
 #endif /* IN_CHANNELS == 4 */
 #endif /* IN_CHANNELS >= 3 */
 #endif /* IN_CHANNELS >= 2 */
-  VSTOREN(CONVERTN(val), 0, &out[out_val_idx]);
+  VSTOREN(CONVERTN(val), 0, out + out_val_idx);
 
 #else /* IN_CHANNELS > 4 */
 
-  const int channel_group_idx = get_global_id(2);
-  const int in_channel_beg = mul24(channel_group_idx, N);
-  const int channels_within_group = min(N, IN_CHANNELS - in_channel_beg);
-  const int in_channel_end = in_channel_beg + channels_within_group;
+  const int channel_block_idx = get_global_id(2);
+  const int in_channel_beg = mul24(channel_block_idx, N);
+  const int channels_within_block = min(N, IN_CHANNELS - in_channel_beg);
+  const int in_channel_end = in_channel_beg + channels_within_block;
   const int height_x_width = mul24(height, width);
   const int height_width_idx = mad24(height_idx, width, width_idx);
   int idx = mad24(in_channel_end, height_x_width, height_width_idx);
@@ -46,7 +46,7 @@ __kernel void float_chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, 
   val.s##i = in[idx];
 
   // load from back to front.
-  switch (channels_within_group) {
+  switch (channels_within_block) {
 #if N == 16
     case 16:
       LOAD_INPUT(f);
@@ -86,7 +86,7 @@ __kernel void float_chw_to_hwc(__global const IN_DATA_TYPE* restrict in, /* [c, 
   }
   const int out_channels = mul24((IN_CHANNELS+N-1)/N, N);
   const int out_val_idx = mad24(height_width_idx, out_channels, in_channel_beg);
-  VSTOREN(CONVERTN(val), 0, &out[out_val_idx]);
+  VSTOREN(CONVERTN(val), 0, out + out_val_idx);
 
 #endif
 }

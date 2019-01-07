@@ -42,7 +42,7 @@ class InnerProductLayerCL : public Layer<Dtype>
     protected:
         size_t input_width;
         size_t input_height;
-        size_t channel_grp_size;
+        size_t channel_block_size;
 
         size_t output_channels;
 

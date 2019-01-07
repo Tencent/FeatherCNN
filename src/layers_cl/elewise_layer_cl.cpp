@@ -83,7 +83,7 @@ int EltwiseLayerCL<Dtype>::SetWorkSize()
     {
         c_blk_size = 8;
     }
-    this->channel_grp_size = c_blk_size;
+    this->channel_block_size = c_blk_size;
 
     size_t eltwise_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
     size_t eltwise_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
@@ -129,18 +129,17 @@ int EltwiseLayerCL<Dtype>::ResetWorkSize()
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetBuildOptions()
-{
-    std::ostringstream ss;
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
-    ss << this->channel_grp_size;
-    build_options.push_back("-DN=" + ss.str());
-    if (std::is_same<Dtype, uint16_t>::value)
-        build_options.push_back("-DDATA_TYPE=half");
-    else
-        build_options.push_back("-DDATA_TYPE=float");
-    return 0;
+int EltwiseLayerCL<Dtype>::SetBuildOptions() {
+  std::ostringstream ss;
+  clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+  std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
+  ss << this->channel_block_size;
+  build_options.push_back("-DN=" + ss.str());
+  if(std::is_same<Dtype, uint16_t>::value)
+      build_options.push_back("-DDATA_TYPE=half");
+  else
+      build_options.push_back("-DDATA_TYPE=float");
+  return 0;
 }
 
 
@@ -311,7 +310,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                 min_tune = j;
             }
         }
-        
+
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune], opt_time);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune], opt_time);
         //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);
@@ -370,7 +369,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
             LOGE("Failed enqueuing the element eltwise kernel.");
             return -1;
         }
-    }  
+    }
 #endif
 
     return 0;
