@@ -35,7 +35,7 @@ inline bool IsTuning()
 inline bool IsTunned()
 {
     const char *tuning = getenv("FEATHER_TUNING");
-    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '100';
+    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '9';
 }
 inline bool IsTunerInProcess()
 {
@@ -64,15 +64,15 @@ class Tuner
                 frame_++;
                 if(frame_ >= tuner_size_)
                 {
-                    setenv("FEATHER_TUNING", "100", 1);
-                    LOGI("SET FEATHER_TUNING = 100");
+                    setenv("FEATHER_TUNING", "9", 1);
+                    LOGI("SET FEATHER_TUNING = 9");
                 }
                 //LOGI("frame_ is %d", frame_);
             }
             if(clhpp_feather::IsTuning())
             {
-                setenv("FEATHER_TUNING", "100", 1);
-                //LOGI("SET FEATHER_TUNING = 100");
+                setenv("FEATHER_TUNING", "9", 1);
+                //LOGI("SET FEATHER_TUNING = 9");
             }
         }
 
@@ -85,8 +85,8 @@ class Tuner
                  std::vector<std::vector<param_type> >& lws_list)
         {
             int index = frame_ % tuner_size_;
-            std::vector<param_type> gws_list_tm;
-            std::vector<param_type> lws_list_tm;
+            std::vector<std::vector<param_type> > gws_list_tm;
+            std::vector<std::vector<param_type> > lws_list_tm;
             TunerArry(kwg_size, height, width, gws, lws, gws_list_tm, lws_list_tm);
             gws_list.push_back(gws_list_tm[index]);
             lws_list.push_back(lws_list_tm[index]);
@@ -213,11 +213,13 @@ class Tuner
                 {
                     this->param_table_[key] = value;
                     this->param_time_[key] = time; 
+                    LOGE("Tuner param_table_ set [%s] %f", key.c_str(), time);
                 }
             }
             else {
                 this->param_table_[key] = value;
                 this->param_time_[key] = time;
+                LOGE("Tuner param_table_ set [%s] %f", key.c_str(), time);
             }
             return true;
         }

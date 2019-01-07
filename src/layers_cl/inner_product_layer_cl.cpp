@@ -332,7 +332,7 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
         lws_list.push_back(fc_lws);
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
-        this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, 1, 1,
+        this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, 1, 1,
                                  fc_gws, fc_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;

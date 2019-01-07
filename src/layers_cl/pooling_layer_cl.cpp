@@ -344,7 +344,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
         lws_list.push_back(pool_lws);
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
-        this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, this->output_height, this->output_width,
+        this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, this->output_height, this->output_width,
                                  pool_gws, pool_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;

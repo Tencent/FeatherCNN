@@ -244,7 +244,7 @@ int BOTH_Forward_CL(cl::CommandQueue cmd_q,
         lws_list.push_back(conv_lws);
         uint64_t kwg_size = 0;
         cl_runtime->GetKernelMaxWorkGroupSize(conv_kernel, kwg_size);
-        cl_runtime->tuner().TunerArry(kwg_size, param.output_h, param.output_w,
+        cl_runtime->tuner().IsTunerInProcess(kwg_size, param.output_h, param.output_w,
                                  conv_gws, conv_lws, gws_list, lws_list);
         cmd_q.finish();
         timespec tpstart, tpend;
