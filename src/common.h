@@ -19,6 +19,7 @@
 #include <vector>
 #include <cstdlib>
 #include <pthread.h>
+#include <sys/system_properties.h>
 
 #ifdef FEATHER_OPENCL
 #include "CLHPP/clhpp_common.hpp"
@@ -56,6 +57,7 @@ void* _mm_malloc(size_t sz, size_t align);
 void _mm_free(void* ptr);
 #endif
 
+bool judge_android7_opencl();
 unsigned short hs_floatToHalf(float f);
 int hs_halfToFloatRep(unsigned short c);
 float hs_halfToFloat(unsigned short c);

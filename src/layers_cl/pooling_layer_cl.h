@@ -25,36 +25,37 @@ namespace feather
 {
 
 template <class Dtype>
-class PoolingLayerCL : public Layer<Dtype> {
-public:
-    PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
+class PoolingLayerCL : public Layer<Dtype>
+{
+    public:
+        PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
 
-    int InitCL();
-    virtual int SetBuildOptions();
-    virtual int SetKernelParameters();
-    virtual int ForwardCL();
-    virtual int SetWorkSize();
-    virtual int ResetWorkSize();
-    virtual int ForwardReshapeCL();
-    inline void AssignOutputSize();
-    int GenerateTopBlobs();
+        int InitCL();
+        virtual int SetBuildOptions();
+        virtual int SetKernelParameters();
+        virtual int ForwardCL();
+        virtual int SetWorkSize();
+        virtual int ResetWorkSize();
+        virtual int ForwardReshapeCL();
+        inline void AssignOutputSize();
+        int GenerateTopBlobs();
 
-private:
-    bool fuse_relu;
-    size_t input_height;
-    size_t input_width;
-    size_t input_channels;
-    size_t output_height;
-    size_t output_width;
-    size_t output_channels;
-    size_t pad_height;
-    size_t pad_width;
-    size_t kernel_height;
-    size_t kernel_width;
-    size_t stride_height;
-    size_t stride_width;
-    size_t channel_block_size;
-    bool global_pooling;
-    PoolingParameter_::PoolMethod method;
+    private:
+        bool fuse_relu;
+        size_t input_height;
+        size_t input_width;
+        size_t input_channels;
+        size_t output_height;
+        size_t output_width;
+        size_t output_channels;
+        size_t pad_height;
+        size_t pad_width;
+        size_t kernel_height;
+        size_t kernel_width;
+        size_t stride_height;
+        size_t stride_width;
+        size_t channel_block_size;
+        bool global_pooling;
+        PoolingParameter_::PoolMethod method;
 };
 }; // namespace feather

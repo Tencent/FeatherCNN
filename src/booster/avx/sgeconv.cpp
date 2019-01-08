@@ -459,8 +459,8 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
-			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
-			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+            FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+            FEATHER_MEN_ALIGN(32) float packB[kc * nc];
             //float* pA = packA + kt * kc * M_align;
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
@@ -478,14 +478,14 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
     {
         int kt = KBlocks - 1;
         k_len = (K - kt * kc);
-		FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+        FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
             //float loadC[6 * nc];
             //float* pA = packA + kt * kc * M_align;
-			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
-			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+            FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+            FEATHER_MEN_ALIGN(32) float packB[kc * nc];
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
             float* pC = C + nt * nc;

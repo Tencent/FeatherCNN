@@ -86,7 +86,8 @@ int InputLayerCL<Dtype>::InitCL()
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetWorkSize() {
+int InputLayerCL<Dtype>::SetWorkSize()
+{
     clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<size_t>& float_gws = float_kernel_info.gws;
     std::vector<size_t>& float_lws = float_kernel_info.lws;
@@ -181,7 +182,8 @@ int InputLayerCL<Dtype>::ResetInputAndArgs(size_t data_size)
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetBuildOptions() {
+int InputLayerCL<Dtype>::SetBuildOptions()
+{
     clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
     std::vector<std::string>& float_build_options = float_kernel_info.build_options;
 
@@ -204,29 +206,30 @@ int InputLayerCL<Dtype>::SetBuildOptions() {
 }
 
 template <class Dtype>
-int InputLayerCL<Dtype>::SetKernelParameters() {
-  int error_num;
-  size_t data_size;
-  bool set_kernel_arguments_success = true;
-  int param_idx = 0;
+int InputLayerCL<Dtype>::SetKernelParameters()
+{
+    int error_num;
+    size_t data_size;
+    bool set_kernel_arguments_success = true;
+    int param_idx = 0;
 
-  this->rt_param->cl_runtime()->BuildKernel("chw_to_hwc", this->cl_kernel_info_map);
-  clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
-  std::vector<size_t>& float_gws = float_kernel_info.gws;
-  std::vector<size_t>& float_lws = float_kernel_info.lws;
-  cl::Kernel& float_cl_kernel = float_kernel_info.kernel;
+    this->rt_param->cl_runtime()->BuildKernel("chw_to_hwc", this->cl_kernel_info_map);
+    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
+    std::vector<size_t>& float_gws = float_kernel_info.gws;
+    std::vector<size_t>& float_lws = float_kernel_info.lws;
+    cl::Kernel& float_cl_kernel = float_kernel_info.kernel;
 
-  this->rt_param->cl_runtime()->BuildKernel("uint8_hwc_to_hwc", this->cl_kernel_info_map);
-  clhpp_feather::CLKernelInfo& uint8_kernel_info = this->cl_kernel_info_map["uint8_hwc_to_hwc"];
-  std::vector<size_t>& uint8_gws = uint8_kernel_info.gws;
-  std::vector<size_t>& uint8_lws = uint8_kernel_info.lws;
-  cl::Kernel& uint8_cl_kernel = uint8_kernel_info.kernel;
+    this->rt_param->cl_runtime()->BuildKernel("uint8_hwc_to_hwc", this->cl_kernel_info_map);
+    clhpp_feather::CLKernelInfo& uint8_kernel_info = this->cl_kernel_info_map["uint8_hwc_to_hwc"];
+    std::vector<size_t>& uint8_gws = uint8_kernel_info.gws;
+    std::vector<size_t>& uint8_lws = uint8_kernel_info.lws;
+    cl::Kernel& uint8_cl_kernel = uint8_kernel_info.kernel;
 
-  Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
-  data_size = layer_blob->data_size_padded_c();
-  layer_blob->AllocDevice(this->rt_param->context(), data_size);
-  data_size = layer_blob->data_size();
-  this->_cl_fimage = cl::Buffer(this->rt_param->context(),
+    Blob<Dtype>* layer_blob = this->_top_blobs[this->_top[0]];
+    data_size = layer_blob->data_size_padded_c();
+    layer_blob->AllocDevice(this->rt_param->context(), data_size);
+    data_size = layer_blob->data_size();
+    this->_cl_fimage = cl::Buffer(this->rt_param->context(),
                                   CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                   data_size * sizeof(float), nullptr, &error_num);
     if (!checkSuccess(error_num))
@@ -489,8 +492,8 @@ int InputLayerCL<Dtype>::RunKernel(std::string kernel_type)
     {
         //warm up
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(input_gws[0], input_gws[1], input_gws[2]),
-                        cl::NDRange(input_lws[0], input_lws[1], input_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(input_gws[0], input_gws[1], input_gws[2]),
+                            cl::NDRange(input_lws[0], input_lws[1], input_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the element normalinit kernel.");
@@ -504,7 +507,7 @@ int InputLayerCL<Dtype>::RunKernel(std::string kernel_type)
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, this->output_height, this->output_width,
-                                 input_gws, input_lws, gws_list, lws_list);
+                input_gws, input_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
         for (int j = 0; j < gws_list.size(); j++)
@@ -562,7 +565,7 @@ int InputLayerCL<Dtype>::RunKernel(std::string kernel_type)
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, this->output_height, this->output_width,
-                                 input_gws, input_lws, gws_list, lws_list);
+                input_gws, input_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
@@ -582,10 +585,11 @@ int InputLayerCL<Dtype>::RunKernel(std::string kernel_type)
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[j], timedif);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[j], timedif);
     }
-    else {
+    else
+    {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(input_gws[0], input_gws[1], input_gws[2]),
-                        cl::NDRange(input_lws[0], input_lws[1], input_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(input_gws[0], input_gws[1], input_gws[2]),
+                            cl::NDRange(input_lws[0], input_lws[1], input_lws[2]), nullptr, nullptr);
 
         if (!checkSuccess(error_num))
         {

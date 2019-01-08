@@ -256,12 +256,12 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
         {
             __m128 v_input = _mm_loadu_ps(inputCur + j);
             __m128 v_norm = _mm_fmadd_ps(v_beta, v_input, v_alpha);
-			if (has_scale)
-				v_norm = _mm_mul_ps(v_norm, v_scale);// v_norm * v_scale;
-			if (has_bias)
-				v_norm = _mm_add_ps(v_norm, v_bias);// v_norm + v_bias;
-			if (has_relu)
-				v_norm = _mm_max_ps(v_norm, v_zero);
+            if (has_scale)
+                v_norm = _mm_mul_ps(v_norm, v_scale);// v_norm * v_scale;
+            if (has_bias)
+                v_norm = _mm_add_ps(v_norm, v_bias);// v_norm + v_bias;
+            if (has_relu)
+                v_norm = _mm_max_ps(v_norm, v_zero);
             _mm_storeu_ps(outputCur + j, v_norm);
         }
         for (; j < stride; j++)

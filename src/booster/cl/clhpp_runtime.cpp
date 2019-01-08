@@ -359,10 +359,11 @@ int OpenCLRuntime::BuildKernel(const std::string& cl_kernel_name, std::map<std::
 
     int error_num;
     kernel = cl::Kernel(program, kernel_name.c_str(), &error_num);
-    if (error_num != CL_SUCCESS) {
+    if (error_num != CL_SUCCESS)
+    {
         LOGE("failed to build kernel %s from program %s [%s]", kernel_name.c_str(),
-                                                               program_name.c_str(),
-                                                               OpenCLErrorToString(error_num).c_str());
+             program_name.c_str(),
+             OpenCLErrorToString(error_num).c_str());
         return -1;
     }
 

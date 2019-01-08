@@ -260,8 +260,8 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
     {
         //warm up
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(fc_gws[0], fc_gws[1], fc_gws[2]),
-                        cl::NDRange(fc_lws[0], fc_lws[1], fc_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(fc_gws[0], fc_gws[1], fc_gws[2]),
+                            cl::NDRange(fc_lws[0], fc_lws[1], fc_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the element inner_product kernel.");
@@ -275,7 +275,7 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, 1, 1,
-                                 fc_gws, fc_lws, gws_list, lws_list);
+                fc_gws, fc_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
         for (int j = 0; j < gws_list.size(); j++)
@@ -303,7 +303,7 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
                 min_tune = j;
             }
         }
-        
+
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[min_tune], opt_time);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[min_tune], opt_time);
         //LOGI("tuner layer_name %s %s min_tune [%d]",layer_name.c_str(), key_gws.c_str(), min_tune);
@@ -333,7 +333,7 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, 1, 1,
-                                 fc_gws, fc_lws, gws_list, lws_list);
+                fc_gws, fc_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
@@ -353,11 +353,11 @@ int InnerProductLayerCL<Dtype>::ForwardCL()
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[j], timedif);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[j], timedif);
     }
-    else 
+    else
     {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(fc_gws[0], fc_gws[1], fc_gws[2]),
-                        cl::NDRange(fc_lws[0], fc_lws[1], fc_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(fc_gws[0], fc_gws[1], fc_gws[2]),
+                            cl::NDRange(fc_lws[0], fc_lws[1], fc_lws[2]), nullptr, nullptr);
 
         if (!checkSuccess(error_num))
         {

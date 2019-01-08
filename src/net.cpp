@@ -42,85 +42,6 @@
 namespace feather
 {
 
-
-#ifdef FEATHER_OPENCL
-#include <sys/system_properties.h>
-bool judge_android7_opencl()
-{
-    //libOpenCL.so
-    //android7.0 sdk api 24
-    char sdk[93] = "";
-    __system_property_get("ro.build.version.sdk", sdk);
-    if (std::atoi(sdk) < 24)
-    {
-        LOGI("[device] sdk [%d] < 24\n", std::atoi(sdk));
-        return true;
-    }
-
-    bool flage = false;
-    std::string lib_name1 = "libOpenCL.so";
-    std::string lib_name2 = "libGLES_mali.so";
-    std::vector<std::string> libraries_list =
-    {
-        "/vendor/etc/public.libraries.txt",
-        "/system/etc/public.libraries.txt",
-    };
-    for (int i = 0; i < libraries_list.size(); i++)
-    {
-        std::ifstream out;
-        std::string line;
-        out.open(libraries_list[i].c_str());
-        while (!out.eof())
-        {
-            std::getline(out, line);
-            if (line.find(lib_name1) != line.npos || line.find(lib_name2) != line.npos)
-            {
-                LOGI("[public] %s:%s", libraries_list[i].c_str(), line.c_str());
-                flage = true;
-                break;
-            }
-
-        }
-        out.close();
-    }
-
-    const std::vector<std::string> libpaths =
-    {
-        "libOpenCL.so",
-#if defined(__aarch64__)
-        // Qualcomm Adreno with Android
-        "/system/vendor/lib64/libOpenCL.so",
-        "/system/lib64/libOpenCL.so",
-        // Mali with Android
-        "/system/vendor/lib64/egl/libGLES_mali.so",
-        "/system/lib64/egl/libGLES_mali.so",
-        // Typical Linux board
-        "/usr/lib/aarch64-linux-gnu/libOpenCL.so",
-#else
-        // Qualcomm Adreno with Android
-        "/system/vendor/lib/libOpenCL.so",
-        "/system/lib/libOpenCL.so",
-        // Mali with Android
-        "/system/vendor/lib/egl/libGLES_mali.so",
-        "/system/lib/egl/libGLES_mali.so",
-        // Typical Linux board
-        "/usr/lib/arm-linux-gnueabihf/libOpenCL.so",
-#endif
-    };
-    for (int i = 0; i < libpaths.size(); i++)
-    {
-        ifstream f(libpaths[i].c_str());
-        if (f.good())
-        {
-            flage = true;
-            LOGI("[libpaths]:%s", libpaths[i].c_str());
-            break;
-        }
-    }
-    return flage;
-}
-#endif
-
 template<class Dtype>
 bool Net<Dtype>::CheckDtype()
 {
@@ -330,7 +251,7 @@ int Net<Dtype>::Forward(float *input)
     }
 
 #ifdef FEATHER_OPENCL
-    if(rt_param->device_type() == DeviceType::GPU_CL)
+    if (rt_param->device_type() == DeviceType::GPU_CL)
     {
         rt_param->cl_runtime()->tuner().SetTunerPram();
     }
@@ -409,7 +330,7 @@ int Net<Dtype>::Forward(float* input, int height, int width)
     }
 
 #ifdef FEATHER_OPENCL
-    if(rt_param->device_type() == DeviceType::GPU_CL)
+    if (rt_param->device_type() == DeviceType::GPU_CL)
     {
         rt_param->cl_runtime()->tuner().SetTunerPram();
     }
@@ -774,33 +695,33 @@ template<>
 flatbuffers::Offset<BlobProto> BlobToProto<float>(flatbuffers::FlatBufferBuilder* fbb_in, const Blob<float>* blob)
 {
 
-        auto fbb = (flatbuffers::FlatBufferBuilder *) fbb_in;
-        std::vector<float> data_vec(blob->_data, blob->_data + blob->data_size());
-        auto data_fbvec = fbb->CreateVector(data_vec);
-        feather::BlobProtoBuilder blob_builder(*fbb);
-        blob_builder.add_num(blob->_num);
-        blob_builder.add_channels(blob->_channels);
-        blob_builder.add_height(blob->_height);
-        blob_builder.add_width(blob->_width);
-        blob_builder.add_data(data_fbvec);
-        return blob_builder.Finish();
+    auto fbb = (flatbuffers::FlatBufferBuilder *) fbb_in;
+    std::vector<float> data_vec(blob->_data, blob->_data + blob->data_size());
+    auto data_fbvec = fbb->CreateVector(data_vec);
+    feather::BlobProtoBuilder blob_builder(*fbb);
+    blob_builder.add_num(blob->_num);
+    blob_builder.add_channels(blob->_channels);
+    blob_builder.add_height(blob->_height);
+    blob_builder.add_width(blob->_width);
+    blob_builder.add_data(data_fbvec);
+    return blob_builder.Finish();
 }
 
 template<>
 flatbuffers::Offset<BlobProto> BlobToProto<uint16_t>(flatbuffers::FlatBufferBuilder* fbb_in, const Blob<uint16_t>* blob)
 {
 
-        auto fbb = (flatbuffers::FlatBufferBuilder *) fbb_in;
-        std::vector<uint16_t> data_vec(blob->_data, blob->_data + blob->data_size());
-        auto data_fbvec = fbb->CreateVector(data_vec);
-        feather::BlobProtoBuilder blob_builder(*fbb);
-        blob_builder.add_num(blob->_num);
-        blob_builder.add_channels(blob->_channels);
-        blob_builder.add_height(blob->_height);
-        blob_builder.add_width(blob->_width);
-        // blob_builder.add_data(data_fbvec);
-        blob_builder.add_data_fp16(data_fbvec);
-        return blob_builder.Finish();
+    auto fbb = (flatbuffers::FlatBufferBuilder *) fbb_in;
+    std::vector<uint16_t> data_vec(blob->_data, blob->_data + blob->data_size());
+    auto data_fbvec = fbb->CreateVector(data_vec);
+    feather::BlobProtoBuilder blob_builder(*fbb);
+    blob_builder.add_num(blob->_num);
+    blob_builder.add_channels(blob->_channels);
+    blob_builder.add_height(blob->_height);
+    blob_builder.add_width(blob->_width);
+    // blob_builder.add_data(data_fbvec);
+    blob_builder.add_data_fp16(data_fbvec);
+    return blob_builder.Finish();
 }
 
 template<class Dtype>
@@ -824,7 +745,7 @@ void Net<Dtype>::DumpBlobMap()
     std::vector<flatbuffers::Offset<feather::BlobProto>> blob_vec;
 
     typename std::map<std::string, const Blob<Dtype> *>::const_iterator it;
-    for ( it = blob_map.begin(); it != blob_map.end(); ++it)
+    for (it = blob_map.begin(); it != blob_map.end(); ++it)
     {
         // printf("Blob %s\n", it->first.c_str());
         auto blob_name_fbstr = fbb.CreateString(it->first);

@@ -150,37 +150,39 @@ int PoolingLayerCL<Dtype>::ResetWorkSize()
 }
 
 template <class Dtype>
-int PoolingLayerCL<Dtype>::SetBuildOptions() {
-  std::string ave_opt = "-DAVE_POOLING";
-  clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
-  std::vector<std::string>& build_options = pool_kernel_info.build_options;
-  std::ostringstream ss;
-  ss << this->channel_block_size;
+int PoolingLayerCL<Dtype>::SetBuildOptions()
+{
+    std::string ave_opt = "-DAVE_POOLING";
+    clhpp_feather::CLKernelInfo& pool_kernel_info = this->cl_kernel_info_map["pooling"];
+    std::vector<std::string>& build_options = pool_kernel_info.build_options;
+    std::ostringstream ss;
+    ss << this->channel_block_size;
 
-  switch (this->method) {
-    case PoolingParameter_::PoolMethod_MAX_:
-      if (std::is_same<Dtype, uint16_t>::value)
-        build_options.push_back("-DMIN_VAL=-HALF_MAX");
-      else
-        build_options.push_back("-DMIN_VAL=-FLT_MAX");
+    switch (this->method)
+    {
+        case PoolingParameter_::PoolMethod_MAX_:
+            if (std::is_same<Dtype, uint16_t>::value)
+                build_options.push_back("-DMIN_VAL=-HALF_MAX");
+            else
+                build_options.push_back("-DMIN_VAL=-FLT_MAX");
 
-      break;
-    case PoolingParameter_::PoolMethod_AVE:
-      build_options.push_back(ave_opt);
+            break;
+        case PoolingParameter_::PoolMethod_AVE:
+            build_options.push_back(ave_opt);
 
-      break;
-    default:
-      LOGE("Unsupported pool method\n");
+            break;
+        default:
+            LOGE("Unsupported pool method\n");
 
-      break;
-  }
+            break;
+    }
 
-  build_options.push_back("-DN=" + ss.str());
-  if (std::is_same<Dtype, uint16_t>::value)
-    build_options.push_back("-DDATA_TYPE=half");
-  else
-    build_options.push_back("-DDATA_TYPE=float");
-  return 0;
+    build_options.push_back("-DN=" + ss.str());
+    if (std::is_same<Dtype, uint16_t>::value)
+        build_options.push_back("-DDATA_TYPE=half");
+    else
+        build_options.push_back("-DDATA_TYPE=float");
+    return 0;
 }
 
 template <class Dtype>
@@ -270,8 +272,8 @@ int PoolingLayerCL<Dtype>::ForwardCL()
     {
         //warm up
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
-                        cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
+                            cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the element pooling kernel.");
@@ -285,7 +287,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, this->output_height, this->output_width,
-                                 pool_gws, pool_lws, gws_list, lws_list);
+                pool_gws, pool_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
         for (int j = 0; j < gws_list.size(); j++)
@@ -343,7 +345,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, this->output_height, this->output_width,
-                                 pool_gws, pool_lws, gws_list, lws_list);
+                pool_gws, pool_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
@@ -366,7 +368,7 @@ int PoolingLayerCL<Dtype>::ForwardCL()
     else
     {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(cl_kernel, cl::NullRange, cl::NDRange(pool_gws[0], pool_gws[1], pool_gws[2]),
-                    cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
+                        cl::NDRange(pool_lws[0], pool_lws[1], pool_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the pooling kernel. %d", error_num);

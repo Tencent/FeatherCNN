@@ -129,17 +129,18 @@ int EltwiseLayerCL<Dtype>::ResetWorkSize()
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetBuildOptions() {
-  std::ostringstream ss;
-  clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-  std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
-  ss << this->channel_block_size;
-  build_options.push_back("-DN=" + ss.str());
-  if(std::is_same<Dtype, uint16_t>::value)
-      build_options.push_back("-DDATA_TYPE=half");
-  else
-      build_options.push_back("-DDATA_TYPE=float");
-  return 0;
+int EltwiseLayerCL<Dtype>::SetBuildOptions()
+{
+    std::ostringstream ss;
+    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
+    std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
+    ss << this->channel_block_size;
+    build_options.push_back("-DN=" + ss.str());
+    if (std::is_same<Dtype, uint16_t>::value)
+        build_options.push_back("-DDATA_TYPE=half");
+    else
+        build_options.push_back("-DDATA_TYPE=float");
+    return 0;
 }
 
 
@@ -267,8 +268,8 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
     {
         //warm up
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
-                        cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
+                            cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the element eltwise kernel.");
@@ -282,7 +283,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, this->output_height, this->output_width,
-                                 eltwise_gws, eltwise_lws, gws_list, lws_list);
+                eltwise_gws, eltwise_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
         for (int j = 0; j < gws_list.size(); j++)
@@ -340,7 +341,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, this->output_height, this->output_width,
-                                 eltwise_gws, eltwise_lws, gws_list, lws_list);
+                eltwise_gws, eltwise_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
@@ -360,10 +361,11 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_gws, gws_list[j], timedif);
         this->rt_param->cl_runtime()->tuner().set_layer_kernel_wks(key_lws, lws_list[j], timedif);
     }
-    else {
+    else
+    {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
-                        cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
+                            cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
             LOGE("Failed enqueuing the element eltwise kernel.");

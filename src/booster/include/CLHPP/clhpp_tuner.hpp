@@ -58,18 +58,19 @@ class Tuner
         }
 
         //net forward finish call
-        void SetTunerPram() {
-            if(clhpp_feather::IsTunerInProcess()) 
+        void SetTunerPram()
+        {
+            if (clhpp_feather::IsTunerInProcess())
             {
                 frame_++;
-                if(frame_ >= tuner_size_)
+                if (frame_ >= tuner_size_)
                 {
                     setenv("FEATHER_TUNING", "9", 1);
                     LOGI("SET FEATHER_TUNING = 9");
                 }
                 //LOGI("frame_ is %d", frame_);
             }
-            if(clhpp_feather::IsTuning())
+            if (clhpp_feather::IsTuning())
             {
                 setenv("FEATHER_TUNING", "9", 1);
                 //LOGI("SET FEATHER_TUNING = 9");
@@ -77,12 +78,12 @@ class Tuner
         }
 
         int IsTunerInProcess(size_t kwg_size,
-                 const size_t& height,
-                 const size_t& width,
-                 std::vector<param_type> gws,
-                 std::vector<param_type> lws,
-                 std::vector<std::vector<param_type> >& gws_list,
-                 std::vector<std::vector<param_type> >& lws_list)
+                             const size_t& height,
+                             const size_t& width,
+                             std::vector<param_type> gws,
+                             std::vector<param_type> lws,
+                             std::vector<std::vector<param_type> >& gws_list,
+                             std::vector<std::vector<param_type> >& lws_list)
         {
             int index = frame_ % tuner_size_;
             std::vector<std::vector<param_type> > gws_list_tm;
@@ -94,12 +95,12 @@ class Tuner
         }
 
         int TunerArry(size_t kwg_size,
-                 const size_t& height,
-                 const size_t& width,
-                 std::vector<param_type> gws,
-                 std::vector<param_type> lws,
-                 std::vector<std::vector<param_type> >& gws_list,
-                 std::vector<std::vector<param_type> >& lws_list)
+                      const size_t& height,
+                      const size_t& width,
+                      std::vector<param_type> gws,
+                      std::vector<param_type> lws,
+                      std::vector<std::vector<param_type> >& gws_list,
+                      std::vector<std::vector<param_type> >& lws_list)
         {
             //gws HWC
             //lws  HWC
@@ -209,14 +210,15 @@ class Tuner
         {
             if (this->param_time_.find(key) != this->param_time_.end())
             {
-                if(this->param_time_[key] > time)
+                if (this->param_time_[key] > time)
                 {
                     this->param_table_[key] = value;
-                    this->param_time_[key] = time; 
+                    this->param_time_[key] = time;
                     LOGE("Tuner param_table_ set [%s] %f", key.c_str(), time);
                 }
             }
-            else {
+            else
+            {
                 this->param_table_[key] = value;
                 this->param_time_[key] = time;
                 LOGE("Tuner param_table_ set [%s] %f", key.c_str(), time);

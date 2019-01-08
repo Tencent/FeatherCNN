@@ -155,7 +155,8 @@ int ConvLayerCL<Dtype>::ForwardCL()
 
 
 template <class Dtype>
-int ConvLayerCL<Dtype>::GenerateTopBlobs() {
+int ConvLayerCL<Dtype>::GenerateTopBlobs()
+{
     // Conv layer has and only has one bottom blob.
     const Blob<Dtype> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
 
@@ -169,9 +170,10 @@ int ConvLayerCL<Dtype>::GenerateTopBlobs() {
     this->conv_param.padded_input_channels = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
     this->conv_param.padded_output_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     this->conv_param.AssignCLPaddedDim();
-    if (this->conv_param.padding_needed) {
-      size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
-      this->rt_param->update_padded_input_size(conv_padded_input_size);
+    if (this->conv_param.padding_needed)
+    {
+        size_t conv_padded_input_size = this->conv_param.padded_input_h * this->conv_param.padded_input_w * this->conv_param.padded_input_channels;
+        this->rt_param->update_padded_input_size(conv_padded_input_size);
     }
 
     this->conv_booster.SelectAlgo(&this->conv_param);

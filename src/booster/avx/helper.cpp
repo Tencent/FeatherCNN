@@ -82,7 +82,7 @@ void diff(float* arr1, float* arr2, int M, int N)
 #define CLOCK_MONOTONIC 0
 int clock_gettime(int no_use, struct timespec *spec)
 {
-	return timespec_get(spec, TIME_UTC);
+    return timespec_get(spec, TIME_UTC);
 }
 #endif
 

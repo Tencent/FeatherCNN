@@ -26,9 +26,6 @@
 
 namespace feather
 {
-
-bool judge_android7_opencl();
-
 template <class Dtype>
 class Net
 {
@@ -50,7 +47,7 @@ class Net
 
         int SetProgMapFromNet(const Net<Dtype> *infer_net);
         bool CheckDtype();
-        
+
         std::map<std::string, const Blob<Dtype> *> blob_map;
         RuntimeParameter<Dtype> *rt_param;
         std::vector<Layer<Dtype> *> layers;
