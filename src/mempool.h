@@ -12,8 +12,7 @@
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
 
-#ifndef TCNN_MEMORY_POOL_H_
-#define TCNN_MEMORY_POOL_H_
+#pragma once
 
 #include <map>
 
@@ -69,4 +68,3 @@ class PrivateMemPool
         //Map private pointer to size
         std::map<PTR_TYPE *, size_t> private_map;
 };
-#endif

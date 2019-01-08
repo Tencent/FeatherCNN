@@ -1,5 +1,17 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+//Tencent is pleased to support the open source community by making FeatherCNN available.
+
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
+
+//Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+//in compliance with the License. You may obtain a copy of the License at
+//
+//https://opensource.org/licenses/BSD-3-Clause
+//
+//Unless required by applicable law or agreed to in writing, software distributed
+//under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+//CONDITIONS OF ANY KIND, either express or implied. See the License for the
+//specific language governing permissions and limitations under the License.
+#pragma once
 
 #include <vector>
 #include <queue>
@@ -16,7 +28,7 @@ class ThreadPool {
 public:
     ThreadPool(size_t);
     template<class F, class... Args>
-    auto enqueue(F&& f, Args&&... args) 
+    auto enqueue(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
     ~ThreadPool();
 
@@ -27,7 +39,7 @@ private:
     std::vector< std::thread > workers;
     // the task queue
     std::queue< std::function<void()> > tasks;
-    
+
     // synchronization
     std::mutex queue_mutex;
     std::condition_variable condition;
@@ -36,7 +48,7 @@ private:
     //thread IDs
     std::map< std::thread::id, int > id_map;
 };
- 
+
 // the constructor just launches some amount of workers
 inline ThreadPool::ThreadPool(size_t threads)
     :   stop(false)
@@ -60,7 +72,7 @@ inline ThreadPool::ThreadPool(size_t threads)
                         this->tasks.pop();
 
                     this->id_map[std::this_thread::get_id()] = i;
-                    //std::cout << std::this_thread::get_id() << std::endl; 
+                    //std::cout << std::this_thread::get_id() << std::endl;
                     }
 
                     task();
@@ -72,7 +84,7 @@ inline ThreadPool::ThreadPool(size_t threads)
 
 // add new work item to the pool
 template<class F, class... Args>
-auto ThreadPool::enqueue(F&& f, Args&&... args) 
+auto ThreadPool::enqueue(F&& f, Args&&... args)
     -> std::future<typename std::result_of<F(Args...)>::type>
 {
     using return_type = typename std::result_of<F(Args...)>::type;
@@ -80,7 +92,7 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
     auto task = std::make_shared< std::packaged_task<return_type()> >(
             std::bind(std::forward<F>(f), std::forward<Args>(args)...)
         );
-        
+
     std::future<return_type> res = task->get_future();
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
@@ -116,4 +128,3 @@ inline int ThreadPool::threadID(std::thread::id std_id)
 {
     return id_map[std_id];
 }
-#endif

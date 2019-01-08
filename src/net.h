@@ -39,22 +39,22 @@ class Net
         void InitFromPath(const char *model_path);
         void InitFromStringPath(std::string model_path);
         void InitFromFile(FILE *fp);
-        int SetProgMapFromNet(const Net<Dtype> *infer_net);
-
         bool InitFromBuffer(const void *net_buffer);
-
         int Forward(float *input);
         int Forward(float *input, int height, int width);
         int RemoveLayer(Layer<Dtype> *layer);
-        int GenLayerTops();
-        void TraverseNet();
         int GetBlobDataSize(size_t *data_size, std::string blob_name);
         int PrintBlobData(std::string blob_name);
         int ExtractBlob(float *output_ptr, std::string blob_name);
         void DumpBlobMap();
+
+        int SetProgMapFromNet(const Net<Dtype> *infer_net);
+        bool CheckDtype();
+        
         std::map<std::string, const Blob<Dtype> *> blob_map;
         RuntimeParameter<Dtype> *rt_param;
-        bool CheckDtype();
         std::vector<Layer<Dtype> *> layers;
+
+
 };
 }; // namespace feather

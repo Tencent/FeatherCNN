@@ -148,7 +148,7 @@ class OpenCLRuntime
         GPUType _gpu_type;
         std::string _gpu_device_name;
         std::string _gpu_device_version;
-        std::string _feather_opencl_version = "1.1.0";
+        std::string _feather_opencl_version = "1.2.0";
 
         std::shared_ptr<cl::Context> _context;
         std::shared_ptr<cl::Device> _device;
