@@ -1,6 +1,6 @@
 #include "caffe.pb.h"
 #ifdef FP16_STORAGE
-#include "fp16/fp16.h"
+#include "common.h"
 #endif
 #include "feather_generated.h"
 
@@ -184,7 +184,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                     //input_name_vec.push_back(fbb.CreateString(layer_name));
 
                     assert(caffe_layer.input_param().shape_size() == 1);
-		   	 
+
                     for (int j = 0; j < caffe_layer.input_param().shape(0).dim_size(); ++j)
                     {
                         int64_t dim = caffe_layer.input_param().shape(0).dim(j);
@@ -246,7 +246,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 	}
         for (int i = 0; i < net_param_prototxt.layer_size(); ++i)
         {
-		
+
             auto caffe_layer = net_param_prototxt.layer(i);
             std::string layer_name = caffe_layer.name();
             std::string layer_type = caffe_layer.type();
@@ -336,8 +336,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 bool is_fp16_blob = true;
                 for (int k = 0; k != caffe_blob.data_size(); ++k)
                 {
-                    uint16_t data = fp16_ieee_from_fp32_value(caffe_blob.data(k));
-                    float diff = caffe_blob.data(k) - fp16_ieee_to_fp32_value(data);
+                    uint16_t data = hs_floatToHalf(caffe_blob.data(k));
+                    float diff = caffe_blob.data(k) - hs_halfToFloat(data);
                     diff_sum += fabs(diff);
                     //if(diff >= 0.01)
                     //    printf("diff=%f fp32 %f vs fp16 %f\n", diff, caffe_blob.data(k), fp16_ieee_to_fp32_value(data));
@@ -352,7 +352,7 @@ void CaffeModelWeightsConvert::SaveModelWeights()
                 {
                     if(is_fp16_blob)
                     {
-                        uint16_t data_fp16 = fp16_ieee_from_fp32_value(caffe_blob.data(k));
+                        uint16_t data_fp16 = hs_floatToHalf(caffe_blob.data(k));
                         blob_data_vec_fp16.push_back(data_fp16);
                     }
                     else
@@ -502,8 +502,8 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 		} else {
 			if(caffe_conv_param.has_kernel_h() && caffe_conv_param.has_kernel_w())
 			{
-				conv_param_builder.add_kernel_h(caffe_conv_param.kernel_h());	
-				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_w());	
+				conv_param_builder.add_kernel_h(caffe_conv_param.kernel_h());
+				conv_param_builder.add_kernel_w(caffe_conv_param.kernel_w());
 			}
 			else
 				fprintf(stderr, "Bad kernel_h/w configuration.\n");
@@ -667,14 +667,14 @@ void CaffeModelWeightsConvert::SaveModelWeights()
 	    else if (layer_type.compare("Interp") == 0)
 	    {
 		auto caffe_interp_param = caffe_layer.interp_param();
-		int height = caffe_interp_param.height();	
-		int width = caffe_interp_param.width();	
-		int zoom_factor = caffe_interp_param.zoom_factor();	
-		int shrink_factor = caffe_interp_param.shrink_factor();	
+		int height = caffe_interp_param.height();
+		int width = caffe_interp_param.width();
+		int zoom_factor = caffe_interp_param.zoom_factor();
+		int shrink_factor = caffe_interp_param.shrink_factor();
 		int pad_beg = caffe_interp_param.pad_beg();
 		int pad_end = caffe_interp_param.pad_end();
 		interp_param = feather::CreateInterpParameter(fbb, height, width, zoom_factor, shrink_factor, pad_beg, pad_end);
-		
+
 	    }
             else if (layer_type.compare("InnerProduct") == 0)
             {
