@@ -34,9 +34,9 @@
                         return rt;                  \
                     }                               \
 
-//#define LAYER_TIMING
-//#define LAYER_INIT_TIMING
-//#define PRINT_SETUP_LOG
+#define LAYER_TIMING
+#define LAYER_INIT_TIMING
+#define PRINT_SETUP_LOG
 
 
 namespace feather
@@ -779,7 +779,67 @@ int Net<Dtype>::SetProgMapFromNet(const Net<Dtype>* infer_net)
     return 0;
 }
 
+flatbuffers::Offset<BlobProto> BlobToProto(flatbuffers::FlatBufferBuilder* fbb_in, const Blob<float>* blob)
+{
+       auto fbb = (flatbuffers::FlatBufferBuilder *) fbb_in;
+        std::vector<float> data_vec(blob->_data, blob->_data + blob->data_size());
+        auto data_fbvec = fbb->CreateVector(data_vec);
+        feather::BlobProtoBuilder blob_builder(*fbb);
+        blob_builder.add_num(blob->_num);
+        blob_builder.add_channels(blob->_channels);
+        blob_builder.add_height(blob->_height);
+        blob_builder.add_width(blob->_width);
+        blob_builder.add_data(data_fbvec);
+        return blob_builder.Finish();
+}
 
+template<class Dtype>
+void Net<Dtype>::DumpBlobMap()
+{
+    /*
+     * Place the data in blob map as a LayerParameter
+     * 
+     * Name: Results
+     * Type: Version0
+     * Bottom: Empty
+     * Tops: Blob names
+     * Blobs: corresponding blobs
+     */
+    flatbuffers::FlatBufferBuilder fbb(1024 * 100);
+    auto dump_layer_name = fbb.CreateString("Results");
+    auto dump_layer_type = fbb.CreateString("Version0");
+    
+    std::vector<flatbuffers::Offset<flatbuffers::String>> name_vec;
+    std::vector<flatbuffers::Offset<feather::BlobProto>> blob_vec;
+    
+    std::map<std::string, const Blob<float> *>::const_iterator it;
+    for ( it = blob_map.begin(); it != blob_map.end(); ++it)
+    {
+        // printf("Blob %s\n", it->first.c_str());
+        auto blob_name_fbstr = fbb.CreateString(it->first);
+        name_vec.push_back(blob_name_fbstr);
+        auto blob_proto_fb = BlobToProto(&fbb, it->second);
+        blob_vec.push_back(blob_proto_fb);
+    }
+    auto name_vec_fb = fbb.CreateVector<flatbuffers::Offset<flatbuffers::String> >(name_vec);
+    auto blob_vec_fb = fbb.CreateVector<flatbuffers::Offset<BlobProto> >(blob_vec);
+
+    feather::LayerParameterBuilder layer_builder(fbb);
+    layer_builder.add_blobs(blob_vec_fb);
+    layer_builder.add_bottom(name_vec_fb);
+    layer_builder.add_type(dump_layer_type);
+    layer_builder.add_name(dump_layer_name);
+    auto layer = layer_builder.Finish();
+    fbb.Finish(layer);
+
+    uint8_t* net_buffer_pointer = fbb.GetBufferPointer();
+    size_t size = fbb.GetSize();
+
+    FILE *netfp = NULL;
+    netfp = fopen("dump.out", "wb");
+    fwrite(net_buffer_pointer, sizeof(uint8_t), size, netfp);
+    fclose(netfp);
+}
 
 template class Net<float>;
 #ifdef FEATHER_OPENCL

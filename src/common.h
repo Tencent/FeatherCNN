@@ -49,11 +49,11 @@ class StringTool
 
 int min(int a, int b);
 
-#ifndef __linux__
+#if defined(__linux__) || defined(__APPLE_CC__)
+#include <mm_malloc.h>
+#else
 void* _mm_malloc(size_t sz, size_t align);
 void _mm_free(void* ptr);
-#else
-#include <mm_malloc.h>
 #endif
 
 unsigned short hs_floatToHalf(float f);

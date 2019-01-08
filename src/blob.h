@@ -169,7 +169,6 @@ class Blob
         int ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const;
 #endif
 
-    private:
         Dtype* _data;
 
 #ifdef FEATHER_OPENCL

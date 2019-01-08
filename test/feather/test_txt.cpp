@@ -136,8 +136,8 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
 	    //	ResultEvaluate(&forward_net, "prob", 0, results);
 
             // If you want to dump all the data
-            //forward_net.DumpBlobMap();
-            PrintBlobData(&forward_net, "v/simplenet/flatten:0", 10);
+            forward_net.DumpBlobMap();
+            //PrintBlobData(&forward_net, "v/simplenet/flatten:0", 10);
         }
         break;
     }
@@ -155,8 +155,8 @@ int main(int argc, char* argv[])
     {
         size_t num_threads = atoi(argv[4]);
         size_t loop = atoi(argv[3]);
-        //test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
-        testReshape(argv[1]); 
+        test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+        //testReshape(argv[1]); 
     }
     else if(argc == 6)
     {
