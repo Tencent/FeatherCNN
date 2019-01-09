@@ -562,11 +562,12 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
                 delete layers[j];
                 layers.erase(layers.begin() + j);
 #else
+// #ifdef PRINT_SETUP_LOG
+//                 LOGD("Erased layer %d %s\n", j, next_layer->name().c_str());
+// #endif
                 this->RemoveLayer(layers[j]);
 #endif
-#ifdef PRINT_SETUP_LOG
-                LOGD("Erased layer %d %s\n", j, next_layer->name().c_str());
-#endif
+
                 next_layer = layers[j];
 #ifdef PRINT_SETUP_LOG
                 LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
