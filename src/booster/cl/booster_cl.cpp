@@ -524,12 +524,55 @@ int BOTH_Set_Build_Opts(const ConvParam& param,
 }
 
 
-int WINOGRADF23_Init_CL(ConvParam *param, float* processed_kernel, float* kernel)
+int WINOGRADF23_Init_CL(const std::vector<std::string>& program_names,
+                            const std::vector<std::string>& kernel_names,
+                            std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
     return 0;
 }
 
-int WINOGRADF23_Forward_CL(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF23_Forward_CL(cl::CommandQueue cmd_q,
+                               std::vector<std::string> kernel_names,
+                               std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                               const ConvParam& param,
+                               clhpp_feather::OpenCLRuntime* cl_runtime,
+                               std::string layer_name)
+{
+    return 0;
+}
+
+template <typename Dtype>
+int WINOGRADF23_Weight_Reform_CL(const ConvParam& param,
+                                     size_t n_grp_size,
+                                     size_t c_grp_size,
+                                     const Dtype* weight,
+                                     Dtype* weight_reformed)
+{
+    return 0;
+}
+
+int WINOGRADF23_Set_Conv_Kernel_Params_CL(const ConvParam& param,
+        const CLBuffers& buffers,
+        const std::vector<std::string>& kernel_names,
+        std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+        clhpp_feather::OpenCLRuntime* cl_runtime,
+        bool is_reshape)
+{
+    return 0;
+}
+
+int WINOGRADF23_Set_Conv_Work_Size_CL(const ConvParam& param,
+                                     std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map,
+                                     const std::vector<std::string>& kernel_names,
+                                     clhpp_feather::OpenCLRuntime* cl_runtime)
+{
+    return 0;
+}
+
+int WINOGRADF23_Set_Build_Opts(const ConvParam& param,
+                                 bool is_fp16,
+                                 const std::vector<std::string>& kernel_names,
+                                 std::map<std::string, clhpp_feather::CLKernelInfo>& cl_kernel_info_map)
 {
     return 0;
 }
@@ -581,6 +624,7 @@ int ConvBoosterCL<Dtype>::SelectAlgo(ConvParam* param)
         this->program_names.push_back("conv_1v" + ss.str() + "_buffer");
         this->kernel_names.push_back("conv");
     }
+    //winogradf23 option here
     else
     {
         LOGE("Partial group conv is not yet supported. If you need it, try develop your own im2col method.");
@@ -622,6 +666,14 @@ int ConvBoosterCL<Dtype>::SetFuncs()
             this->SetBuildOpts = BOTH_Set_Build_Opts;
 
             return 0;
+        case WINOGRADF23:
+            this->Init = WINOGRADF23_Init_CL;
+            this->Forward = WINOGRADF23_Forward_CL;
+            this->WeightReform = WINOGRADF23_Weight_Reform_CL;
+            this->SetConvKernelParams = WINOGRADF23_Set_Conv_Kernel_Params_CL;
+            this->SetConvWorkSize = WINOGRADF23_Set_Conv_Work_Size_CL;
+            this->SetBuildOpts = WINOGRADF23_Set_Build_Opts;
+
         default:
             LOGE("This algo is not supported on GPU.");
             this->Init = NULL;

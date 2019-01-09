@@ -23,7 +23,7 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
         if file_path[-2:] == ".h":
             with open(file_path, "r") as f:
                 header_code += f.read()
-  
+
     encrypted_code_maps = {}
     for file_name in os.listdir(cl_kernel_dir):
         file_path = os.path.join(cl_kernel_dir, file_name)
@@ -43,20 +43,7 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
             maps=encrypted_code_maps,
             variable_name='opencl_kernel_string_map')
 
-    # output_dir = os.path.dirname(output_path)
-    # if os.path.exists(output_dir):
-    #     if os.path.isdir(output_dir):
-    #         try:
-    #             shutil.rmtree(output_dir)
-    #         except OSError:
-    #             raise RuntimeError(
-    #                 "Cannot delete directory %s due to permission "
-    #                 "error, inspect and remove manually" % output_dir)
-    #     else:
-    #         raise RuntimeError(
-    #             "Cannot delete non-directory %s, inspect ",
-    #             "and remove manually" % output_dir)
-    # os.makedirs(output_dir)
+
 
     with open(output_path, "w") as w_file:
         w_file.write(cpp_cl_encrypted_kernel)
