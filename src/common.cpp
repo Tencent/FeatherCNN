@@ -117,7 +117,10 @@ bool judge_android7_opencl()
         }
         out.close();
     }
+    if(flage == false)
+        return flage;
 
+    flage = false;
     const std::vector<std::string> libpaths =
     {
         "libOpenCL.so",
