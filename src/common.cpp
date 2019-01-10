@@ -79,6 +79,7 @@ void StringTool::RelaceString(std::string &input, const std::string &delim, cons
     }
 }
 
+#ifdef FEATHER_OPENCL
 bool judge_android7_opencl()
 {
     //libOpenCL.so
@@ -156,6 +157,7 @@ bool judge_android7_opencl()
     }
     return flage;
 }
+#endif
 
 unsigned short hs_floatToHalf(float f)
 {

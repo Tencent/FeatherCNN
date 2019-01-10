@@ -18,10 +18,13 @@
 #include <cstring>
 #include <vector>
 #include <cstdlib>
+#ifdef _WIN32
+	#define HAVE_STRUCT_TIMESPEC
+#endif
 #include <pthread.h>
-#include <sys/system_properties.h>
 
 #ifdef FEATHER_OPENCL
+#include <sys/system_properties.h>
 #include "CLHPP/clhpp_common.hpp"
 #endif
 
@@ -57,7 +60,9 @@ void* _mm_malloc(size_t sz, size_t align);
 void _mm_free(void* ptr);
 #endif
 
+#ifdef FEATHER_OPENCL
 bool judge_android7_opencl();
+#endif
 unsigned short hs_floatToHalf(float f);
 int hs_halfToFloatRep(unsigned short c);
 float hs_halfToFloat(unsigned short c);
