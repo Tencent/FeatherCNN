@@ -85,10 +85,10 @@ class Tuner
                              std::vector<std::vector<param_type> >& gws_list,
                              std::vector<std::vector<param_type> >& lws_list)
         {
-            int index = frame_ % tuner_size_;
             std::vector<std::vector<param_type> > gws_list_tm;
             std::vector<std::vector<param_type> > lws_list_tm;
             TunerArry(kwg_size, height, width, gws, lws, gws_list_tm, lws_list_tm);
+            int index = frame_ % gws_list_tm.size();
             gws_list.push_back(gws_list_tm[index]);
             lws_list.push_back(lws_list_tm[index]);
             return 0;
