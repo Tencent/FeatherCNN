@@ -80,6 +80,7 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
     this->_weight_blobs[0]->WriteToDevice(this->rt_param->command_queue(), weight_reformed.data(), real_weight_size);
     this->_weight_blobs[0]->Free();
 
+    booster::CLBuffers buffers;
     if (this->conv_param.bias_term)
     {
         this->_weight_blobs[1]->AllocDevice(this->rt_param->context(), this->conv_param.padded_output_channels);
@@ -87,16 +88,15 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
         memcpy(bias_padding.data(), this->bias_data, this->conv_param.output_channels * sizeof(Dtype));
         this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.padded_output_channels);
         this->_weight_blobs[1]->Free();
+    	buffers.bias_mem = this->_weight_blobs[1]->data_cl();
     }
 
     this->rt_param->alloc_padded_input();
 
-    booster::CLBuffers buffers;
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.padded_input_mem = this->rt_param->padded_input() ? this->rt_param->padded_input()->data_cl() : NULL;
     buffers.weight_mem = this->_weight_blobs[0]->data_cl();
     buffers.output_mem = this->_top_blobs[this->_top[0]]->data_cl();
-    buffers.bias_mem = this->_weight_blobs[1]->data_cl();
     buffers.input_trans_mem = NULL;
     buffers.out_trans_mem = NULL;
     this->conv_booster.SetConvKernelParams(this->conv_param, buffers, this->conv_booster.GetKernelNames(), this->cl_kernel_info_map, this->rt_param->cl_runtime(), false);
