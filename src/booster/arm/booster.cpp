@@ -155,7 +155,7 @@ int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_k
 {
     ConvParam padded_param = *param;
     padded_param.AssignPaddedDim();
-    *buffer_size = param->input_channels * padded_param->input_h * padded_param->input_w;
+    *buffer_size = param->input_channels * padded_param.input_h * padded_param.input_w;
     *processed_kernel_size = param->group * param->kernel_h * param->kernel_w;
     return 0;
 }
