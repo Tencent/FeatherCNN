@@ -120,7 +120,9 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 //DEPTHWISE Methods
 int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    *buffer_size = param->input_channels * param->input_h * param->input_w;
+	ConvParam padded_param = *param;
+	padded_param.AssignPaddedDim();
+	*buffer_size = param->input_channels * padded_param.input_h * padded_param.input_w;
     *processed_kernel_size = param->group * param->kernel_h * param->kernel_w;
     return 0;
 }
@@ -145,9 +147,11 @@ int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* proc
 
     if (param->pad_left > 0 || param->pad_right > 0 || param->pad_top > 0 || param->pad_bottom > 0)
     {
+		ConvParam padded_param = *param;
+		padded_param.AssignPaddedDim();
         pad_input(buffer, input, param->input_channels, param->input_w, param->input_h, param->pad_left,
                   param->pad_top, param->pad_right, param->pad_bottom);
-        dwConv(output, buffer, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
+		dwConv(output, buffer, param->input_channels, padded_param.input_w, padded_param.input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
     }
     else
         dwConv(output, input, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
@@ -281,7 +285,7 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->input_h > 8 && param->input_w > 8 &&  param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
     {
         //this->algo = WINOGRADF63FUSED;
         this->algo = WINOGRADF63;

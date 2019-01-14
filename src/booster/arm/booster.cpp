@@ -153,7 +153,9 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 //DEPTHWISE Methods
 int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    *buffer_size = param->input_channels * param->input_h * param->input_w;
+    ConvParam padded_param = *param;
+    padded_param.AssignPaddedDim();
+    *buffer_size = param->input_channels * padded_param->input_h * padded_param->input_w;
     *processed_kernel_size = param->group * param->kernel_h * param->kernel_w;
     return 0;
 }

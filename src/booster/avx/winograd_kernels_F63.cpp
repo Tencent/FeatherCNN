@@ -703,6 +703,8 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float* &WTp, const int &wstrid
     vc21 = _mm256_set1_ps(0.f);
     vc30 = _mm256_set1_ps(0.f);
     vc31 = _mm256_set1_ps(0.f);
+	u1 = _mm256_set1_ps(0.f);
+	u3 = _mm256_set1_ps(0.f);
     const float *up = UTp;
     // printf("WTp offset %d\n", WTp - WT);
     //if(oc == 0)
