@@ -22,6 +22,13 @@ void Blob<Dtype>::Alloc()
 {
     size_t dim_byte = _num * _channels * _height * _width * sizeof(Dtype);
     _data = (Dtype*) _mm_malloc(dim_byte, 32);
+#ifdef FEATHER_OPENCL
+    if(std::is_same<Dtype, uint16_t>::value)
+    {
+        size_t dim_size = _num * _channels * _height * _width;
+        _data_float = (float*) _mm_malloc(dim_size * sizeof(float), 32);
+    }
+#endif
 }
 template<class Dtype>
 void Blob<Dtype>::Free()
@@ -31,6 +38,13 @@ void Blob<Dtype>::Free()
         free(this->_data);
         this->_data = NULL;
     }
+#ifdef FEATHER_OPENCL
+    if (this->_data_float)
+    {
+        free(this->_data_float);
+        this->_data_float = NULL;
+    }
+#endif
 }
 
 template<class Dtype>
@@ -93,8 +107,6 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
             exit(-1);
         }
     }
-
-
     if (_num * _channels * _height * _width == data_length)
     {
         this->Alloc();
@@ -105,25 +117,32 @@ void Blob<Dtype>::FromProto(const void *proto_in)//proto MUST be of type BlobPro
                 if (std::is_same<Dtype, uint16_t>::value)
                 {
                     this->_data[i] = proto->data_fp16()->Get(i);
+#ifdef FEATHER_OPENCL
+                    this->_data_float[i] = hs_halfToFloat(this->_data[i]);
+#endif
                 }
                 else
                 {
                     this->_data[i] = hs_halfToFloat(proto->data_fp16()->Get(i));
                 }
+
             }
             else
             {
                 if (std::is_same<Dtype, uint16_t>::value)
                 {
 #ifdef FEATHER_OPENCL
+                    this->_data_float[i] = proto->data()->Get(i);
+                    this->_data[i] = hs_floatToHalf(this->_data_float[i]);
+#else
                     this->_data[i] = hs_floatToHalf(proto->data()->Get(i));
 #endif
-                    // printf("%f, ", hs_halfToFloat(this->_data[i]));
                 }
                 else
                 {
                     this->_data[i] = proto->data()->Get(i);
                 }
+
                 //this->_data[i] = proto->data()->Get(i);
             }
         }

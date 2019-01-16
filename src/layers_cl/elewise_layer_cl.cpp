@@ -104,29 +104,6 @@ int EltwiseLayerCL<Dtype>::SetWorkSize()
     return 0;
 }
 
-template <class Dtype>
-int EltwiseLayerCL<Dtype>::ResetWorkSize()
-{
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
-    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
-
-    int h_lws = this->output_height > 32 ? 16 : 8;
-    int w_lws = this->output_width > 32 ? 16 : 8;
-
-    size_t eltwise_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-    size_t eltwise_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
-
-    size_t eltwise_lws_dim0 = h_lws;
-    size_t eltwise_lws_dim1 = w_lws;
-
-    eltwise_gws[0] = eltwise_gws_dim0;
-    eltwise_gws[1] = eltwise_gws_dim1;
-    eltwise_lws[0] = eltwise_lws_dim0;
-    eltwise_lws[1] = eltwise_lws_dim1;
-
-    return 0;
-}
 
 template <class Dtype>
 int EltwiseLayerCL<Dtype>::SetBuildOptions()
@@ -213,11 +190,11 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL()
 
     if (!set_kernel_arg_success)
     {
-        LOGE("Failed setting conv OpenCL cl_kernels[0] arguments.");
+        LOGE("Failed setting eltwise reshape cl_kernels arguments.");
         return 1;
     }
 
-    this->ResetWorkSize();
+    this->ResetWorkSize("eltwise", this->output_height, this->output_width);
     this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, eltwise_gws.data(), eltwise_lws.data());
     return this->ForwardCL();
 }

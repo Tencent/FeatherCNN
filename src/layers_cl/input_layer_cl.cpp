@@ -136,29 +136,6 @@ int InputLayerCL<Dtype>::SetWorkSize()
 
     return 0;
 }
-template <class Dtype>
-int InputLayerCL<Dtype>::ResetWorkSizeFloat()
-{
-    clhpp_feather::CLKernelInfo& float_kernel_info = this->cl_kernel_info_map["chw_to_hwc"];
-    std::vector<size_t>& float_gws = float_kernel_info.gws;
-    std::vector<size_t>& float_lws = float_kernel_info.lws;
-
-    int h_lws = this->output_height > 32 ? 16 : 8;
-    int w_lws = this->output_width > 32 ? 16 : 8;
-
-    size_t float_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-    size_t float_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
-
-    size_t float_lws_dim0 = h_lws;
-    size_t float_lws_dim1 = w_lws;
-
-    float_gws[0] = float_gws_dim0;
-    float_gws[1] = float_gws_dim1;
-    float_lws[0] = float_lws_dim0;
-    float_lws[1] = float_lws_dim1;
-
-    return 0;
-}
 
 template <class Dtype>
 int InputLayerCL<Dtype>::ResetInputAndArgs(size_t data_size)
@@ -437,11 +414,11 @@ int InputLayerCL<Dtype>::ReshapeFloat(std::string name, int height, int width)
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(3, this->output_width));
     if (!set_kernel_arguments_success)
     {
-        LOGE("Failed setting normalinit OpenCL cl_kernels[0] arguments. %s: %s", __FILE__, __LINE__);
+        LOGE("Failed setting input float reshape cl_kernels arguments. %s: %s", __FILE__, __LINE__);
         return -1;
     }
-    this->ResetWorkSizeFloat();
-    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, float_gws.data(), float_gws.data());
+    this->ResetWorkSize("chw_to_hwc", this->output_height, this->output_width);
+    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, float_gws.data(), float_lws.data());
     return 0;
 }
 

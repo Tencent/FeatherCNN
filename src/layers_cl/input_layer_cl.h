@@ -36,7 +36,6 @@ class InputLayerCL : public Layer<Dtype>
         int CopyInput(std::string name, const float *input_data);
         int CopyInput(std::string name, const uint8_t* src_bgra);
         int ReshapeFloat(std::string name, int height, int width);
-        int ResetWorkSizeFloat();
         int RunKernel(std::string kernel_type);
         virtual int SetWorkSize();
         virtual int SetBuildOptions();

@@ -29,6 +29,8 @@
 #include <layers_cl/relu_layer_cl.h>
 #include <layers_cl/elewise_layer_cl.h>
 #include <layers_cl/inner_product_layer_cl.h>
+#include <layers_cl/batchnorm_layer_cl.h>
+#include <layers_cl/scale_layer_cl.h>
 
 
 namespace feather
@@ -68,6 +70,19 @@ Layer<Dtype> *GetInnerProductLayerCL(const LayerParameter *layer_param, RuntimeP
     return (Layer<Dtype> *)new InnerProductLayerCL<Dtype>(layer_param, rt_param);
 }
 
+template <class Dtype>
+Layer<Dtype> *GetBatchNormLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
+{
+    return (Layer<Dtype> *)new BatchNormLayerCL<Dtype>(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetScaleLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
+{
+    return (Layer<Dtype> *)new ScaleLayerCL<Dtype>(layer_param, rt_param);
+}
+
+
 void register_layer_creators_cl()
 {
     REGISTER_LAYER_CREATOR_CL(Input, GetInputLayerCL);
@@ -77,6 +92,8 @@ void register_layer_creators_cl()
     REGISTER_LAYER_CREATOR_CL(InnerProduct, GetInnerProductLayerCL);
     REGISTER_LAYER_CREATOR_CL(DepthwiseConvolution, GetConvolutionLayerCL);
     REGISTER_LAYER_CREATOR_CL(Eltwise, GetEltwiseLayerCL);
+    REGISTER_LAYER_CREATOR_CL(BatchNorm, GetBatchNormLayerCL);
+    REGISTER_LAYER_CREATOR_CL(Scale, GetScaleLayerCL);
 
 }
 

@@ -32,14 +32,14 @@ class Blob
         Blob()
             : _num(0), _channels(0), _height(0), _width(0), _data(NULL)
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL)
+            , _data_cl(NULL), _data_float(NULL)
 #endif
         {}
 
         explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
             : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name()
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL)
+            , _data_cl(NULL), _data_float(NULL)
 #endif
         {}
 
@@ -47,14 +47,14 @@ class Blob
         explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
             : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name()
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL)
+            , _data_cl(NULL), _data_float(NULL)
 #endif
         {}
 
         explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
             : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name)
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL)
+            , _data_cl(NULL), _data_float(NULL)
 #endif
         {}
 
@@ -140,6 +140,13 @@ class Blob
         {
             return _data_cl;
         }
+        float* data_float() const
+        {
+            if (std::is_same<Dtype, uint16_t>::value)
+                return _data_float;
+            else
+                return (float *)_data;
+        }
         size_t channel_grp() const
         {
             return _channel_grp;
@@ -155,6 +162,10 @@ class Blob
         size_t data_size_padded_c() const
         {
             return _num * get_channels_padding() * _height * _width;
+        }
+        size_t data_size_padded_n() const
+        {
+            return get_num_padding() * _channels * _height * _width;
         }
         size_t data_size_padded_nc() const
         {
@@ -174,6 +185,7 @@ class Blob
 #ifdef FEATHER_OPENCL
         /* Image2D in the near future */
         cl::Buffer *_data_cl;
+        float* _data_float;
 #endif
         size_t _num;
         size_t _channels;

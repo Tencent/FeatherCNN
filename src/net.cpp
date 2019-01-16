@@ -477,9 +477,12 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
                 break;
             case DeviceType::GPU_CL:
 #ifdef FEATHER_OPENCL
+#ifdef PRINT_SETUP_LOG
+                LOGD("before Setup layer cl %d %s\n", i, layer_param->name()->c_str());
+#endif
                 layers.push_back(LayerRegistryCL<Dtype>::CreateLayer(layer_param, rt_param));
 #ifdef PRINT_SETUP_LOG
-                LOGD("Setup layer cl %d %s\n", i, layer_param->name()->c_str());
+                LOGD("Setup layer cl %d %s %s\n", i, layer_param->name()->c_str(), layer_param->type()->c_str());
 #endif
 #else
                 LOGE("Please compile OpenCL to use device type GPU_CL.");

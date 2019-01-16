@@ -88,10 +88,10 @@ int ConvLayerCL<Dtype>::SetKernelParameters()
         memcpy(bias_padding.data(), this->bias_data, this->conv_param.output_channels * sizeof(Dtype));
         this->_weight_blobs[1]->WriteToDevice(this->rt_param->command_queue(), bias_padding.data(), this->conv_param.padded_output_channels);
         this->_weight_blobs[1]->Free();
-    	buffers.bias_mem = this->_weight_blobs[1]->data_cl();
+        buffers.bias_mem = this->_weight_blobs[1]->data_cl();
     }
-
     this->rt_param->alloc_padded_input();
+
 
     buffers.input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
     buffers.padded_input_mem = this->rt_param->padded_input() ? this->rt_param->padded_input()->data_cl() : NULL;

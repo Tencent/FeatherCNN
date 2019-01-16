@@ -48,7 +48,7 @@ class Layer
 
         virtual int SetWorkSize();
 
-        virtual int ResetWorkSize();
+        virtual int ResetWorkSize(std::string kname, size_t output_height, size_t output_width);
 
         virtual int ForwardCL();
 

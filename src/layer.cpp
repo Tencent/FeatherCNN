@@ -268,10 +268,25 @@ int Layer<Dtype>::SetWorkSize()
 }
 
 template<class Dtype>
-int Layer<Dtype>::ResetWorkSize()
+int Layer<Dtype>::ResetWorkSize(std::string kname, size_t output_height, size_t output_width)
 {
-    //Base layer doesn't know settings.
-    return -1;
+    clhpp_feather::CLKernelInfo& kernel_info = this->cl_kernel_info_map[kname];
+
+    int h_lws = output_height > 32 ? 16 : 8;
+    int w_lws = output_height > 32 ? 16 : 8;
+
+    size_t gws_dim0 = (output_height / h_lws + !!(output_height % h_lws)) * h_lws;
+    size_t gws_dim1 = (output_width / w_lws  + !!(output_width % w_lws)) * w_lws;
+
+    size_t lws_dim0 = h_lws;
+    size_t lws_dim1 = w_lws;
+
+    kernel_info.gws[0] = gws_dim0;
+    kernel_info.gws[1] = gws_dim0;
+    kernel_info.lws[0] = lws_dim0;
+    kernel_info.lws[1] = lws_dim0;
+
+    return 0;
 }
 
 template<class Dtype>

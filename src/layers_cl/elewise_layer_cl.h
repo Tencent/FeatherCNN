@@ -42,7 +42,6 @@ class EltwiseLayerCL: public Layer<Dtype>
         int GenerateTopBlobs();
         virtual int SetBuildOptions();
         virtual int SetWorkSize();
-        virtual int ResetWorkSize();
         virtual int SetKernelParameters();
         virtual int ForwardReshapeCL();
         virtual int ForwardCL();
