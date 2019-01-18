@@ -6,15 +6,21 @@
 
 ## Introduction
 
-FeatherCNN, developed by Tencent TEG AI Platform, is a high-performance lightweight CNN inference library. FeatherCNN is currently targeting at ARM CPUs, and is capable to extend to other devices in the future.
+FeatherCNN is a high-performance lightweight CNN inference library, developed by Tencent AI Platform Department. 
+FeatureCNN origins from our game AI project for King of Glory (Chinese: 王者荣耀), in which we aim to build a neural model for MOBA game AI and run it on mobile devices. 
+FeatherCNN is currently targeting at ARM CPUs. 
+We will extend it to cover other architecutures in the near future.
 
-Comparing with other libraries, FeatherCNN is 
+Comparing with other libraries, FeatherCNN has the following features: 
 
-- **Highly Performant** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
+- **High Performance** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
 
-- **Easily Deployable** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms. FeatherCNN's own model format is fully compatible with Caffe models. We are working to provide compatibility with other pre-trained models.
+- **Easy Deployment** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms. 
+<!---
+FeatherCNN's own model format is fully compatible with Caffe models. We are working to provide compatibility with other pre-trained models.
+--->
 
-- **Featherweight** The compiled FeatherCNN library is in small size of several hundred KBs. 
+- **Featherweight** The compiled FeatherCNN library is small-sized (hundreds of KBs). 
 
 Please kindly open an issue in this repo for bug reports and enhancement suggests. We are grateful to user responses and will actively polish this library.
 
