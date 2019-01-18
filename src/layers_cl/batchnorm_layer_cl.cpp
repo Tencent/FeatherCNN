@@ -92,13 +92,20 @@ int BatchNormLayerCL<Dtype>::PreCalParams()
           *var_data = this->_weight_blobs[1]->data_float();
     float scale_factor = 1 / *(this->_weight_blobs[2]->data_float());
     float eps = 1e-5;
-    MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&alpha, this->output_channels * sizeof(Dtype)));
-    MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&beta, this->output_channels * sizeof(Dtype)));
     for (int i = 0; i < this->output_channels; i++)
     {
         float sqrt_var = sqrt(var_data[i] * scale_factor + eps);
         float alpha_float = -(mean_data[i] * scale_factor) / sqrt_var;
         float beta_float = 1 / sqrt_var;
+        if (this->fuse_scale)
+        {
+            alpha_float *= this->scale_data[i];
+            beta_float *= this->scale_data[i];
+            if (this->scale_bias_term)
+            {
+                alpha_float += this->scale_bias_data[i];
+            }
+        }
         if (std::is_same<Dtype, uint16_t>::value)
         {
             alpha[i] = hs_floatToHalf(alpha_float);
@@ -109,7 +116,9 @@ int BatchNormLayerCL<Dtype>::PreCalParams()
             alpha[i] = alpha_float;
             beta[i] = beta_float;
         }
+
     }
+
     return 0;
 }
 
@@ -128,10 +137,21 @@ int BatchNormLayerCL<Dtype>::SetKernelParameters()
     cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
 
     PreCalParams();
-    PadParamsDevice(this->_weight_blobs[0], alpha);
-    PadParamsDevice(this->_weight_blobs[1], beta);
-    MEMPOOL_CHECK_RETURN(this->private_mempool.Free(&alpha));
-    MEMPOOL_CHECK_RETURN(this->private_mempool.Free(&beta));
+    PadParamsDevice(this->_weight_blobs[0], this->alpha);
+    PadParamsDevice(this->_weight_blobs[1], this->beta);
+    MEMPOOL_CHECK_RETURN(this->private_mempool.Free(&this->alpha));
+    MEMPOOL_CHECK_RETURN(this->private_mempool.Free(&this->beta));
+    if (this->fuse_scale)
+    {
+        free(this->scale_data);
+        this->scale_data = NULL;
+        if (this->scale_bias_term)
+        {
+          free(this->scale_bias_data);
+          this->scale_bias_data = NULL;
+        }
+    }
+
     cl::Buffer* alpha_mem = this->_weight_blobs[0]->data_cl();
     cl::Buffer* beta_mem = this->_weight_blobs[1]->data_cl();
 
@@ -301,50 +321,6 @@ int BatchNormLayerCL<Dtype>::ForwardCL()
 #endif
     return 0;
 }
-template <class Dtype>
-int BatchNormLayerCL<Dtype>::SetWorkSize()
-{
-    clhpp_feather::CLKernelInfo& bn_kernel_info = this->cl_kernel_info_map["batchnorm"];
-    std::vector<size_t>& bn_gws = bn_kernel_info.gws;
-    std::vector<size_t>& bn_lws = bn_kernel_info.lws;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    if (bn_gws.size() != 0 || bn_lws.size() != 0)
-    {
-        bn_gws.clear();
-        bn_lws.clear();
-    }
-
-    int h_lws = this->output_height > 32 ? 16 : 8;
-    int w_lws = this->output_width > 32 ? 16 : 8;
-
-    int c_blk_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
-    {
-        c_blk_size = 16;
-    }
-    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
-    {
-        c_blk_size = 8;
-    }
-    this->channel_block_size = c_blk_size;
-    size_t bn_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-    size_t bn_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
-    size_t bn_gws_dim2 = padded_output_c / c_blk_size;
-    size_t bn_lws_dim0 = h_lws;
-    size_t bn_lws_dim1 = w_lws;
-    size_t bn_lws_dim2 = (bn_gws_dim2 > 4 && bn_gws_dim2 % 4 == 0) ? 4 : 1;
-
-    bn_gws.push_back(bn_gws_dim0);
-    bn_gws.push_back(bn_gws_dim1);
-    bn_gws.push_back(bn_gws_dim2);
-
-    bn_lws.push_back(bn_lws_dim0);
-    bn_lws.push_back(bn_lws_dim1);
-    bn_lws.push_back(bn_lws_dim2);
-    return 0;
-}
-
 
 template <class Dtype>
 int BatchNormLayerCL<Dtype>::ForwardReshapeCL()
@@ -394,11 +370,12 @@ int BatchNormLayerCL<Dtype>::GenerateTopBlobs()
     p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
     this->output_height = p_blob->height();
     this->output_width = p_blob->width();
-    this->output_channels = p_blob->get_channels_padding();
-
+    this->output_channels = p_blob->channels();
+    MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&alpha, this->output_channels * sizeof(Dtype)));
+    MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&beta, this->output_channels * sizeof(Dtype)));
     p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
     this->_top_blobs[this->_top[0]] = p_blob;
-    SetWorkSize();
+    this->SetWorkSize("batchnorm", this->output_height, this->output_width, this->channel_block_size);
     return 0;
 }
 
@@ -408,6 +385,24 @@ int BatchNormLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
     if (next_layer->type().compare("ReLU") == 0)
     {
         fuse_relu = true;
+        return 1;
+    }
+    else if (next_layer->type().compare("Scale") == 0)
+    {
+        LOGI("BN %s fuse Scale layer %s\n", this->name().c_str(), next_layer->name().c_str());
+        this->fuse_scale = true;
+        this->scale_bias_term = ((ScaleLayerCL<Dtype>*) next_layer)->bias_term();
+        // MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&this->scale_data, this->output_channels * sizeof(float)));
+        this->scale_data = (float *)malloc(sizeof(float) * this->output_channels);
+        if (this->scale_bias_term)
+        {
+            // MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&this->scale_bias_data, this->output_channels * sizeof(float)));
+            this->scale_bias_data = (float *)malloc(sizeof(float) * this->output_channels);
+        }
+        memcpy(this->scale_data, next_layer->weight_blob(0)->data_float(), sizeof(float) * this->output_channels);
+        memcpy(this->scale_bias_data, next_layer->weight_blob(1)->data_float(), sizeof(float) * this->output_channels);
+
+        LOGI("BN fuse scale done...");
         return 1;
     }
     else

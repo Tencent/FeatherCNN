@@ -145,7 +145,7 @@ class Blob
             if (std::is_same<Dtype, uint16_t>::value)
                 return _data_float;
             else
-                return (float *)_data;
+                return reinterpret_cast<float*>(_data);
         }
         size_t channel_grp() const
         {

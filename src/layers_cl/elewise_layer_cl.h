@@ -41,24 +41,11 @@ class EltwiseLayerCL: public Layer<Dtype>
         int InitCL();
         int GenerateTopBlobs();
         virtual int SetBuildOptions();
-        virtual int SetWorkSize();
         virtual int SetKernelParameters();
         virtual int ForwardReshapeCL();
         virtual int ForwardCL();
-
-        int Fuse(Layer<Dtype> *next_layer)
-        {
-            if (next_layer->type().compare("ReLU") == 0)
-            {
-                printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
-                fuse_relu = true;
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
+        int Fuse(Layer<Dtype> *next_layer);
+        
 
     private:
         size_t output_height;

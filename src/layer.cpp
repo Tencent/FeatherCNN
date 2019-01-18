@@ -261,13 +261,6 @@ int Layer<Dtype>::SetKernelParameters()
 }
 
 template<class Dtype>
-int Layer<Dtype>::SetWorkSize()
-{
-    //Base layer doesn't know settings.
-    return -1;
-}
-
-template<class Dtype>
 int Layer<Dtype>::ResetWorkSize(std::string kname, size_t output_height, size_t output_width)
 {
     clhpp_feather::CLKernelInfo& kernel_info = this->cl_kernel_info_map[kname];
@@ -286,6 +279,49 @@ int Layer<Dtype>::ResetWorkSize(std::string kname, size_t output_height, size_t 
     kernel_info.lws[0] = lws_dim0;
     kernel_info.lws[1] = lws_dim0;
 
+    return 0;
+}
+
+template <class Dtype>
+int Layer<Dtype>::SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size)
+{
+    clhpp_feather::CLKernelInfo& kernel_info = this->cl_kernel_info_map[kname];
+    std::vector<size_t>& gws = kernel_info.gws;
+    std::vector<size_t>& lws = kernel_info.lws;
+    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
+    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
+    if (gws.size() != 0 || lws.size() != 0)
+    {
+        gws.clear();
+        lws.clear();
+    }
+
+    int h_lws = output_height > 32 ? 16 : 8;
+    int w_lws = output_width > 32 ? 16 : 8;
+
+    int c_blk_size = 4;
+    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
+    {
+        c_blk_size = 16;
+    }
+    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
+    {
+        c_blk_size = 8;
+    }
+    channel_block_size = c_blk_size;
+    size_t gws_dim0 = (output_height / h_lws + !!(output_height % h_lws)) * h_lws;
+    size_t gws_dim1 = (output_width / w_lws  + !!(output_width % w_lws)) * w_lws;
+    size_t gws_dim2 = padded_output_c / c_blk_size;
+    size_t lws_dim0 = h_lws;
+    size_t lws_dim1 = w_lws;
+    size_t lws_dim2 = (gws_dim2 > 4 && gws_dim2 % 4 == 0) ? 4 : 1;
+
+    gws.push_back(gws_dim0);
+    gws.push_back(gws_dim1);
+    gws.push_back(gws_dim2);
+    lws.push_back(lws_dim0);
+    lws.push_back(lws_dim1);
+    lws.push_back(lws_dim2);
     return 0;
 }
 

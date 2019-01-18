@@ -277,49 +277,6 @@ int ScaleLayerCL<Dtype>::ForwardCL()
 #endif
     return 0;
 }
-template <class Dtype>
-int ScaleLayerCL<Dtype>::SetWorkSize()
-{
-    clhpp_feather::CLKernelInfo& scale_kernel_info = this->cl_kernel_info_map["scale"];
-    std::vector<size_t>& scale_gws = scale_kernel_info.gws;
-    std::vector<size_t>& scale_lws = scale_kernel_info.lws;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    if (scale_gws.size() != 0 || scale_lws.size() != 0)
-    {
-        scale_gws.clear();
-        scale_lws.clear();
-    }
-
-    int h_lws = this->output_height > 32 ? 16 : 8;
-    int w_lws = this->output_width > 32 ? 16 : 8;
-
-    int c_blk_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
-    {
-        c_blk_size = 16;
-    }
-    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
-    {
-        c_blk_size = 8;
-    }
-    this->channel_block_size = c_blk_size;
-    size_t scale_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-    size_t scale_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
-    size_t scale_gws_dim2 = padded_output_c / c_blk_size;
-    size_t scale_lws_dim0 = h_lws;
-    size_t scale_lws_dim1 = w_lws;
-    size_t scale_lws_dim2 = (scale_gws_dim2 > 4 && scale_gws_dim2 % 4 == 0) ? 4 : 1;
-
-    scale_gws.push_back(scale_gws_dim0);
-    scale_gws.push_back(scale_gws_dim1);
-    scale_gws.push_back(scale_gws_dim2);
-
-    scale_lws.push_back(scale_lws_dim0);
-    scale_lws.push_back(scale_lws_dim1);
-    scale_lws.push_back(scale_lws_dim2);
-    return 0;
-}
 
 template <class Dtype>
 int ScaleLayerCL<Dtype>::ForwardReshapeCL()
@@ -375,7 +332,7 @@ int ScaleLayerCL<Dtype>::GenerateTopBlobs()
 
     p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
     this->_top_blobs[this->_top[0]] = p_blob;
-    SetWorkSize();
+    this->SetWorkSize("scale", this->output_height, this->output_width, this->channel_block_size);
     return 0;
 }
 

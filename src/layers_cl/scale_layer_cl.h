@@ -31,11 +31,15 @@ class ScaleLayerCL : public Layer<Dtype>
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardCL();
-        virtual int SetWorkSize();
         virtual int ForwardReshapeCL();
         virtual int GenerateTopBlobs();
         void PadParamsDevice(Blob<Dtype>* blob, Dtype* data);
         int Fuse(Layer<Dtype> *next_layer);
+        bool bias_term()
+        {
+            return _bias_term;
+        }
+
     private:
         size_t output_channels;
         size_t output_width;

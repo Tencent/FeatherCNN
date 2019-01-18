@@ -38,9 +38,9 @@ InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_para
 
 
 template <class Dtype>
-int InnerProductLayerCL<Dtype>::SetWorkSize()
+int InnerProductLayerCL<Dtype>::SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_blk_size)
 {
-    clhpp_feather::CLKernelInfo& fc_kernel_info = this->cl_kernel_info_map["inner_product"];
+    clhpp_feather::CLKernelInfo& fc_kernel_info = this->cl_kernel_info_map[kname];
     std::vector<size_t>& fc_gws = fc_kernel_info.gws;
     std::vector<size_t>& fc_lws = fc_kernel_info.lws;
     size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
@@ -59,7 +59,7 @@ int InnerProductLayerCL<Dtype>::SetWorkSize()
     {
         c_blk_size = 8;
     }
-    this->channel_block_size = c_blk_size;
+    channel_blk_size = c_blk_size;
     size_t fc_gws_dim0 = 1;
     size_t fc_gws_dim1 = 1;
     size_t fc_gws_dim2 = padded_output_c / c_blk_size;
@@ -393,7 +393,7 @@ int InnerProductLayerCL<Dtype>::GenerateTopBlobs()
     this->_top_blobs[this->_top[0]] = new Blob<Dtype>(1, this->output_channels, 1, 1);
     this->_top_blobs[this->_top[0]]->AllocDevice(this->rt_param->context(), this->_top_blobs[this->_top[0]]->data_size_padded_c());
 
-    SetWorkSize();
+    this->SetWorkSize("inner_product", 1, 1, this->channel_block_size);
 
     return 0;
 }

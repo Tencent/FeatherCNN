@@ -34,7 +34,6 @@ class PoolingLayerCL : public Layer<Dtype>
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardCL();
-        virtual int SetWorkSize();
         virtual int ForwardReshapeCL();
         inline void AssignOutputSize();
         int GenerateTopBlobs();

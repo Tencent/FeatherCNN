@@ -17,6 +17,7 @@
 #include "../feather_generated.h"
 #include "../layer.h"
 #include <booster/opencl_kernels.h>
+#include "layers_cl/scale_layer_cl.h"
 
 namespace feather
 {
@@ -31,7 +32,6 @@ class BatchNormLayerCL : public Layer<Dtype>
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardCL();
-        virtual int SetWorkSize();
         virtual int ForwardReshapeCL();
         virtual int GenerateTopBlobs();
         void PadParamsDevice(Blob<Dtype>* blob, Dtype* data);
@@ -46,8 +46,8 @@ class BatchNormLayerCL : public Layer<Dtype>
         bool fuse_scale;
         bool fuse_relu;
         bool scale_bias_term;
-        Dtype* scale_data;
-        Dtype* scale_bias_data;
+        float* scale_data;
+        float* scale_bias_data;
         Dtype* alpha;
         Dtype* beta;
 

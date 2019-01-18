@@ -32,7 +32,7 @@ class InnerProductLayerCL : public Layer<Dtype>
 
         int InitCL();
         virtual int SetBuildOptions();
-        virtual int SetWorkSize();
+        virtual int SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size);
         virtual int SetKernelParameters();
         virtual int ForwardCL();
         virtual int ForwardReshapeCL();

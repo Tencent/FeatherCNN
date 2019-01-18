@@ -51,55 +51,7 @@ int EltwiseLayerCL<Dtype>::GenerateTopBlobs()
     this->output_width = p_blob->width();
     this->output_channels = p_blob->get_channels_padding();
     this->_top_blobs[this->_top[0]] = p_blob;
-    SetWorkSize();
-
-    return 0;
-}
-
-template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetWorkSize()
-{
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
-    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-
-    if (eltwise_gws.size() != 0 || eltwise_lws.size() != 0)
-    {
-        eltwise_gws.clear();
-        eltwise_lws.clear();
-    }
-
-    int h_lws = this->output_height > 32 ? 16 : 8;
-    int w_lws = this->output_width > 32 ? 16 : 8;
-
-    int c_blk_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
-    {
-        c_blk_size = 16;
-    }
-    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
-    {
-        c_blk_size = 8;
-    }
-    this->channel_block_size = c_blk_size;
-
-    size_t eltwise_gws_dim0 = (this->output_height / h_lws + !!(this->output_height % h_lws)) * h_lws;
-    size_t eltwise_gws_dim1 = (this->output_width / w_lws  + !!(this->output_width % w_lws)) * w_lws;
-    size_t eltwise_gws_dim2 = padded_output_c / c_blk_size;
-
-    size_t eltwise_lws_dim0 = h_lws;
-    size_t eltwise_lws_dim1 = w_lws;
-    size_t eltwise_lws_dim2 = (eltwise_gws_dim2 > 4 && eltwise_gws_dim2 % 4 == 0) ? 4 : 1;
-
-    eltwise_gws.push_back(eltwise_gws_dim0);
-    eltwise_gws.push_back(eltwise_gws_dim1);
-    eltwise_gws.push_back(eltwise_gws_dim2);
-
-    eltwise_lws.push_back(eltwise_lws_dim0);
-    eltwise_lws.push_back(eltwise_lws_dim1);
-    eltwise_lws.push_back(eltwise_lws_dim2);
+    this->SetWorkSize("eltwise", this->output_height, this->output_width, this->channel_block_size);
 
     return 0;
 }
@@ -352,6 +304,21 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
 #endif
 
     return 0;
+}
+
+template <class Dtype>
+int EltwiseLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
+{
+    if (next_layer->type().compare("ReLU") == 0)
+    {
+        printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
+        fuse_relu = true;
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 template class EltwiseLayerCL<float>;

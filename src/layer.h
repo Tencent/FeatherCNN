@@ -46,7 +46,7 @@ class Layer
 
         virtual int SetBuildOptions();
 
-        virtual int SetWorkSize();
+        virtual int SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size);
 
         virtual int ResetWorkSize(std::string kname, size_t output_height, size_t output_width);
 
