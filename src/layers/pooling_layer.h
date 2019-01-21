@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -54,13 +54,13 @@ void max_pool_inner_kernel(float* out, const float* in, const size_t ldin, const
 }
 
 
-class PoolingLayer : public Layer
+class PoolingLayer : public Layer<float>
 {
     public:
-        PoolingLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
+        PoolingLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
             : stride_height(1),
               stride_width(1),
-              Layer(layer_param, rt_param)
+              Layer<float>(layer_param, rt_param)
         {
             const PoolingParameter *pooling_param = layer_param->pooling_param();
             kernel_height = pooling_param->kernel_h();
@@ -92,8 +92,8 @@ class PoolingLayer : public Layer
 
         int Forward()
         {
-            //fprintf(stderr, "Pooling layer %s\ninput shape %ld %ld %ld kernel shape %ld %ld stride %ld %ld\n", this->name().c_str(), input_channels, input_height, input_width, kernel_height, kernel_width, stride_height, stride_width);
-            //fprintf(stderr, "output (%d %d)\n", output_height, output_width);
+            fprintf(stderr, "Pooling layer %s\ninput shape %ld %ld %ld kernel shape %ld %ld stride %ld %ld\n", this->name().c_str(), input_channels, input_height, input_width, kernel_height, kernel_width, stride_height, stride_width);
+            fprintf(stderr, "output (%d %d)\n", output_height, output_width);
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
             float *p = output;
@@ -115,35 +115,35 @@ class PoolingLayer : public Layer
                     int x_min = MAX(tmp_pos, 0);
                     int x_max = MIN((int)(tmp_pos + kernel_height), (int) input_height);
 
-		    for (int k = 0; k < output_width; k ++)
-		    {
-			    int counter = 0;
-			    float total = (this->method != PoolingParameter_::PoolMethod_MAX_ ? 0 : -1 * std::numeric_limits<float>::max());
-			    for (int x = x_min; x < x_max; ++x)
-			    {
-				    int xpos = i * input_height * input_width + x * input_width;
+                    for (int k = 0; k < output_width; k ++)
+                    {
+                        int counter = 0;
+                        float total = (this->method != PoolingParameter_::PoolMethod_MAX_ ? 0 : -1 * std::numeric_limits<float>::max());
+                        for (int x = x_min; x < x_max; ++x)
+                        {
+                            int xpos = i * input_height * input_width + x * input_width;
 
 
-				    int local_pos = k * (int)stride_width - (int)pad_width;
-				    int y_min     = MAX(local_pos, 0);
-				    int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width);
+                            int local_pos = k * (int)stride_width - (int)pad_width;
+                            int y_min     = MAX(local_pos, 0);
+                            int y_max     = MIN((int)(local_pos + kernel_width), (int) input_width);
 
-				    for (int y = y_min; y < y_max; ++y)
-				    {
-					    float value = input[xpos + y];
-					    if (this->method != PoolingParameter_::PoolMethod_MAX_)        total += value, counter++;
-					    else                                          total = total > value ? total : value;
-				    }
-			    }
-			    if (this->method != PoolingParameter_::PoolMethod_MAX_)
-				    p[k] += total / (counter);
-			    else    p[k]  = (p[k] > total) ? p[k] : total;
-		    }
+                            for (int y = y_min; y < y_max; ++y)
+                            {
+                                float value = input[xpos + y];
+                                if (this->method != PoolingParameter_::PoolMethod_MAX_)        total += value, counter++;
+                                else                                          total = total > value ? total : value;
+                            }
+                        }
+                        if (this->method != PoolingParameter_::PoolMethod_MAX_)
+                            p[k] += total / (counter);
+                        else    p[k]  = (p[k] > total) ? p[k] : total;
+                    }
                 }
             }
             return 0;
         }
-       
+
         int ForwardReshape()
         {
             const Blob<float> *bottom_blob = _bottom_blobs[_bottom[0]];

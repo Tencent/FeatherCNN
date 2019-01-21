@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\blob.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\booster.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\caffe_interp.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\depthwise.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\generic_kernels.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\helper.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\sgemm.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\sgemv.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\winograd_kernels_F63.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\winograd_kernels_F63_fused.cpp" />
+    <ClCompile Include="..\..\src\common.cpp" />
+    <ClCompile Include="..\..\src\general\generic_kernels.cpp" />
+    <ClCompile Include="..\..\src\general\sgemv.cpp" />
+    <ClCompile Include="..\..\src\layer.cpp" />
+    <ClCompile Include="..\..\src\layers\batchnorm_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\concat_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\filter_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\flatten_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\interp_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\lrn_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\prelu_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\relu_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\reshape_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\scale_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\slice_layer.cpp" />
+    <ClCompile Include="..\..\src\layers\softmax_layer.cpp" />
+    <ClCompile Include="..\..\src\layer_factory.cpp" />
+    <ClCompile Include="..\..\src\layer_factory_cl.cpp" />
+    <ClCompile Include="..\..\src\mempool.cpp" />
+    <ClCompile Include="..\..\src\net.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\blob.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\booster.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\caffe_interp.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\depthwise.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\generic_kernels.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\helper.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\opencl_kernels.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\power.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\sgemm.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\sgemv.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\thpool.h" />
+    <ClInclude Include="..\..\src\booster\include\booster\winograd_kernels.h" />
+    <ClInclude Include="..\..\src\common.h" />
+    <ClInclude Include="..\..\src\feather_generated.h" />
+    <ClInclude Include="..\..\src\flatbuffers\base.h" />
+    <ClInclude Include="..\..\src\flatbuffers\flatbuffers.h" />
+    <ClInclude Include="..\..\src\flatbuffers\stl_emulation.h" />
+    <ClInclude Include="..\..\src\general\generic_kernels.h" />
+    <ClInclude Include="..\..\src\general\power.h" />
+    <ClInclude Include="..\..\src\general\sgemv.h" />
+    <ClInclude Include="..\..\src\layer.h" />
+    <ClInclude Include="..\..\src\layers\batchnorm_layer.h" />
+    <ClInclude Include="..\..\src\layers\concat_layer.h" />
+    <ClInclude Include="..\..\src\layers\conv_layer.h" />
+    <ClInclude Include="..\..\src\layers\dropout_layer.h" />
+    <ClInclude Include="..\..\src\layers\eltwise_layer.h" />
+    <ClInclude Include="..\..\src\layers\filter_layer.h" />
+    <ClInclude Include="..\..\src\layers\flatten_layer.h" />
+    <ClInclude Include="..\..\src\layers\inner_product_layer.h" />
+    <ClInclude Include="..\..\src\layers\input_layer.h" />
+    <ClInclude Include="..\..\src\layers\interp_layer.h" />
+    <ClInclude Include="..\..\src\layers\lrn_layer.h" />
+    <ClInclude Include="..\..\src\layers\pooling_layer.h" />
+    <ClInclude Include="..\..\src\layers\prelu_layer.h" />
+    <ClInclude Include="..\..\src\layers\relu_layer.h" />
+    <ClInclude Include="..\..\src\layers\reshape_layer.h" />
+    <ClInclude Include="..\..\src\layers\scale_layer.h" />
+    <ClInclude Include="..\..\src\layers\slice_layer.h" />
+    <ClInclude Include="..\..\src\layers\softmax_layer.h" />
+    <ClInclude Include="..\..\src\layer_factory.h" />
+    <ClInclude Include="..\..\src\layer_factory_cl.h" />
+    <ClInclude Include="..\..\src\mempool.h" />
+    <ClInclude Include="..\..\src\net.h" />
+    <ClInclude Include="..\..\src\rt_param.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{21FFB48B-6F2E-48C1-AE1F-892CEC252EAC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>FeatherCNNx86</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../src;../../src/booster/include;../pthreads-w32-2-9-1-release/Pre-built.2/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>../pthreads-w32-2-9-1-release/Pre-built.2/lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>pthreadVC2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>../pthreads-w32-2-9-1-release/Pre-built.2/lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>pthreadVC2.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

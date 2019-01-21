@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -69,13 +69,13 @@ bool CommonMemPool<PTR_TYPE>::Alloc()
 template<typename PTR_TYPE>
 bool CommonMemPool<PTR_TYPE>::Alloc(size_t size_byte)
 {
-    if(size_byte > common_size)
+    if (size_byte > common_size)
     {
         free(common_memory);
         common_memory = NULL;
         common_size = size_byte;
         common_memory = (PTR_TYPE *) _mm_malloc(common_size, 128);
-        if(common_memory == NULL)
+        if (common_memory == NULL)
             return false;
     }
     return true;
@@ -273,7 +273,9 @@ void PrivateMemPool<PTR_TYPE>::PrintStats()
 
 template class CommonMemPool<float>;
 template class CommonMemPool<int>;
+template class CommonMemPool<uint16_t>;
 template class CommonMemPool<void>;
 template class PrivateMemPool<float>;
 template class PrivateMemPool<int>;
+template class PrivateMemPool<uint16_t>;
 template class PrivateMemPool<void>;

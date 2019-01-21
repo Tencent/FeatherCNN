@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -26,7 +26,8 @@
 #include <omp.h>
 #endif
 
-namespace booster{
+namespace booster
+{
 void pad_input(float* padded, const float* input, const size_t input_channels, const size_t input_width, const size_t input_height, const size_t padding_left, const size_t padding_top, const size_t padding_right, const size_t padding_bottom)
 {
     int paddedWidth  = (int)(input_width + padding_left + padding_right);
@@ -205,21 +206,23 @@ void scale(const size_t channels, const size_t stride, const float* bias_data, c
     #pragma omp parallel for num_threads(num_threads) schedule(guided)
     for (int i = 0; i < channels; i++)
     {
-        __m128 v_scale = _mm_set1_ps(scale_data[i]);
-        __m128 v_bias = _mm_set1_ps(0.f);
-        __m128 v_zero = _mm_set1_ps(0.f);
-        if (has_bias)
-            v_bias = _mm_set1_ps(bias_data[i]);
-        int j = 0;
-        for (; j + 4 < stride; j += 4)
-        {
-            __m128 v_input = _mm_load_ps(input + i * stride + j);
-            __m128 v_out = _mm_mul_ps(v_input,  v_scale);
-            if (has_bias)
-                v_out = _mm_add_ps(v_out, v_bias);
-            _mm_store_ps(output + i * stride + j, v_out);
-        }
-        for (; j < stride; j++)
+        /*
+                __m128 v_scale = _mm_set1_ps(scale_data[i]);
+                __m128 v_bias = _mm_set1_ps(0.f);
+                __m128 v_zero = _mm_set1_ps(0.f);
+                if (has_bias)
+                    v_bias = _mm_set1_ps(bias_data[i]);
+                int j = 0;
+                for (; j + 4 < stride; j += 4)
+                {
+                    __m128 v_input = _mm_load_ps(input + i * stride + j);
+                    __m128 v_out = _mm_mul_ps(v_input,  v_scale);
+                    if (has_bias)
+                        v_out = _mm_add_ps(v_out, v_bias);
+                    _mm_store_ps(output + i * stride + j, v_out);
+                }
+         */
+        for (int j = 0; j < stride; j++)
         {
             float scale = input[i * stride + j] * scale_data[i];
             if (has_bias)
@@ -234,7 +237,7 @@ template void scale<false>(const size_t, const size_t, const float*, const float
 template<bool has_bias, bool has_scale, bool has_relu>
 void batchnorm(const size_t channels, const size_t stride, const float* alpha, const float* beta, const float* bias_data, const float* scale_data, const float* input, float* output, const size_t num_threads)
 {
-#pragma omp parallel for num_threads(num_threads) schedule(static)
+    #pragma omp parallel for num_threads(num_threads) schedule(static)
     for (int i = 0; i < channels; i++)
     {
         __m128 v_alpha = _mm_set1_ps(alpha[i]);
@@ -254,9 +257,9 @@ void batchnorm(const size_t channels, const size_t stride, const float* alpha, c
             __m128 v_input = _mm_loadu_ps(inputCur + j);
             __m128 v_norm = _mm_fmadd_ps(v_beta, v_input, v_alpha);
             if (has_scale)
-                v_norm = v_norm * v_scale;
+                v_norm = _mm_mul_ps(v_norm, v_scale);// v_norm * v_scale;
             if (has_bias)
-                v_norm = v_norm + v_bias;
+                v_norm = _mm_add_ps(v_norm, v_bias);// v_norm + v_bias;
             if (has_relu)
                 v_norm = _mm_max_ps(v_norm, v_zero);
             _mm_storeu_ps(outputCur + j, v_norm);

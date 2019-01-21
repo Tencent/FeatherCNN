@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "booster/generic_kernels.h"
 
 #include <math.h>
+#include <float.h>
 
 namespace feather
 {
@@ -28,9 +29,14 @@ int SoftmaxLayer::Forward()
     float* output = _top_blobs[_top[0]]->data();
 
     float sum = 0.0;
+    float max = -FLT_MAX;
     for (size_t i = 0; i < data_size; ++i)
     {
-        output[i] = static_cast<float>(exp(input[i]));
+        max = std::max<float>(max, input[i]);
+    }
+    for (size_t i = 0; i < data_size; ++i)
+    {
+        output[i] = static_cast<float>(exp(input[i] - max));
         sum += output[i];
     }
     for (size_t i = 0; i < data_size; ++i)

@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -27,9 +27,9 @@ void fully_connected_inference_direct(const int input_size, const int output_siz
         float sum = 0;
         for (int j = 0; j < input_size; j++)
             sum += x[j] * y[i * input_size + j];
-        if(fuseBias)
+        if (fuseBias)
             sum += bias_arr[i];
-        if(fuseRelu)
+        if (fuseRelu)
             sum = (sum > 0.f) ? sum : 0.f;
         z[i] = sum;
     }
@@ -86,12 +86,12 @@ void fully_connected_transpose_inference(const int input_size, const int output_
             yPtr += 32;
         }
 
-        if(fuseBias)
+        if (fuseBias)
         {
             res = vaddq_f32(res, vBias);
             res1 = vaddq_f32(res1, vBias1);
         }
-        if(fuseRelu)
+        if (fuseRelu)
         {
             res = vmaxq_f32(res, vZero);
             res1 = vmaxq_f32(res1, vZero);

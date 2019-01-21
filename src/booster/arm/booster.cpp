@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -126,7 +126,7 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 {
     // param->AssignPaddedDim();
     ConvParam padded_param = *param;
-	padded_param.AssignPaddedDim();
+    padded_param.AssignPaddedDim();
     // padded_param.LogParams("PADDED DIM");
     float* padded_input = buffer;
     int M = param->output_channels;
@@ -153,7 +153,9 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 //DEPTHWISE Methods
 int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    *buffer_size = param->input_channels * param->input_h * param->input_w;
+    ConvParam padded_param = *param;
+    padded_param.AssignPaddedDim();
+    *buffer_size = param->input_channels * padded_param.input_h * padded_param.input_w;
     *processed_kernel_size = param->group * param->kernel_h * param->kernel_w;
     return 0;
 }
@@ -178,9 +180,11 @@ int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* proc
 
     if (param->pad_left > 0 || param->pad_right > 0 || param->pad_top > 0 || param->pad_bottom > 0)
     {
+        ConvParam padded_param = *param;
+        padded_param.AssignPaddedDim();
         pad_input(buffer, input, param->input_channels, param->input_w, param->input_h, param->pad_left,
                   param->pad_top, param->pad_right, param->pad_bottom);
-        dwConv(output, buffer, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
+        dwConv(output, buffer, param->input_channels, padded_param.input_w, padded_param.input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
     }
     else
         dwConv(output, input, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
@@ -270,17 +274,17 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_h >= 8 && param->input_w >= 8)
     {
         this->algo = WINOGRADF63;
     }
-    //else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3)
-    //{
-    //   this->algo = SGECONV;
-    //}
+    // else if (param->group == 1 && param->kernel_w >= 3 && param->kernel_h >= 3 && param->stride_h > 1 && param->stride_w > 1)
+    // {
+    //    this->algo = SGECONV;
+    // }
     else if (param->group == 1)
     {
-       this->algo = IM2COL;
+        this->algo = IM2COL;
     }
     else
     {
@@ -301,37 +305,37 @@ int ConvBooster::SetFuncs()
 {
     switch (this->algo)
     {
-    case NAIVE:
-        this->GetBufferSize = NAIVE_GetBufferSize;
-        this->Init = NAIVE_Init;
-        this->Forward = NAIVE_Forward;
-        return 0;
-    case IM2COL:
-        this->GetBufferSize = IM2COL_GetBufferSize;
-        this->Init = IM2COL_Init;
-        this->Forward = IM2COL_Forward;
-        return 0;
-    case SGECONV:
-        this->GetBufferSize = SGECONV_GetBufferSize;
-        this->Init = SGECONV_Init;
-        this->Forward = SGECONV_Forward;
-        return 0;
-    case WINOGRADF63:
-        this->GetBufferSize = WINOGRADF63_GetBufferSize;
-        this->Init = WINOGRADF63_Init;
-        this->Forward = WINOGRADF63_Forward;
-        return 0;
-    case DEPTHWISE:
-        this->GetBufferSize = DEPTHWISE_GetBufferSize;
-        this->Init = DEPTHWISE_Init;
-        this->Forward = DEPTHWISE_Forward;
-        return 0;
-    default:
-        LOGE("This algo is not supported on Arm CPUs.");
-        this->GetBufferSize = NULL;
-        this->Init = NULL;
-        this->Forward = NULL;
-        return -1;
+        case NAIVE:
+            this->GetBufferSize = NAIVE_GetBufferSize;
+            this->Init = NAIVE_Init;
+            this->Forward = NAIVE_Forward;
+            return 0;
+        case IM2COL:
+            this->GetBufferSize = IM2COL_GetBufferSize;
+            this->Init = IM2COL_Init;
+            this->Forward = IM2COL_Forward;
+            return 0;
+        case SGECONV:
+            this->GetBufferSize = SGECONV_GetBufferSize;
+            this->Init = SGECONV_Init;
+            this->Forward = SGECONV_Forward;
+            return 0;
+        case WINOGRADF63:
+            this->GetBufferSize = WINOGRADF63_GetBufferSize;
+            this->Init = WINOGRADF63_Init;
+            this->Forward = WINOGRADF63_Forward;
+            return 0;
+        case DEPTHWISE:
+            this->GetBufferSize = DEPTHWISE_GetBufferSize;
+            this->Init = DEPTHWISE_Init;
+            this->Forward = DEPTHWISE_Forward;
+            return 0;
+        default:
+            LOGE("This algo is not supported on Arm CPUs.");
+            this->GetBufferSize = NULL;
+            this->Init = NULL;
+            this->Forward = NULL;
+            return -1;
     }
 }
 }; // namespace booster

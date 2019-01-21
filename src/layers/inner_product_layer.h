@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -23,11 +23,11 @@
 
 namespace feather
 {
-class InnerProductLayer : public Layer
+class InnerProductLayer : public Layer<float>
 {
     public:
-        InnerProductLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : fuse_relu(false), Layer(layer_param, rt_param)
+        InnerProductLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+            : fuse_relu(false), Layer<float>(layer_param, rt_param)
         {
             //From proto
             const InnerProductParameter *inner_product_param = layer_param->inner_product_param();
@@ -49,8 +49,8 @@ class InnerProductLayer : public Layer
 
         int Forward()
         {
-	    //this->bottom_blob(0)->PrintBlobInfo(); 
-	    //this->top_blob(0)->PrintBlobInfo(); 
+            //this->bottom_blob(0)->PrintBlobInfo();
+            //this->top_blob(0)->PrintBlobInfo();
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
 
@@ -76,20 +76,20 @@ class InnerProductLayer : public Layer
             input_size = bottom_blob->data_size();
             _top_blobs[_top[0]]->ReshapeWithRealloc(1, output_channels, 1, 1);
             output_size = _top_blobs[_top[0]]->data_size();
-            return this->Forward();   
+            return this->Forward();
         }
-	int Fuse(Layer *next_layer)
-	{
-		if (next_layer->type().compare("ReLU") == 0)
-		{
-			fuse_relu = true;
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+        int Fuse(Layer *next_layer)
+        {
+            if (next_layer->type().compare("ReLU") == 0)
+            {
+                fuse_relu = true;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         int Init()
         {
             float* buffer = NULL;

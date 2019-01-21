@@ -4,15 +4,15 @@ mkdir -p build-android
 pushd build-android
 mkdir -p arm64-v8a
 pushd arm64-v8a
-cmake -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-21 -DBOOSTER_ARM=1 ../..
-make -j4
+cmake -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-21 -DBOOSTER_ARM=1 -DCOMPILE_OPENCL=1 ../.. 
+make -j6
 make install
 popd
 
 mkdir -p armeabi-v7a
 pushd armeabi-v7a
-cmake -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI="armeabi-v7a" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=android-16 -DBOOSTER_ARM=1 ../..
-make -j4
+cmake -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_ABI="armeabi-v7a" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=android-16 -DBOOSTER_ARM=1 -DCOMPILE_OPENCL=1 ../..
+make -j6
 make install
 popd
 
@@ -28,14 +28,14 @@ mkdir -p booster
 pushd feather
 mkdir -p include
 mkdir -p include/feather
-cp ../arm64-v8a/install/feather/include/* ./include/feather/
+cp -r ../arm64-v8a/install/feather/include/* ./include/feather/
 mkdir -p arm64-v8a
 cp ../arm64-v8a/install/feather/lib/* ./arm64-v8a/
 mkdir -p armeabi-v7a
 cp ../armeabi-v7a/install/feather/lib/* ./armeabi-v7a/
 #mkdir -p armeabi
 #cp ../armeabi/install/feather/lib/* ./armeabi/
-#popd 
+#popd
 popd
 pushd booster
 mkdir -p include/booster

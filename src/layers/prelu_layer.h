@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -19,11 +19,11 @@
 
 namespace feather
 {
-class PReluLayer : public Layer
+class PReluLayer : public Layer<float>
 {
     public:
-        PReluLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
-            : Layer(layer_param, rt_param)
+        PReluLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
+            : Layer<float>(layer_param, rt_param)
         {
             shared = this->_weight_blobs[0]->data_size() > 1 ? false : true;
             slope_data = this->_weight_blobs[0]->data();

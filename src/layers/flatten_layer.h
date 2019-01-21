@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -19,20 +19,20 @@
 #include "booster/helper.h"
 namespace feather
 {
-class FlattenLayer : public Layer
+class FlattenLayer : public Layer<float>
 {
     public:
-        FlattenLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
-            : Layer(layer_param, rt_param)
+        FlattenLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
+            : Layer<float>(layer_param, rt_param)
         {
-		    axis = layer_param->flatten_param()->axis();
-		    end_axis = layer_param->flatten_param()->end_axis();
-            if(!(axis == 1 && end_axis == -1))
-		        LOGE("axis %d end_axis %d\n", axis, end_axis);
+            //axis = layer_param->flatten_param()->axis();
+            //end_axis = layer_param->flatten_param()->end_axis();
+            //if (!(axis == 1 && end_axis == -1))
+            //    LOGE("axis %d end_axis %d\n", axis, end_axis);
         }
         int Forward();
     private:
-	int axis;
-	int end_axis;
+        int axis;
+        int end_axis;
 };
 };

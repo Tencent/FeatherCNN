@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -19,12 +19,12 @@
 
 namespace feather
 {
-class SliceLayer : public Layer
+class SliceLayer : public Layer<float>
 {
     public:
-        SliceLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
+        SliceLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
             : axis(0),
-              Layer(layer_param, rt_param)
+              Layer<float>(layer_param, rt_param)
         {
             printf("+++slice layer++\n");
             axis = layer_param->slice_param()->axis();

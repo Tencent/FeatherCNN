@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -19,17 +19,17 @@
 
 namespace feather
 {
-class ReshapeLayer : public Layer
+class ReshapeLayer : public Layer<float>
 {
     public:
-        ReshapeLayer(const LayerParameter* layer_param, const RuntimeParameter<float>* rt_param)
-              : Layer(layer_param, rt_param)
+        ReshapeLayer(const LayerParameter* layer_param, RuntimeParameter<float>* rt_param)
+            : Layer<float>(layer_param, rt_param)
         {
-           dim[0] = layer_param->reshape_param()->shape()->dim()->Get(0);
-           dim[1] = layer_param->reshape_param()->shape()->dim()->Get(1);
-           dim[2] = layer_param->reshape_param()->shape()->dim()->Get(2);
-           dim[3] = layer_param->reshape_param()->shape()->dim()->Get(3);
-	printf("dim %d %d %d %d\n", dim[0], dim[1], dim[2], dim[3]);
+            dim[0] = layer_param->reshape_param()->shape()->dim()->Get(0);
+            dim[1] = layer_param->reshape_param()->shape()->dim()->Get(1);
+            dim[2] = layer_param->reshape_param()->shape()->dim()->Get(2);
+            dim[3] = layer_param->reshape_param()->shape()->dim()->Get(3);
+            printf("dim %d %d %d %d\n", dim[0], dim[1], dim[2], dim[3]);
         }
 
         int GenerateTopBlobs();
@@ -38,8 +38,8 @@ class ReshapeLayer : public Layer
         int Init();
 
     private:
-        int    dim[4];	
-	
+        int    dim[4];
+
 //        int    num_output;
 //        float* select_weights;
 };

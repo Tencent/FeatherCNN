@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -39,7 +39,7 @@ int InterpLayer::GenerateTopBlobs()
     width_in_eff_ = width_in_ + pad_beg_ + pad_end_;
     // InterpParameter *interp_param = this->layer_param_->interp_param();
 
-    
+
     // else if (interp_param.has_height() && interp_param.has_width())
     // {
     //     height_out_ = interp_param->height();

@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -24,11 +24,11 @@
 
 namespace feather
 {
-class ConvLayer : public Layer
+class ConvLayer : public Layer<float>
 {
     public:
-        ConvLayer(const LayerParameter *layer_param, const RuntimeParameter<float>* rt_param)
-            : Layer(layer_param, rt_param),
+        ConvLayer(const LayerParameter *layer_param, RuntimeParameter<float>* rt_param)
+            : Layer<float>(layer_param, rt_param),
               conv_booster(),
               conv_param(),
               bias_data(NULL),
@@ -65,7 +65,7 @@ class ConvLayer : public Layer
         {
             //Conv layer has and only has one bottom blob.
             const Blob<float> *bottom_blob = this->_bottom_blobs[this->_bottom[0]];
-	        conv_param.input_w = bottom_blob->width();
+            conv_param.input_w = bottom_blob->width();
             conv_param.input_h = bottom_blob->height();
             conv_param.input_channels = bottom_blob->channels();
             conv_param.AssignOutputDim();
@@ -73,8 +73,8 @@ class ConvLayer : public Layer
             this->_top_blobs[this->_top[0]] = new Blob<float>(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
             this->_top_blobs[this->_top[0]]->Alloc();
             conv_booster.SelectAlgo(&this->conv_param);
-	    //conv_booster.ForceSelectAlgo(booster::NAIVE);
-	    //conv_booster.ForceSelectAlgo(booster::IM2COL);
+            //conv_booster.ForceSelectAlgo(booster::NAIVE);
+            //conv_booster.ForceSelectAlgo(booster::IM2COL);
             return 0;
         }
 
@@ -90,7 +90,7 @@ class ConvLayer : public Layer
 
         int Forward()
         {
-	    //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
+            //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
             //_top_blobs[_top[0]]->PrintBlobInfo();
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
@@ -100,7 +100,7 @@ class ConvLayer : public Layer
             return 0;
         }
 
-         int Init()
+        int Init()
         {
             int buffer_size = 0;
             int processed_kernel_size = 0;
@@ -116,7 +116,6 @@ class ConvLayer : public Layer
         {
             if (next_layer->type().compare("ReLU") == 0)
             {
-                printf("FUSE RELU");
                 conv_param.activation = booster::ReLU;
                 return 1;
             }
@@ -126,13 +125,13 @@ class ConvLayer : public Layer
             }
         }
 
-          protected:
-            booster::ConvBooster conv_booster;
-            booster::ConvParam conv_param;
+    protected:
+        booster::ConvBooster conv_booster;
+        booster::ConvParam conv_param;
 
-            float *bias_data;
+        float *bias_data;
 
-            float *kernel_data;
-            float *processed_kernel;
+        float *kernel_data;
+        float *processed_kernel;
 };
 };

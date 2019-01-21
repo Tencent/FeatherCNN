@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -27,12 +27,15 @@ using namespace std;
 
 namespace feather
 {
+template <class Dtype>
 class Layer;
 
+
+template <class Dtype>
 class LayerRegistry
 {
     public:
-        typedef Layer *(*Creator)(const LayerParameter *, const RuntimeParameter<float> *);
+        typedef Layer<Dtype>* (*Creator)(const LayerParameter *, RuntimeParameter<Dtype> *);
         typedef std::map<string, Creator> CreatorRegistry;
 
         static CreatorRegistry &Registry()
@@ -49,7 +52,7 @@ class LayerRegistry
         }
 
         // Get a layer using a LayerParameter.
-        static Layer *CreateLayer(const LayerParameter *param, const RuntimeParameter<float> *rt_param)
+        static Layer<Dtype> *CreateLayer(const LayerParameter *param, RuntimeParameter<Dtype> *rt_param)
         {
             const string &type = param->type()->str();
             CreatorRegistry &registry = Registry();
@@ -64,59 +67,26 @@ class LayerRegistry
             }
         }
 
-        static vector<string> LayerTypeList()
-        {
-            CreatorRegistry &registry = Registry();
-            vector<string> layer_types;
-            for (typename CreatorRegistry::iterator iter = registry.begin();
-                    iter != registry.end(); ++iter)
-            {
-                layer_types.push_back(iter->first);
-            }
-            return layer_types;
-        }
-
     private:
         // Layer registry should never be instantiated - everything is done with its
         // static variables.
         LayerRegistry() {}
-
-        static string LayerTypeListString()
-        {
-            vector<string> layer_types = LayerTypeList();
-            string layer_types_str;
-            for (vector<string>::iterator iter = layer_types.begin();
-                    iter != layer_types.end(); ++iter)
-            {
-                if (iter != layer_types.begin())
-                {
-                    layer_types_str += ", ";
-                }
-                layer_types_str += *iter;
-            }
-            return layer_types_str;
-        }
 };
 
+
+template <class Dtype>
 class LayerRegisterer
 {
     public:
         LayerRegisterer(const string &type,
-                        Layer * (*creator)(const LayerParameter *, const RuntimeParameter<float>*))
+                        Layer<Dtype> * (*creator)(const LayerParameter *, RuntimeParameter<Dtype>*))
         {
-            LayerRegistry::AddCreator(type, creator);
+            LayerRegistry<Dtype>::AddCreator(type, creator);
         }
 };
 
 void register_layer_creators();
 
 #define REGISTER_LAYER_CREATOR(type, creator) \
-    static LayerRegisterer g_creator_f_##type(#type, creator);
-
-#define REGISTER_LAYER_CLASS(type)                            \
-    Layer *Creator_##type##Layer(const LayerParameter &param) \
-    {                                                         \
-        return Layer * (new##type##Layer(param));             \
-    }                                                         \
-    REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+    static LayerRegisterer<float> g_creator_f_##type(#type, creator);
 };

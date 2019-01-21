@@ -36,48 +36,7 @@ void SplitString(const std::string &input, const std::string &delim, std::vector
     }
 }
 
-void ResultEvaluate(feather::Net *forward_net, std::string blob_name, int n, std::string caffe_results)
-{
-    size_t data_size;
-    forward_net->GetBlobDataSize(&data_size, blob_name);
-    float *arr = (float*) malloc(sizeof(float) * data_size);
-    forward_net->ExtractBlob(arr, blob_name);
-    size_t len = 0;
-    if (n <= 0)
-        len = data_size;
-    else
-        len = n;
-
-    std::ifstream in(caffe_results.c_str());
-    std::string line;
-    std::string delim = "\t\r\n <>()";
-   
-    size_t count = 0;
-    double time = 0;
-
-    std::vector<float> results;
-    while (getline(in, line))
-    {
-            std::vector<std::string> parts;
-            SplitString(line, delim, parts);
-            for (size_t i = 0; i != parts.size(); ++i)
-            {
-                results.push_back(atof(parts[i].c_str()));
-            }
-    }
-    printf("%ld %ld\n", results.size(), data_size);
-    assert(results.size() == data_size);
-
-    float err=0;
-    for(int i=0;i<data_size;i++)
-    {
-        printf("%f\n", arr[i]);
-    }
-    //printf("\n");
-    free(arr);
-}
-
-void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
+void PrintBlobData(feather::Net<float> *forward_net, std::string blob_name, int n)
 {
     size_t data_size;
     forward_net->GetBlobDataSize(&data_size, blob_name);
@@ -98,10 +57,49 @@ void PrintBlobData(feather::Net *forward_net, std::string blob_name, int n)
 }
 
 
+void testReshape(const std::string& model_path)
+{
+
+    int height = 2038;
+    int width = 1134;
+    int input_size = height * width * 3;
+    feather::Net<float> forward_net_cpu(1, DeviceType::CPU);
+
+    forward_net_cpu.InitFromPath(model_path.c_str());
+
+    float* input = (float*)malloc(sizeof(float) * input_size);
+    for(int i = 0; i < input_size; ++i)
+    {
+      input[i] = (rand() % 256 - 127.5) / 128;
+    }
+
+
+    float factor = 0.6;
+    std::vector<float> scales_;
+    int minHW = 1134;
+    float s0 = 12 / static_cast<float>(minHW);
+    float s = s0;
+    while (s < 0.25){
+    	scales_.push_back(s);
+	s *= 1 / factor;
+    }
+
+    for(int i = 0; i < scales_.size(); i++){
+	float scale = scales_[i];
+	int hs = static_cast<int>(height * scale);
+	int ws = static_cast<int>(width * scale);
+    	forward_net_cpu.Forward(input, hs, ws);
+    	printf("loop count %d/n", i);
+    }
+
+    free(input);
+}
+
+
 void test(std::string model_path, std::string data_path, int loop, int num_threads, std::string results=std::string(""))
 {
     printf("++++++Start Loader++++++\n");
-    feather::Net forward_net(num_threads);
+    feather::Net<float> forward_net(num_threads, DeviceType::CPU);
     forward_net.InitFromPath(model_path.c_str());
     size_t input_size = 224 * 2224 * 3 ;
     float *input = new float[input_size * 20];
@@ -136,12 +134,13 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
             printf("--------Average runtime %lfmsi------\n", time / (loop - 1) / 1000.0);
 	    //if(results.length()>0)
 	    //	ResultEvaluate(&forward_net, "prob", 0, results);
-            PrintBlobData(&forward_net, "prob", 0);
+
+            // If you want to dump all the data
+            forward_net.DumpBlobMap();
+            //PrintBlobData(&forward_net, "v/simplenet/flatten:0", 10);
         }
         break;
     }
-
-
 
     if (input)
     {
@@ -149,6 +148,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
         input = NULL;
     }
 }
+
 int main(int argc, char* argv[])
 {
     if (argc == 5)
@@ -156,6 +156,7 @@ int main(int argc, char* argv[])
         size_t num_threads = atoi(argv[4]);
         size_t loop = atoi(argv[3]);
         test(std::string(argv[1]), std::string(argv[2]), loop, num_threads);
+        //testReshape(argv[1]); 
     }
     else if(argc == 6)
     {

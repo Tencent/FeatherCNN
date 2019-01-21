@@ -1,6 +1,6 @@
 //Tencent is pleased to support the open source community by making FeatherCNN available.
 
-//Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+//Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 
 //Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
 //in compliance with the License. You may obtain a copy of the License at
@@ -63,33 +63,41 @@ int NAIVE_Forward(ConvParam *param, float* output, float* input, float* processe
 //IM2COL Methods
 int IM2COL_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    *buffer_size = param->input_channels * param->output_h * param->output_w * param->kernel_h * param->kernel_w;
+    const int nc = 160;
+    const int kc = 320;
+    *buffer_size = (kc + 6) * nc + param->input_channels * param->output_h * param->output_w * param->kernel_h * param->kernel_w;
     *processed_kernel_size = param->input_channels * param->output_channels * param->kernel_h * param->kernel_w;
     return 0;
 }
 
 int IM2COL_Init(ConvParam *param, float* processed_kernel, float* kernel)
 {
+    const int nc = 160;
+    const int kc = 320;
     const int M = param->output_channels;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    packed_sgemm_init<6>(M, K, 320, processed_kernel, kernel, K);
+    packed_sgemm_init<6>(M, K, kc, processed_kernel, kernel, K);
     return 0;
 }
 
 int IM2COL_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
 {
+    const int nc = 160;
+    const int kc = 320;
+    const int offset = (kc + 6) * nc;
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    im2col(param, buffer, input);
+    float* im2col_buf = buffer + offset;
+    im2col(param, im2col_buf, input);
     if ((!param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<false, false>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<false, false>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
     else if ((param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<true,  false>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<true,  false>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
     else if ((!param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<false,  true>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<false,  true>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
     else if ((param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<true,   true>(M, N, K, processed_kernel, buffer, N, output, N, 160, 320, bias_arr, 1, NULL);
+        packed_sgemm_activation<true,   true>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
     return 0;
 }
 
@@ -112,7 +120,9 @@ int SGECONV_Forward(ConvParam *param, float* output, float* input, float* proces
 //DEPTHWISE Methods
 int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    *buffer_size = param->input_channels * param->input_h * param->input_w;
+	ConvParam padded_param = *param;
+	padded_param.AssignPaddedDim();
+	*buffer_size = param->input_channels * padded_param.input_h * padded_param.input_w;
     *processed_kernel_size = param->group * param->kernel_h * param->kernel_w;
     return 0;
 }
@@ -137,9 +147,11 @@ int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* proc
 
     if (param->pad_left > 0 || param->pad_right > 0 || param->pad_top > 0 || param->pad_bottom > 0)
     {
+		ConvParam padded_param = *param;
+		padded_param.AssignPaddedDim();
         pad_input(buffer, input, param->input_channels, param->input_w, param->input_h, param->pad_left,
                   param->pad_top, param->pad_right, param->pad_bottom);
-        dwConv(output, buffer, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
+		dwConv(output, buffer, param->input_channels, padded_param.input_w, padded_param.input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
     }
     else
         dwConv(output, input, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
@@ -216,6 +228,50 @@ int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* pr
     return 0;
 }
 
+//WINOGRADF63 Methods
+int WINOGRADF63FUSED_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
+{
+    int num_threads = 1;
+    const int cache_block = 48;
+    size_t winograd_mem_size = 0;
+    winograd_mem_size += cache_block * 64 * param->input_channels; //fused VT
+    winograd_mem_size += cache_block * 64 * param->output_channels * 4; //fused WT
+
+    *buffer_size = winograd_mem_size;
+    *processed_kernel_size = 64 * param->input_channels * param->output_channels;
+    return 0;
+}
+
+int WINOGRADF63FUSED_Init(ConvParam *param, float* processed_kernel, float* kernel)
+{
+    Winograd_F63_Fused::transformKernel_F6x6_3x3(processed_kernel, kernel, param->input_channels, param->output_channels);
+    return 0;
+}
+
+int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+{
+    // printf("Fused Winograd Forward\n");
+    // param->LogParams("FORWARD_TEST");
+    if (!param->bias_term && param->activation == None)
+    {
+        Winograd_F63_Fused::WinogradF63Fused<false, false>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+    }
+    else if (!param->bias_term && param->activation == ReLU)
+    {
+        Winograd_F63_Fused::WinogradF63Fused<true, false>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+    }
+    else if (param->bias_term && param->activation == None)
+    {
+        Winograd_F63_Fused::WinogradF63Fused<false, true>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+    }
+    else if (param->bias_term && param->activation == ReLU)
+    {
+        Winograd_F63_Fused::WinogradF63Fused<true, true>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+    }
+    return 0;
+}
+
+
 //Class wrappers
 ConvBooster::ConvBooster()
     : GetBufferSize(NULL), Init(NULL), Forward(NULL)
@@ -229,18 +285,20 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->output_channels < 1024 && param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->input_h > 8 && param->input_w > 8 &&  param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
     {
+        //this->algo = WINOGRADF63FUSED;
         this->algo = WINOGRADF63;
     }
     else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
     {
-       //this->algo = SGECONV;
-       this->algo = IM2COL;
+        //this->algo = SGECONV;
+        this->algo = IM2COL;
     }
     else if (param->group == 1)
     {
-       this->algo = IM2COL;
+        this->algo = IM2COL;
+        //this->algo = NAIVE;
     }
     else
     {
@@ -261,32 +319,37 @@ int ConvBooster::SetFuncs()
 {
     switch (this->algo)
     {
-    case NAIVE:
-        this->GetBufferSize = NAIVE_GetBufferSize;
-        this->Init = NAIVE_Init;
-        this->Forward = NAIVE_Forward;
-        return 0;
-    case IM2COL:
-        this->GetBufferSize = IM2COL_GetBufferSize;
-        this->Init = IM2COL_Init;
-        this->Forward = IM2COL_Forward;
-        return 0;
-    case WINOGRADF63:
-        this->GetBufferSize = WINOGRADF63_GetBufferSize;
-        this->Init = WINOGRADF63_Init;
-        this->Forward = WINOGRADF63_Forward;
-        return 0;
-    case DEPTHWISE:
-        this->GetBufferSize = DEPTHWISE_GetBufferSize;
-        this->Init = DEPTHWISE_Init;
-        this->Forward = DEPTHWISE_Forward;
-        return 0;
-    default:
-        LOGE("This algo is not supported on AVX2.");
-        this->GetBufferSize = NULL;
-        this->Init = NULL;
-        this->Forward = NULL;
-        return -1;
+        case NAIVE:
+            this->GetBufferSize = NAIVE_GetBufferSize;
+            this->Init = NAIVE_Init;
+            this->Forward = NAIVE_Forward;
+            return 0;
+        case IM2COL:
+            this->GetBufferSize = IM2COL_GetBufferSize;
+            this->Init = IM2COL_Init;
+            this->Forward = IM2COL_Forward;
+            return 0;
+        case WINOGRADF63:
+            this->GetBufferSize = WINOGRADF63_GetBufferSize;
+            this->Init = WINOGRADF63_Init;
+            this->Forward = WINOGRADF63_Forward;
+            return 0;
+        case WINOGRADF63FUSED:
+            this->GetBufferSize = WINOGRADF63FUSED_GetBufferSize;
+            this->Init = WINOGRADF63FUSED_Init;
+            this->Forward = WINOGRADF63FUSED_Forward;
+            return 0;
+        case DEPTHWISE:
+            this->GetBufferSize = DEPTHWISE_GetBufferSize;
+            this->Init = DEPTHWISE_Init;
+            this->Forward = DEPTHWISE_Forward;
+            return 0;
+        default:
+            LOGE("This algo is not supported on AVX2.");
+            this->GetBufferSize = NULL;
+            this->Init = NULL;
+            this->Forward = NULL;
+            return -1;
     }
 }
 }; // namespace booster
