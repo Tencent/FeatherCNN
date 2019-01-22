@@ -6,21 +6,21 @@
 
 ## Introduction
 
-FeatherCNN is a high-performance lightweight CNN inference library, developed by Tencent AI Platform Department. 
-FeatureCNN origins from our game AI project for King of Glory (Chinese: 王者荣耀), in which we aim to build a neural model for MOBA game AI and run it on mobile devices. 
-FeatherCNN currently targets at ARM CPUs. 
+FeatherCNN is a high-performance lightweight CNN inference library, developed by Tencent AI Platform Department.
+FeatureCNN origins from our game AI project for King of Glory (Chinese: 王者荣耀), in which we aim to build a neural model for MOBA game AI and run it on mobile devices.
+FeatherCNN currently targets at ARM CPUs.
 We will extend it to cover other architecutures in the near future.
 
-Comparing with other libraries, FeatherCNN has the following features: 
+Comparing with other libraries, FeatherCNN has the following features:
 
-- **High Performance** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
+- **High Performance** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux).
 
-- **Easy Deployment** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms. 
+- **Easy Deployment** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms.
 <!---
 FeatherCNN's own model format is fully compatible with Caffe models. We are working to provide compatibility with other pre-trained models.
 --->
 
-- **Featherweight** The compiled FeatherCNN library is small-sized (hundreds of KBs). 
+- **Featherweight** The compiled FeatherCNN library is small-sized (hundreds of KBs).
 
 Please kindly open an issue in this repo for bug reports and enhancement suggests. We are grateful to user responses and will actively polish this library.
 
@@ -36,22 +36,24 @@ sudo apt-get install g++-aarch64-linux-gnu
 ```
 git clone http://github.com/tencent/FeatherCNN
 ```
-- Compiling and Install 
+- Compiling and Install
 ```
 cd FeatherCNN
-./build_scripts/build_linux.sh	
+./build_scripts/build_linux.sh
 ./build_scripts/build_linux_test.sh
 ```
 
+tips: If you are using OpenCL GPU, make sure you have added ```FEATHER_OPENCL``` macro when compile the apps.
+
 #### Devide-side test example
-The following command will run a benchmark with respect to specific network, input data, loop count and thread numbers. 
+The following command will run a benchmark with respect to specific network, input data, loop count and thread numbers.
 You can also check results with this program.
 ```
 ./feather_benchmark [feathermodel] [input_data] [loops] [threads number]
 ```
 An example:
 ```
-./feather_benchmark ./data/mobilenet.feathermodel ./data/input_3x224x224.txt 20 4	
+./feather_benchmark ./data/mobilenet.feathermodel ./data/input_3x224x224.txt 20 4
 ```
 
 ## Detailed Instructions for iOS/Android/Linux
@@ -68,7 +70,7 @@ An example:
 
 ### Model Format Conversion
 
-FeatherCNN accepts Caffemodels. It merges the structure file (.prototxt) and the weight file (.caffemodel) into a single binary model (.feathermodel). The convert tool requires protobuf, but you don't need them for the library. 
+FeatherCNN accepts Caffemodels. It merges the structure file (.prototxt) and the weight file (.caffemodel) into a single binary model (.feathermodel). The convert tool requires protobuf, but you don't need them for the library.
 
 [**Model Convert Guide**](https://github.com/Tencent/FeatherCNN/wikis/Model-Convert-Guide).
 
@@ -79,11 +81,15 @@ We may provide more convenient interfaces in the near future.
 
 Before inference, FeatherCNN requires two steps to initialize the network.
 ```cpp
-feather::Net forward_net(num_threads);
+feather::Net<DATA_TYPE> forward_net(num_threads, DEVICE_TYPE);
 forward_net.InitFromPath(FILE_PATH_TO_FEATHERMODEL);
 ```
-The net can also be initialized with raw buffers and FILE pointers.
-We can perform forward computation with raw `float*` buffer consequently. 
+The net can also be initialized with raw buffers and FILE pointers. For the usage of CPU, ```DATA_TYPE``` should set to be ```float``` while GPU can handle both ```float``` and ```uint16_t``` (aka. fp16/half). The options of DEVICE_TYPE are:
+  - ```DeviceType::CPU```
+  - ```DeviceType::GPU_CL```
+  - ```DeviceType::GPU_GL``` (not implemented yet, contributors are welcome)
+
+We can perform forward computation with raw `float*` buffer consequently.
 ```cpp
 forward_net.Forward(PTR_TO_YOUR_INPUT_DATA);
 ```
