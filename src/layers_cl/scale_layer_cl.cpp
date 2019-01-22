@@ -78,15 +78,15 @@ int ScaleLayerCL<Dtype>::SetKernelParameters()
     std::vector<size_t>& scale_gws = scale_kernel_info.gws;
     std::vector<size_t>& scale_lws = scale_kernel_info.lws;
     cl::Kernel& cl_kernel = scale_kernel_info.kernel;
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
 
     PadParamsDevice(this->_weight_blobs[0], this->_weight_blobs[0]->data());
-    cl::Buffer* scale_mem = this->_weight_blobs[0]->data_cl();
+    cl::Buffer* scale_mem = this->_weight_blobs[0]->data_cl_buffer();
     cl::Buffer* bias_mem = NULL;
     if(this->_bias_term){
         PadParamsDevice(this->_weight_blobs[1], this->_weight_blobs[1]->data());
-        bias_mem = this->_weight_blobs[1]->data_cl();
+        bias_mem = this->_weight_blobs[1]->data_cl_buffer();
     }
 
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem));
@@ -279,10 +279,10 @@ int ScaleLayerCL<Dtype>::ForwardReshapeCL()
             this->_top_blobs[this->_top[0]]->channels(),
             this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
         set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(6, *output_mem));
     }
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
     int param_idx = this->_bias_term ? 3 : 2;
 
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(0, *input_mem));

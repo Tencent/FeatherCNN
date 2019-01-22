@@ -180,7 +180,7 @@ int InputLayerCL<Dtype>::SetKernelParameters()
     }
     this->input_data_size = data_size;
 
-    cl::Buffer* layer_data_cl = layer_blob->data_cl();
+    cl::Buffer* layer_data_cl = layer_blob->data_cl_buffer();
     set_kernel_arguments_success &= checkSuccess(float_cl_kernel.setArg(param_idx++, this->_cl_fimage));
     set_kernel_arguments_success &= checkSuccess(float_cl_kernel.setArg(param_idx++, *layer_data_cl));
     set_kernel_arguments_success &= checkSuccess(float_cl_kernel.setArg(param_idx++, this->output_height));
@@ -366,7 +366,7 @@ int InputLayerCL<Dtype>::ReshapeFloat(std::string name, int height, int width)
     int channels = this->_top_blobs[name]->channels();
     if (this->_top_blobs[name]->ReshapeWithReallocDevice(this->rt_param->context(), num, channels, height, width) == 2)
     {
-        cl::Buffer* layer_data_cl = this->_top_blobs[name]->data_cl();
+        cl::Buffer* layer_data_cl = this->_top_blobs[name]->data_cl_buffer();
         set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(1, *layer_data_cl));
     }
     this->output_height = this->_top_blobs[name]->height();

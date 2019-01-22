@@ -112,8 +112,8 @@ int BatchNormLayerCL<Dtype>::SetKernelParameters()
     std::vector<size_t>& bn_gws = bn_kernel_info.gws;
     std::vector<size_t>& bn_lws = bn_kernel_info.lws;
     cl::Kernel& cl_kernel = bn_kernel_info.kernel;
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
 
     PreCalParams();
     PadParamsDevice(this->_weight_blobs[0], this->alpha);
@@ -131,8 +131,8 @@ int BatchNormLayerCL<Dtype>::SetKernelParameters()
         }
     }
 
-    cl::Buffer* alpha_mem = this->_weight_blobs[0]->data_cl();
-    cl::Buffer* beta_mem = this->_weight_blobs[1]->data_cl();
+    cl::Buffer* alpha_mem = this->_weight_blobs[0]->data_cl_buffer();
+    cl::Buffer* beta_mem = this->_weight_blobs[1]->data_cl_buffer();
 
 
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem));
@@ -322,10 +322,10 @@ int BatchNormLayerCL<Dtype>::ForwardReshapeCL()
             this->_top_blobs[this->_top[0]]->channels(),
             this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
         set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(6, *output_mem));
     }
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(0, *input_mem));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(3, this->output_height));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(4, this->output_width));

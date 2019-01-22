@@ -160,7 +160,7 @@ int Blob<Dtype>::WriteToDevice(cl::CommandQueue queue, const Dtype* data, size_t
 {
     cl_int error_num;
     Dtype *mapped_ptr = (Dtype*)
-                        queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                        queue.enqueueMapBuffer(*_data_cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                                 0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
     if (!checkSuccess(error_num))
     {
@@ -170,7 +170,7 @@ int Blob<Dtype>::WriteToDevice(cl::CommandQueue queue, const Dtype* data, size_t
     }
     memcpy(mapped_ptr, data, data_size * sizeof(Dtype));
 
-    error_num = queue.enqueueUnmapMemObject(*_data_cl, mapped_ptr,
+    error_num = queue.enqueueUnmapMemObject(*_data_cl_buffer, mapped_ptr,
                                             nullptr, nullptr);
     if (!checkSuccess(error_num))
     {
@@ -184,10 +184,10 @@ int Blob<Dtype>::WriteToDevice(cl::CommandQueue queue, const Dtype* data, size_t
 template<class Dtype>
 int Blob<Dtype>::AllocDevice(cl::Context context, size_t data_size)
 {
-    if (!this->_data_cl)
+    if (!this->_data_cl_buffer)
     {
         cl_int error_num;
-        _data_cl = new cl::Buffer(context,
+        _data_cl_buffer = new cl::Buffer(context,
                                   CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                   data_size * sizeof(Dtype), nullptr, &error_num);
 
@@ -204,11 +204,11 @@ template<class Dtype>
 int Blob<Dtype>::AllocDeviceImage(cl::Context context, size_t height, size_t width)
 {
     cl_int error_num;
-    if (!this->_data_im)
+    if (!this->_data_cl_image)
     {
         cl_channel_type ctype = std::is_same<Dtype, uint16_t>::value ? CL_HALF_FLOAT : CL_FLOAT;
         cl::ImageFormat img_format(CL_RGBA, ctype);
-        _data_im = new cl::Image2D(context,
+        _data_cl_image = new cl::Image2D(context,
                         CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
                         width, height, 0, nullptr, &error_num);
         if (!checkSuccess(error_num))
@@ -226,7 +226,7 @@ int Blob<Dtype>::ReadFromDevice(cl::CommandQueue queue, Dtype* data, size_t data
 
     cl_int error_num;
     Dtype*  mapped_ptr = (Dtype*)
-                         queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                         queue.enqueueMapBuffer(*_data_cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                                  0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num);
     if (!checkSuccess(error_num))
     {
@@ -235,7 +235,7 @@ int Blob<Dtype>::ReadFromDevice(cl::CommandQueue queue, Dtype* data, size_t data
         return 1;
     }
     memcpy(data, mapped_ptr, data_size * sizeof(Dtype));
-    error_num = queue.enqueueUnmapMemObject(*_data_cl, mapped_ptr,
+    error_num = queue.enqueueUnmapMemObject(*_data_cl_buffer, mapped_ptr,
                                             nullptr, nullptr);
     if (!checkSuccess(error_num))
     {
@@ -252,7 +252,7 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
     cl_int error_num;
     size_t data_size = this->data_size_padded_c();
     Dtype *data_half =
-        (Dtype*)(queue.enqueueMapBuffer(*_data_cl, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+        (Dtype*)(queue.enqueueMapBuffer(*_data_cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                                         0, data_size * sizeof(Dtype), nullptr, nullptr, &error_num));
     if (!checkSuccess(error_num))
     {
@@ -276,7 +276,7 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
     }
 
 
-    error_num = queue.enqueueUnmapMemObject(*_data_cl, data_half,
+    error_num = queue.enqueueUnmapMemObject(*_data_cl_buffer, data_half,
                                             nullptr, nullptr);
     if (!checkSuccess(error_num))
     {
@@ -290,15 +290,15 @@ int Blob<Dtype>::ReadFromDeviceCHW(cl::CommandQueue queue, float* data) const
 template<class Dtype>
 int Blob<Dtype>::FreeDevice()
 {
-    if (this->_data_cl)
+    if (this->_data_cl_buffer)
     {
-        delete this->_data_cl;
-        this->_data_cl = NULL;
+        delete this->_data_cl_buffer;
+        this->_data_cl_buffer = NULL;
     }
-    if (this->_data_im)
+    if (this->_data_cl_image)
     {
-        delete this->_data_im;
-        this->_data_im = NULL;
+        delete this->_data_cl_image;
+        this->_data_cl_image = NULL;
     }
     return 0;
 }

@@ -103,8 +103,8 @@ int PoolingLayerCL<Dtype>::SetKernelParameters()
     cl::Kernel& cl_kernel = pool_kernel_info.kernel;
 
 
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
     uint32_t real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
 
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem));
@@ -311,12 +311,12 @@ int PoolingLayerCL<Dtype>::ForwardReshapeCL()
             this->_top_blobs[this->_top[0]]->channels(),
             this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
         set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(1, *output_mem));
     }
 
     int param_idx = 3;
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(0, *input_mem));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->input_height));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->input_width));

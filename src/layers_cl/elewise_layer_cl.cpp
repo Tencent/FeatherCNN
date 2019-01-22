@@ -75,9 +75,9 @@ int EltwiseLayerCL<Dtype>::SetKernelParameters()
     std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
     cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
 
-    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
-    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl_buffer();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
 
 
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem1));
@@ -118,12 +118,12 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL()
             this->_top_blobs[this->_top[0]]->channels(),
             this->output_height, this->output_width) == 2)
     {
-        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+        cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
         set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(2, *output_mem));
     }
 
-    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl();
+    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl_buffer();
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(0, *input_mem1));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(1, *input_mem2));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(3, this->output_height));

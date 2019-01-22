@@ -165,9 +165,9 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters()
     }
 
 
-    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl();
-    cl::Buffer* weight_mem = this->_weight_blobs[0]->data_cl();
-    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl();
+    cl::Buffer* input_mem = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* weight_mem = this->_weight_blobs[0]->data_cl_buffer();
+    cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
     uint32_t out_real_channels = this->_top_blobs[this->_top[0]]->get_channels_padding();
     uint32_t use_relu = fuse_relu;
 
@@ -175,7 +175,7 @@ int InnerProductLayerCL<Dtype>::SetKernelParameters()
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, *weight_mem));
     if (bias_term)
     {
-        set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, *this->_weight_blobs[1]->data_cl()));
+        set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, *this->_weight_blobs[1]->data_cl_buffer()));
     }
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, *output_mem));
     set_kernel_arg_success &= checkSuccess(cl_kernel.setArg(param_idx++, b_channel_padding));

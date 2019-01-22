@@ -32,14 +32,14 @@ class Blob
         Blob()
             : _num(0), _channels(0), _height(0), _width(0), _data(NULL)
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL), _data_float(NULL), _data_im(NULL)
+            , _data_cl_buffer(NULL), _data_float(NULL), _data_cl_image(NULL)
 #endif
         {}
 
         explicit Blob(const size_t num, const size_t channels, const size_t height, const size_t width)
             : _data(NULL), _num(num), _channels(channels), _height(height), _width(width), _name()
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL), _data_float(NULL), _data_im(NULL)
+            , _data_cl_buffer(NULL), _data_float(NULL), _data_cl_image(NULL)
 #endif
         {}
 
@@ -47,14 +47,14 @@ class Blob
         explicit Blob(Dtype* data, const size_t num, const size_t channels, const size_t height, const size_t width)
             : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name()
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL), _data_float(NULL), _data_im(NULL)
+            , _data_cl_buffer(NULL), _data_float(NULL), _data_cl_image(NULL)
 #endif
         {}
 
         explicit Blob(Dtype* data, size_t num, size_t channels, size_t height, size_t width, std::string name)
             : _data(data), _num(num), _channels(channels), _height(height), _width(width), _name(name)
 #ifdef FEATHER_OPENCL
-            , _data_cl(NULL), _data_float(NULL), _data_im(NULL)
+            , _data_cl_buffer(NULL), _data_float(NULL), _data_cl_image(NULL)
 #endif
         {}
 
@@ -136,9 +136,13 @@ class Blob
         }
 
 #ifdef FEATHER_OPENCL
-        cl::Buffer* data_cl() const
+        cl::Buffer* data_cl_buffer() const
         {
-            return _data_cl;
+            return _data_cl_buffer;
+        }
+        cl::Image2D* data_cl_image() const
+        {
+            return _data_cl_image;
         }
         float* data_float() const
         {
@@ -185,8 +189,8 @@ class Blob
 
 #ifdef FEATHER_OPENCL
         /* Image2D in the near future */
-        cl::Buffer *_data_cl;
-        cl::Image2D *_data_im;
+        cl::Buffer *_data_cl_buffer;
+        cl::Image2D *_data_cl_image;
         float* _data_float;
 #endif
         size_t _num;
