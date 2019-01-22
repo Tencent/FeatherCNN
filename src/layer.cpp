@@ -246,6 +246,27 @@ bool Layer<Dtype>::fusible() const
 
 #ifdef FEATHER_OPENCL
 
+template <class Dtype>
+int Layer<Dtype>::InitKernelInfo(std::string kname, std::string pname)
+{
+    std::string program_name = pname;
+    std::string kernel_name = kname;
+    auto it_source = booster::opencl_kernel_string_map.find(pname);
+    if (it_source != booster::opencl_kernel_string_map.end())
+    {
+        this->cl_kernel_info_map[kname].program_name = pname;
+        this->cl_kernel_info_map[kname].kernel_name = kname;
+        this->cl_kernel_info_map[kname].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
+
+    }
+    else
+    {
+        LOGE("can't find program %s!", pname.c_str());
+        return -1;
+    }
+    return 0;
+}
+
 template<class Dtype>
 int Layer<Dtype>::SetBuildOptions()
 {

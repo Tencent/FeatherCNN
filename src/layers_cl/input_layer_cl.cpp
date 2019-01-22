@@ -43,46 +43,10 @@ InputLayerCL<Dtype>::InputLayerCL(const LayerParameter *layer_param, RuntimePara
 
         //_top_blobs[input_name]->PrintBlobInfo();
         LOGI("input_name cl %s (n c h w)=(%ld %ld %ld %ld)\n", input_name.c_str(), num, channels, height, width);
-        this->InitCL();
+        this->InitKernelInfo("chw_to_hwc", "input_buffer");
+        this->InitKernelInfo("uint8_hwc_to_hwc", "input_image");
         this->SetWorkSize();
     }
-}
-
-template <class Dtype>
-int InputLayerCL<Dtype>::InitCL()
-{
-
-    std::string program_name_float = "input_buffer";
-    std::string kernel_name_float = "chw_to_hwc";
-    auto it_source_float = booster::opencl_kernel_string_map.find(program_name_float);
-    if (it_source_float != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name_float].program_name = program_name_float;
-        this->cl_kernel_info_map[kernel_name_float].kernel_name = kernel_name_float;
-        this->cl_kernel_info_map[kernel_name_float].kernel_source = std::string(it_source_float->second.begin(), it_source_float->second.end());
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name_float.c_str());
-        return -1;
-    }
-
-    std::string program_name_uint8 = "input_image";
-    std::string kernel_name_uint8 = "uint8_hwc_to_hwc";
-    auto it_source_uint8 = booster::opencl_kernel_string_map.find(program_name_uint8);
-    if (it_source_uint8 != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name_uint8].program_name = program_name_uint8;
-        this->cl_kernel_info_map[kernel_name_uint8].kernel_name = kernel_name_uint8;
-        this->cl_kernel_info_map[kernel_name_uint8].kernel_source = std::string(it_source_uint8->second.begin(), it_source_uint8->second.end());
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name_uint8.c_str());
-        return -1;
-    }
-
-    return 0;
 }
 
 template <class Dtype>

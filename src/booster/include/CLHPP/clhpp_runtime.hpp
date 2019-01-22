@@ -51,6 +51,12 @@ enum GPUType
     UNKNOWN,
 };
 
+enum OpenCLMemType
+{
+    BUFFER,
+    IMAGE2D,
+};
+
 enum OpenCLVersion
 {
     CL_VER_1_0,
@@ -146,6 +152,7 @@ class OpenCLRuntime
     private:
         OpenCLVersion _opencl_version;
         GPUType _gpu_type;
+        OpenCLMemType _mem_type;
         std::string _gpu_device_name;
         std::string _gpu_device_version;
         std::string _feather_opencl_version = "1.2.0";

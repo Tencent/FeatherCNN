@@ -17,7 +17,7 @@
 #include "../feather_generated.h"
 #include "../layer.h"
 #include "blob.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 #include <booster/booster.h>
 
 #include <assert.h>

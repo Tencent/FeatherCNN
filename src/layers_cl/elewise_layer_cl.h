@@ -17,7 +17,7 @@
 #include "../feather_generated.h"
 #include "../layer.h"
 #include "blob.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 
 #include <assert.h>
 #include <stdio.h>
@@ -30,22 +30,14 @@ template <class Dtype>
 class EltwiseLayerCL: public Layer<Dtype>
 {
     public:
-        EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
-            : Layer<Dtype>(layer_param, rt_param)
-        {
-            this->_fusible = true;
-            fuse_relu = false;
-            InitCL();
-        }
-
-        int InitCL();
-        int GenerateTopBlobs();
+        EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
+        virtual int GenerateTopBlobs();
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardReshapeCL();
         virtual int ForwardCL();
-        int Fuse(Layer<Dtype> *next_layer);
-        
+        virtual int Fuse(Layer<Dtype> *next_layer);
+
 
     private:
         size_t output_height;

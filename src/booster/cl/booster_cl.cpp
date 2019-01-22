@@ -14,7 +14,7 @@
 
 #include <booster/booster.h>
 #include <booster/helper.h>
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 
 #include <string.h>
 

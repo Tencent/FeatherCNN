@@ -201,6 +201,26 @@ int Blob<Dtype>::AllocDevice(cl::Context context, size_t data_size)
 }
 
 template<class Dtype>
+int Blob<Dtype>::AllocDeviceImage(cl::Context context, size_t height, size_t width)
+{
+    cl_int error_num;
+    if (!this->_data_im)
+    {
+        cl_channel_type ctype = std::is_same<Dtype, uint16_t>::value ? CL_HALF_FLOAT : CL_FLOAT;
+        cl::ImageFormat img_format(CL_RGBA, ctype);
+        _data_im = new cl::Image2D(context,
+                        CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
+                        width, height, 0, nullptr, &error_num);
+        if (!checkSuccess(error_num))
+        {
+            LOGE("Failed to create OpenCL Image2D[%d].", error_num);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+template<class Dtype>
 int Blob<Dtype>::ReadFromDevice(cl::CommandQueue queue, Dtype* data, size_t data_size) const
 {
 
@@ -274,6 +294,11 @@ int Blob<Dtype>::FreeDevice()
     {
         delete this->_data_cl;
         this->_data_cl = NULL;
+    }
+    if (this->_data_im)
+    {
+        delete this->_data_im;
+        this->_data_im = NULL;
     }
     return 0;
 }

@@ -27,30 +27,10 @@ ScaleLayerCL<Dtype>::ScaleLayerCL(const LayerParameter* layer_param, RuntimePara
 {
     this->_fusible = true;
     this->_bias_term = layer_param->scale_param()->bias_term();
-    InitCL();
+    this->InitKernelInfo("scale", "scale_buffer");
 }
 
 
-template <class Dtype>
-int ScaleLayerCL<Dtype>::InitCL()
-{
-    std::string program_name = "scale_buffer";
-    std::string kernel_name = "scale";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name].program_name = program_name;
-        this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name.c_str());
-        return -1;
-    }
-    return 0;
-}
 template <class Dtype>
 int ScaleLayerCL<Dtype>::SetBuildOptions()
 {

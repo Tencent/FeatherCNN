@@ -96,6 +96,7 @@ OpenCLRuntime::OpenCLRuntime()
 {
     _cl_program_map = std::make_shared<std::map<std::string, cl::Program> >();
     _tuner = std::make_shared<clhpp_feather::Tuner<size_t> > ();
+    _mem_type = OpenCLMemType::BUFFER;
     OpenCLProbe();
     PrintOpenCLInfo();
 

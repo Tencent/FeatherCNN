@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 #include <assert.h>
 #include <stdio.h>
 #include <vector>
@@ -30,14 +30,13 @@ class InnerProductLayerCL : public Layer<Dtype>
     public:
         InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
 
-        int InitCL();
         virtual int SetBuildOptions();
         virtual int SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size);
         virtual int SetKernelParameters();
         virtual int ForwardCL();
         virtual int ForwardReshapeCL();
-        int GenerateTopBlobs();
-        int Fuse(Layer<Dtype> *next_layer);
+        virtual int GenerateTopBlobs();
+        virtual int Fuse(Layer<Dtype> *next_layer);
 
     protected:
         size_t input_width;

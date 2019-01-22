@@ -19,23 +19,12 @@ namespace feather
 {
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::InitCL()
+EltwiseLayerCL<Dtype>::EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
+    : Layer<Dtype>(layer_param, rt_param)
 {
-    std::string program_name = "eltwise_buffer";
-    std::string kernel_name = "eltwise";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name].program_name = program_name;
-        this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name.c_str());
-        return -1;
-    }
-    return 0;
+    this->_fusible = true;
+    fuse_relu = false;
+    this->InitKernelInfo("eltwise", "eltwise_buffer");
 }
 
 template <class Dtype>

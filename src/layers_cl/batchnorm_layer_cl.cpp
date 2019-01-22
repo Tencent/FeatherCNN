@@ -29,30 +29,9 @@ BatchNormLayerCL<Dtype>::BatchNormLayerCL(const LayerParameter* layer_param, Run
         Layer<Dtype>(layer_param, rt_param)
 {
     this->_fusible = true;
-    InitCL();
+    this->InitKernelInfo("batchnorm", "batchnorm_buffer");
 }
 
-
-template <class Dtype>
-int BatchNormLayerCL<Dtype>::InitCL()
-{
-    std::string program_name = "batchnorm_buffer";
-    std::string kernel_name = "batchnorm";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name].program_name = program_name;
-        this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name.c_str());
-        return -1;
-    }
-    return 0;
-}
 template <class Dtype>
 int BatchNormLayerCL<Dtype>::SetBuildOptions()
 {

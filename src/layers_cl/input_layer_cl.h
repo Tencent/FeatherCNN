@@ -15,7 +15,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 #include <assert.h>
 #include <stdio.h>
 #include <string>
@@ -30,7 +30,6 @@ class InputLayerCL : public Layer<Dtype>
 {
     public:
         InputLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
-        int InitCL();
         int UintToDevice(const uint8_t* src_bgra);
         int FloatToDevice(const float* input_data);
         int CopyInput(std::string name, const float *input_data);

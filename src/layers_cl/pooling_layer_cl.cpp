@@ -34,28 +34,7 @@ PoolingLayerCL<Dtype>::PoolingLayerCL(const LayerParameter *layer_param, Runtime
     this->global_pooling = pooling_param->global_pooling();
     this->method = pooling_param->pool();
 
-    InitCL();
-}
-
-template <class Dtype>
-int PoolingLayerCL<Dtype>::InitCL()
-{
-
-    std::string program_name = "pooling_buffer";
-    std::string kernel_name = "pooling";
-    auto it_source = booster::opencl_kernel_string_map.find(program_name);
-    if (it_source != booster::opencl_kernel_string_map.end())
-    {
-        this->cl_kernel_info_map[kernel_name].program_name = program_name;
-        this->cl_kernel_info_map[kernel_name].kernel_name = kernel_name;
-        this->cl_kernel_info_map[kernel_name].kernel_source = std::string(it_source->second.begin(), it_source->second.end());
-    }
-    else
-    {
-        LOGE("can't find program %s!", program_name.c_str());
-        return -1;
-    }
-    return 0;
+    this->InitKernelInfo("pooling", "pooling_buffer");
 }
 
 template <class Dtype>

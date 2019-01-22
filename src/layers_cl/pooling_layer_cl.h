@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 
 #include <math.h>
 #include <limits>
@@ -29,14 +29,13 @@ class PoolingLayerCL : public Layer<Dtype>
 {
     public:
         PoolingLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
-
-        int InitCL();
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardCL();
         virtual int ForwardReshapeCL();
+        virtual int GenerateTopBlobs();
         inline void AssignOutputSize();
-        int GenerateTopBlobs();
+
 
     private:
         bool fuse_relu;

@@ -24,6 +24,10 @@
 #include <map>
 #include "common.h"
 
+#ifdef FEATHER_OPENCL
+#include <CLHPP/opencl_kernels.hpp>
+#endif
+
 namespace feather
 {
 
@@ -42,6 +46,8 @@ class Layer
         int TryFuse(Layer *next_layer);
 
 #ifdef FEATHER_OPENCL
+        virtual int InitKernelInfo(std::string kname, std::string pname);
+
         virtual int SetKernelParameters();
 
         virtual int SetBuildOptions();

@@ -16,7 +16,7 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
-#include <booster/opencl_kernels.h>
+#include <CLHPP/opencl_kernels.hpp>
 #include "layers_cl/scale_layer_cl.h"
 
 namespace feather
@@ -28,15 +28,15 @@ class BatchNormLayerCL : public Layer<Dtype>
     public:
         BatchNormLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
 
-        int InitCL();
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
         virtual int ForwardCL();
         virtual int ForwardReshapeCL();
         virtual int GenerateTopBlobs();
+        virtual int Fuse(Layer<Dtype> *next_layer);
         void PadParamsDevice(Blob<Dtype>* blob, Dtype* data);
         int PreCalParams();
-        int Fuse(Layer<Dtype> *next_layer);
+
     private:
         size_t output_channels;
         size_t output_width;
