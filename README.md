@@ -13,7 +13,7 @@ We will extend it to cover other architecutures in the near future.
 
 Comparing with other libraries, FeatherCNN has the following features:
 
-- **High Performance** FeatherCNN delivers state-of-the-art inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux).
+- **High Performance** FeatherCNN delivers **state-of-the-art** inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
 
 - **Easy Deployment** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms.
 <!---
