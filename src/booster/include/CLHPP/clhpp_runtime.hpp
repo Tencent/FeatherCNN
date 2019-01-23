@@ -140,7 +140,7 @@ class OpenCLRuntime
         {
             return _gpu_device_version;
         }
-        OpenCLMemType& get_mem_type() const
+        OpenCLMemType& get_mem_type()
         {
             return _mem_type;
         }
