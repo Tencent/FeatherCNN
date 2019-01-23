@@ -16,39 +16,38 @@
 
 #include "../feather_generated.h"
 #include "../layer.h"
+#include "blob.h"
 #include <CLHPP/opencl_kernels.hpp>
+
 #include <assert.h>
 #include <stdio.h>
-#include <vector>
 
 namespace feather
 {
+//#define USE_LEGACY_SGEMM
 
 template <class Dtype>
-class InnerProductLayerCL : public Layer<Dtype>
+class ConcatLayerCL: public Layer<Dtype>
 {
     public:
-        InnerProductLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype>* rt_param);
-
+        ConcatLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param);
+        virtual int GenerateTopBlobs();
         virtual int SetBuildOptions();
         virtual int SetKernelParameters();
-        virtual int ForwardCL();
         virtual int ForwardReshapeCL();
-        virtual int GenerateTopBlobs();
+        virtual int ForwardCL();
         virtual int Fuse(Layer<Dtype> *next_layer);
 
-    protected:
-        size_t input_width;
-        size_t input_height;
-        size_t channel_block_size;
 
+    private:
+        size_t output_height;
+        size_t output_width;
         size_t output_channels;
-
-        Dtype *kernel_data;
-        Dtype *bias_data;
-
-        bool bias_term;
-
+        size_t input0_channels;
+        size_t input1_channels;
+        size_t channel_block_size;
         bool fuse_relu;
+        bool divisible;
+
 };
 }; // namespace feather

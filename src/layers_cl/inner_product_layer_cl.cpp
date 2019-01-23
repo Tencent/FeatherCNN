@@ -36,45 +36,6 @@ InnerProductLayerCL<Dtype>::InnerProductLayerCL(const LayerParameter *layer_para
     this->InitKernelInfo("inner_product", "inner_product_buffer");
 }
 
-
-template <class Dtype>
-int InnerProductLayerCL<Dtype>::SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_blk_size)
-{
-    clhpp_feather::CLKernelInfo& fc_kernel_info = this->cl_kernel_info_map[kname];
-    std::vector<size_t>& fc_gws = fc_kernel_info.gws;
-    std::vector<size_t>& fc_lws = fc_kernel_info.lws;
-    size_t padded_input_c = this->_bottom_blobs[this->_bottom[0]]->get_channels_padding();
-    size_t padded_output_c = this->_top_blobs[this->_top[0]]->get_channels_padding();
-    if (fc_gws.size() != 0 || fc_lws.size() != 0)
-    {
-        fc_gws.clear();
-        fc_lws.clear();
-    }
-    int c_blk_size = 4;
-    if (padded_input_c % 16 == 0 && padded_output_c % 16 == 0)
-    {
-        c_blk_size = 16;
-    }
-    else if (padded_input_c % 8 == 0 && padded_output_c % 8 == 0)
-    {
-        c_blk_size = 8;
-    }
-    channel_blk_size = c_blk_size;
-    size_t fc_gws_dim0 = 1;
-    size_t fc_gws_dim1 = 1;
-    size_t fc_gws_dim2 = padded_output_c / c_blk_size;
-    size_t fc_lws_dim0 = 1;
-    size_t fc_lws_dim1 = 1;
-    size_t fc_lws_dim2 = (fc_gws_dim2 > 4 && fc_gws_dim2 % 4 == 0) ? 4 : 1;
-    fc_gws.push_back(fc_gws_dim0);
-    fc_gws.push_back(fc_gws_dim0);
-    fc_gws.push_back(fc_gws_dim2);
-    fc_lws.push_back(fc_lws_dim0);
-    fc_lws.push_back(fc_lws_dim1);
-    fc_lws.push_back(fc_lws_dim2);
-    return 0;
-}
-
 template <class Dtype>
 int InnerProductLayerCL<Dtype>::SetBuildOptions()
 {

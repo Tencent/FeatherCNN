@@ -27,10 +27,11 @@
 #include <layers_cl/conv_layer_cl.h>
 #include <layers_cl/pooling_layer_cl.h>
 #include <layers_cl/relu_layer_cl.h>
-#include <layers_cl/elewise_layer_cl.h>
+#include <layers_cl/eltwise_layer_cl.h>
 #include <layers_cl/inner_product_layer_cl.h>
 #include <layers_cl/batchnorm_layer_cl.h>
 #include <layers_cl/scale_layer_cl.h>
+#include <layers_cl/concat_layer_cl.h>
 
 
 namespace feather
@@ -82,6 +83,12 @@ Layer<Dtype> *GetScaleLayerCL(const LayerParameter *layer_param, RuntimeParamete
     return (Layer<Dtype> *)new ScaleLayerCL<Dtype>(layer_param, rt_param);
 }
 
+template <class Dtype>
+Layer<Dtype> *GetConcatLayerCL(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
+{
+    return (Layer<Dtype> *)new ConcatLayerCL<Dtype>(layer_param, rt_param);
+}
+
 
 void register_layer_creators_cl()
 {
@@ -94,7 +101,7 @@ void register_layer_creators_cl()
     REGISTER_LAYER_CREATOR_CL(Eltwise, GetEltwiseLayerCL);
     REGISTER_LAYER_CREATOR_CL(BatchNorm, GetBatchNormLayerCL);
     REGISTER_LAYER_CREATOR_CL(Scale, GetScaleLayerCL);
-
+    REGISTER_LAYER_CREATOR_CL(Concat, GetConcatLayerCL);
 }
 
 };

@@ -11,7 +11,7 @@
 //under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 //CONDITIONS OF ANY KIND, either express or implied. See the License for the
 //specific language governing permissions and limitations under the License.
-#include "elewise_layer_cl.h"
+#include "concat_layer_cl.h"
 
 using namespace std;
 
@@ -19,78 +19,93 @@ namespace feather
 {
 
 template <class Dtype>
-EltwiseLayerCL<Dtype>::EltwiseLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
+ConcatLayerCL<Dtype>::ConcatLayerCL(const LayerParameter* layer_param, RuntimeParameter<Dtype>* rt_param)
     : Layer<Dtype>(layer_param, rt_param)
 {
-    this->_fusible = true;
     fuse_relu = false;
-    this->InitKernelInfo("eltwise", "eltwise_buffer");
+    this->InitKernelInfo("concat", "concat_buffer");
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::GenerateTopBlobs()
+int ConcatLayerCL<Dtype>::GenerateTopBlobs()
 {
     assert(this->_bottom.size() == 2);
     assert(this->_bottom_blobs.size() == 2);
-    assert(this->_bottom_blobs[this->_bottom[0]]->data_size() == this->_bottom_blobs[this->_bottom[1]]->data_size());
-    Blob<Dtype>* p_blob = new Blob<Dtype>();
-    p_blob->CopyShape(this->_bottom_blobs[this->_bottom[0]]);
+    this->output_height = this->_bottom_blobs[this->_bottom[0]]->height();
+    this->output_width = this->_bottom_blobs[this->_bottom[0]]->width();
+    this->input0_channels = this->_bottom_blobs[this->_bottom[0]]->channels();
+    this->input1_channels = this->_bottom_blobs[this->_bottom[1]]->channels();
+    this->output_channels = this->input0_channels + this->input1_channels;
+
+    Blob<Dtype>* p_blob = new Blob<Dtype>(
+      this->_bottom_blobs[this->_bottom[0]]->num(),
+      this->output_channels,
+      this->output_height,
+      this->output_width);
+
     p_blob->AllocDevice(this->rt_param->context(), p_blob->data_size_padded_c());
-    this->output_height = p_blob->height();
-    this->output_width = p_blob->width();
+
     this->output_channels = p_blob->get_channels_padding();
+
     this->_top_blobs[this->_top[0]] = p_blob;
-    this->SetWorkSize("eltwise", this->output_height, this->output_width, this->channel_block_size);
+    this->SetWorkSize("concat", this->output_height, this->output_width, this->channel_block_size);
+
+    this->divisible = this->input0_channels % this->channel_block_size == 0;
 
     return 0;
 }
 
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetBuildOptions()
+int ConcatLayerCL<Dtype>::SetBuildOptions()
 {
     std::ostringstream ss;
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<std::string>& build_options = eltwise_kernel_info.build_options;
+    clhpp_feather::CLKernelInfo& concat_kernel_info = this->cl_kernel_info_map["concat"];
+    std::vector<std::string>& build_options = concat_kernel_info.build_options;
     ss << this->channel_block_size;
     build_options.push_back("-DN=" + ss.str());
     if (std::is_same<Dtype, uint16_t>::value)
         build_options.push_back("-DDATA_TYPE=half");
     else
         build_options.push_back("-DDATA_TYPE=float");
+
+    if (this->divisible)
+        build_options.push_back("-DDIVISIBLE");
     return 0;
 }
 
 
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::SetKernelParameters()
+int ConcatLayerCL<Dtype>::SetKernelParameters()
 {
     int error_num;
     bool set_kernel_arguments_success = true;
     int param_idx = 0;
-    this->rt_param->cl_runtime()->BuildKernel("eltwise", this->cl_kernel_info_map);
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
-    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
-    cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
+    this->rt_param->cl_runtime()->BuildKernel("concat", this->cl_kernel_info_map);
+    clhpp_feather::CLKernelInfo& concat_kernel_info = this->cl_kernel_info_map["concat"];
+    std::vector<size_t>& concat_gws = concat_kernel_info.gws;
+    std::vector<size_t>& concat_lws = concat_kernel_info.lws;
+    cl::Kernel& cl_kernel = concat_kernel_info.kernel;
 
-    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
-    cl::Buffer* input_mem2 = this->_bottom_blobs[this->_bottom[1]]->data_cl_buffer();
+    cl::Buffer* input_mem0 = this->_bottom_blobs[this->_bottom[0]]->data_cl_buffer();
+    cl::Buffer* input_mem1 = this->_bottom_blobs[this->_bottom[1]]->data_cl_buffer();
     cl::Buffer* output_mem = this->_top_blobs[this->_top[0]]->data_cl_buffer();
 
 
+    set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem0));
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem1));
-    set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *input_mem2));
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, *output_mem));
-    set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_height));
-    set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_width));
+    set_kernel_arguments_success &=  checkSuccess(cl_kernel.setArg(param_idx++, this->output_height));
+    set_kernel_arguments_success &=
+    checkSuccess(cl_kernel.setArg(param_idx++, this->output_width));
     set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->output_channels));
+    set_kernel_arguments_success &= checkSuccess(cl_kernel.setArg(param_idx++, this->input0_channels));
 
-    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, eltwise_gws.data(), eltwise_lws.data());
+    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, concat_gws.data(), concat_lws.data());
     if (!set_kernel_arguments_success)
     {
-        LOGE("Failed setting inner product OpenCL cl_kernels[0] arguments. ");
+        LOGE("Failed setting concat OpenCL cl_kernel arguments. ");
         return -1;
     }
 
@@ -98,17 +113,17 @@ int EltwiseLayerCL<Dtype>::SetKernelParameters()
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::ForwardReshapeCL()
+int ConcatLayerCL<Dtype>::ForwardReshapeCL()
 {
     if (this->output_height == this->_bottom_blobs[this->_bottom[0]]->height() &&
             this->output_width == this->_bottom_blobs[this->_bottom[0]]->width())
         return this->ForwardCL();
 
     bool set_kernel_arg_success = true;
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
-    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
-    cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
+    clhpp_feather::CLKernelInfo& concat_kernel_info = this->cl_kernel_info_map["concat"];
+    std::vector<size_t>& concat_gws = concat_kernel_info.gws;
+    std::vector<size_t>& concat_lws = concat_kernel_info.lws;
+    cl::Kernel& cl_kernel = concat_kernel_info.kernel;
 
 
     this->output_height = this->_bottom_blobs[this->_bottom[0]]->height();
@@ -131,32 +146,32 @@ int EltwiseLayerCL<Dtype>::ForwardReshapeCL()
 
     if (!set_kernel_arg_success)
     {
-        LOGE("Failed setting eltwise reshape cl_kernels arguments.");
+        LOGE("Failed setting concat reshape cl_kernels arguments.");
         return 1;
     }
 
-    this->ResetWorkSize("eltwise", this->output_height, this->output_width);
-    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, eltwise_gws.data(), eltwise_lws.data());
+    this->ResetWorkSize("concat", this->output_height, this->output_width);
+    this->rt_param->cl_runtime()->FineTuneGroupSize(cl_kernel, this->output_height, this->output_width, concat_gws.data(), concat_lws.data());
     return this->ForwardCL();
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::ForwardCL()
+int ConcatLayerCL<Dtype>::ForwardCL()
 {
-    clhpp_feather::CLKernelInfo& eltwise_kernel_info = this->cl_kernel_info_map["eltwise"];
-    std::vector<size_t>& eltwise_gws = eltwise_kernel_info.gws;
-    std::vector<size_t>& eltwise_lws = eltwise_kernel_info.lws;
-    cl::Kernel& cl_kernel = eltwise_kernel_info.kernel;
+    clhpp_feather::CLKernelInfo& concat_kernel_info = this->cl_kernel_info_map["concat"];
+    std::vector<size_t>& concat_gws = concat_kernel_info.gws;
+    std::vector<size_t>& concat_lws = concat_kernel_info.lws;
+    cl::Kernel& cl_kernel = concat_kernel_info.kernel;
 
 #ifdef TIMING_CL
     this->rt_param->command_queue().finish();
-    std::string cl_program_name = eltwise_kernel_info.program_name;
+    std::string cl_program_name = concat_kernel_info.program_name;
     timespec tpstart, tpend;
     cl::Event event;
     clock_gettime(CLOCK_MONOTONIC, &tpstart);
     int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                        cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
-                        cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, &event);
+                        cl_kernel, cl::NullRange, cl::NDRange(concat_gws[0], concat_gws[1], concat_gws[2]),
+                        cl::NDRange(concat_lws[0], concat_lws[1], concat_lws[2]), nullptr, &event);
     if (!checkSuccess(error_num))
     {
         LOGE("Failed enqueuing the element wise kernel.");
@@ -180,28 +195,28 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
          this->name().c_str(), cl_program_name.c_str(), submit_kerel_time, start_kerel_time, stop_kerel_time);
 
 #else
-    std::string key_gws = this->name() + "_" + "eltwise" + "_gws";
-    std::string key_lws = this->name() + "_" + "eltwise" + "_lws";
+    std::string key_gws = this->name() + "_" + "concat" + "_gws";
+    std::string key_lws = this->name() + "_" + "concat" + "_lws";
     if (clhpp_feather::IsTuning())
     {
         //warm up
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                            cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
-                            cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(concat_gws[0], concat_gws[1], concat_gws[2]),
+                            cl::NDRange(concat_lws[0], concat_lws[1], concat_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the element eltwise kernel.");
+            LOGE("Failed enqueuing the element concat kernel.");
             return -1;
         }
         //run
         std::vector<std::vector<size_t> > gws_list;
         std::vector<std::vector<size_t> > lws_list;
-        gws_list.push_back(eltwise_gws);
-        lws_list.push_back(eltwise_lws);
+        gws_list.push_back(concat_gws);
+        lws_list.push_back(concat_lws);
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().TunerArry(kwg_size, this->output_height, this->output_width,
-                eltwise_gws, eltwise_lws, gws_list, lws_list);
+                concat_gws, concat_lws, gws_list, lws_list);
         double opt_time = std::numeric_limits<double>::max();
         int min_tune = -1;
         for (int j = 0; j < gws_list.size(); j++)
@@ -214,7 +229,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                                 cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
             if (!checkSuccess(error_num))
             {
-                LOGE("Failed enqueuing the eltwise kernel.");
+                LOGE("Failed enqueuing the concat kernel.");
                 return -1;
             }
 
@@ -245,7 +260,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                             cl::NDRange(tmp_lws[0], tmp_lws[1], tmp_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the eltwise kernel.");
+            LOGE("Failed enqueuing the concat kernel.");
             return -1;
         }
     }
@@ -254,12 +269,12 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
         //run
         std::vector<std::vector<size_t> > gws_list;
         std::vector<std::vector<size_t> > lws_list;
-        gws_list.push_back(eltwise_gws);
-        lws_list.push_back(eltwise_lws);
+        gws_list.push_back(concat_gws);
+        lws_list.push_back(concat_lws);
         uint64_t kwg_size = 0;
         this->rt_param->cl_runtime()->GetKernelMaxWorkGroupSize(cl_kernel, kwg_size);
         this->rt_param->cl_runtime()->tuner().IsTunerInProcess(kwg_size, this->output_height, this->output_width,
-                eltwise_gws, eltwise_lws, gws_list, lws_list);
+                concat_gws, concat_lws, gws_list, lws_list);
         this->rt_param->command_queue().finish();
         timespec tpstart, tpend;
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
@@ -269,7 +284,7 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
                             cl::NDRange(lws_list[j][0], lws_list[j][1], lws_list[j][2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the eltwise kernel.");
+            LOGE("Failed enqueuing the concat kernel.");
             return -1;
         }
         this->rt_param->command_queue().finish();
@@ -282,11 +297,11 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
     else
     {
         int error_num = this->rt_param->command_queue().enqueueNDRangeKernel(
-                            cl_kernel, cl::NullRange, cl::NDRange(eltwise_gws[0], eltwise_gws[1], eltwise_gws[2]),
-                            cl::NDRange(eltwise_lws[0], eltwise_lws[1], eltwise_lws[2]), nullptr, nullptr);
+                            cl_kernel, cl::NullRange, cl::NDRange(concat_gws[0], concat_gws[1], concat_gws[2]),
+                            cl::NDRange(concat_lws[0], concat_lws[1], concat_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the element eltwise kernel.");
+            LOGE("Failed enqueuing the element concat kernel.");
             return -1;
         }
     }
@@ -296,11 +311,11 @@ int EltwiseLayerCL<Dtype>::ForwardCL()
 }
 
 template <class Dtype>
-int EltwiseLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
+int ConcatLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
 {
     if (next_layer->type().compare("ReLU") == 0)
     {
-        printf("Eltwise %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
+        printf("Concat %s fuse ReLU layer %s\n", this->name().c_str(), next_layer->name().c_str());
         fuse_relu = true;
         return 1;
     }
@@ -310,7 +325,7 @@ int EltwiseLayerCL<Dtype>::Fuse(Layer<Dtype> *next_layer)
     }
 }
 
-template class EltwiseLayerCL<float>;
-template class EltwiseLayerCL<uint16_t>;
+template class ConcatLayerCL<float>;
+template class ConcatLayerCL<uint16_t>;
 
 }; // namespace feather

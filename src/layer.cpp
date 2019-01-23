@@ -330,11 +330,11 @@ int Layer<Dtype>::SetWorkSize(std::string kname, size_t output_height, size_t ou
         c_blk_size = 8;
     }
     channel_block_size = c_blk_size;
-    size_t gws_dim0 = (output_height / h_lws + !!(output_height % h_lws)) * h_lws;
-    size_t gws_dim1 = (output_width / w_lws  + !!(output_width % w_lws)) * w_lws;
+    size_t gws_dim0 = output_height == 1 ? 1 : (output_height / h_lws + !!(output_height % h_lws)) * h_lws;
+    size_t gws_dim1 = output_width == 1 ? 1 : (output_width / w_lws  + !!(output_width % w_lws)) * w_lws;
     size_t gws_dim2 = padded_output_c / c_blk_size;
-    size_t lws_dim0 = h_lws;
-    size_t lws_dim1 = w_lws;
+    size_t lws_dim0 = output_height == 1 ? 1 : h_lws;
+    size_t lws_dim1 = output_width == 1 ? 1 : w_lws;
     size_t lws_dim2 = (gws_dim2 > 4 && gws_dim2 % 4 == 0) ? 4 : 1;
 
     gws.push_back(gws_dim0);
