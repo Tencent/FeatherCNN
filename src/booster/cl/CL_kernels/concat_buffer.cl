@@ -37,7 +37,7 @@ DATA_TYPEN cell_merge(DATA_TYPEN left,
       case 12:return (DATA_TYPEN)(left.s0, left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, right.s0, right.s1, right.s2, right.s3);
       case 13:return (DATA_TYPEN)(left.s0, left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, right.s0, right.s1, right.s2);
       case 14:return (DATA_TYPEN)(left.s0, left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, right.s0, right.s1);
-      case 14:return (DATA_TYPEN)(left.s0, left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, right.s0);
+      case 15:return (DATA_TYPEN)(left.s0, left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, right.s0);
       default:return (DATA_TYPEN) 0;
 #endif
     }
@@ -74,7 +74,7 @@ DATA_TYPEN cell_merge(DATA_TYPEN left,
       case 12:return (DATA_TYPEN)(left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, left.sf, right.s0, right.s1, right.s2, right.s3);
       case 13:return (DATA_TYPEN)(left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, left.sf, right.s0, right.s1, right.s2);
       case 14:return (DATA_TYPEN)(left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, left.sf, right.s0, right.s1);
-      case 14:return (DATA_TYPEN)(left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, left.sf, right.s0);
+      case 15:return (DATA_TYPEN)(left.s1, left.s2, left.s3, left.s4, left.s5, left.s6, left.s7, left.s8, left.s9, left.sa, left.sb, left.sc, left.sd, left.se, left.sf, right.s0);
       default:return (DATA_TYPEN) 0;
 #endif
     }

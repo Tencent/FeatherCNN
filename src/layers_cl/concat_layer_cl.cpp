@@ -301,7 +301,7 @@ int ConcatLayerCL<Dtype>::ForwardCL()
                             cl::NDRange(concat_lws[0], concat_lws[1], concat_lws[2]), nullptr, nullptr);
         if (!checkSuccess(error_num))
         {
-            LOGE("Failed enqueuing the element concat kernel.");
+            LOGE("Failed enqueuing the concat kernel.");
             return -1;
         }
     }
