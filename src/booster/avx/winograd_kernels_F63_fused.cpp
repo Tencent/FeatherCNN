@@ -813,7 +813,13 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     int nRowBlocks = (conv_param->output_w + 5) / 6;
     int nColBlocks = (conv_param->output_h + 5) / 6;
     int nBlocks = nRowBlocks * nColBlocks;
-    const int depth = 16;//64 elements appears in 16 128-bit vectors.
+    /*
+     * The AVX impl origins from an SSE approach.
+     * Therefore we use each 256 vector as composition of dual 128-bit vectors. 
+     * The depth is 16 due to 64 elems in each tile is held in 16 128-bit vectors.
+     */
+    const int depth = 16;
+    
 
     const int cache_block = 48;
     const int gemm_cache_block = 24;
@@ -821,6 +827,11 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     double input_transform_time = 0.f;
     double multiplication_time = 0.f;
     double output_transform_time = 0.f;
+
+    // The buffer size for each thread.
+    const int thread_buffer_stride = cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * gemm_cache_block / 4;
+    // The UT buffer offset after VT start pos, which is the size of VT.
+    const int UT_offset = cache_block * 64 * conv_param->input_channels;
 
     Timer tmr;
     int pass = nBlocks / cache_block;
@@ -832,10 +843,12 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     {
         // int tid = omp_get_thread_num();
         int tid = 0;
-        float* VT = buffers + tid * (cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * gemm_cache_block / 4);
-        float* WT = VT + cache_block * 64 * conv_param->input_channels;
+
+        float* VT = buffers + tid * thread_buffer_stride;
+        
+        float* WT = VT + UT_offset;
+        
         const float* UT = transformed_weights;
-        // __m128 v0, v1, v2, v3;
 
         int start_block_id = p * cache_block;
         int end_block_id = start_block_id + cache_block;
@@ -850,13 +863,12 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
 #ifdef ENABLE_KERNEL_TIMERS
         input_transform_time += tmr.endBench();
 #endif
-
         // GEMM block inside a input transform block.
         for (int g = start_block_id; g < end_block_id; g += gemm_cache_block)
         {
             int i_end = std::min<int>(g + gemm_cache_block, end_block_id);
             int block_leftovers = i_end % 4;
-            //Depth is outside the loop so as to repeat the cache for VT.
+            //Depth is outside the loop so as to replay the cache for VT.
             for (int d = 0; d < depth; ++d)
             {
                 for (int oc = 0; oc < conv_param->output_channels; oc += 4)
@@ -864,6 +876,11 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                     //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
                     for (int i = g; i < i_end; i += 4)
                     {
+                        /* UT pointer offsets:
+                         * 1) Input channels is in priority.
+                         * 2) depth is prior to oc, the stride is 16 * ic
+                         * 3) 4 output channels are batched together
+                         */
 
                         const float *UTp = UT + d * 16 * conv_param->input_channels + oc / 4 * conv_param->input_channels * 16 * depth;
 
