@@ -21,7 +21,8 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     conv_param.pad_right = pad;
     conv_param.pad_top = pad;
     conv_param.group = 1;
-    conv_param.bias_term = true;
+    // conv_param.bias_term = true;
+    conv_param.bias_term = false;
     conv_param.AssignOutputDim();
     conv_param.activation = booster::None;
     conv_param.LogParams("TEST");
@@ -153,5 +154,7 @@ int main()
 {
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 1);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 20);
+    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 20);
+    
     return 0;
 }

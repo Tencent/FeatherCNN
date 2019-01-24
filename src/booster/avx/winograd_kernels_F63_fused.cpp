@@ -813,24 +813,22 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     const int depth = 16;
     const int img_cache_block = 48;
     const int channel_cache_block = conv_param->input_channels;
-    // const int gemm_cache_block = 48;
 
     double input_transform_time = 0.f;
     double multiplication_time = 0.f;
     double output_transform_time = 0.f;
 
     // The buffer size for each thread.
-    const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * img_cache_block / 4;
+    const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels * 4 + conv_param->output_channels * 64 * 4 * img_cache_block;
     // const int thread_buffer_stride = img_cache_block * 64 * channel_cache_block + conv_param->output_channels * 64 * 4 * img_cache_block;
     // The UT buffer offset after VT start pos, which is the size of VT.
-    const int UT_offset = img_cache_block * 64 * conv_param->input_channels;
+    const int UT_offset = img_cache_block * 64 * conv_param->input_channels * 4;
 
     Timer tmr;
     int pass = nBlocks / img_cache_block;
     int r = nBlocks % img_cache_block;
     if (r > 0)
         ++pass;
-// #pragma omp parallel for schedule(static)
     for (int p = 0; p < pass; p++)
     {
         // int tid = omp_get_thread_num();
@@ -865,27 +863,27 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                 for (int i = start_block_id; i < end_block_id; i += 4)
                 {
                     /* UT pointer offsets:
-                         * 1) Input channels is in priority.
-                         * 2) depth is prior to oc, the stride is 16 * ic
-                         * 3) 4 output channels are batched together
-                         */
+                     * 1) Input channels is in priority.
+                     * 2) depth is prior to oc, the stride is 16 * ic
+                     * 3) 4 output channels are batched together
+                     */
 
                     const float *UTp = UT + d * 16 * conv_param->input_channels + oc / 4 * conv_param->input_channels * 16 * depth;
 
                     /* VT pointer offsets:
-                        * 1) 4 tiles are batched together
-                        * 2) First 4 floats in each tile from all inChannels are consecutive.
-                        * Therefore, depth should stride by 16 * inChannels.
-                        * 3) 4 tiles have 16 * inChannels * 16 floats in total:
-                        *     bid / 4 * (inChannels * 16 * 16)
-                        */
-                    const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 16 * 16;
+                     * 1) 4 tiles are batched together
+                     * 2) First 4 floats in each tile from all inChannels are consecutive.
+                     * Therefore, depth should stride by 16 * inChannels.
+                     * 3) 4 tiles have 16 * inChannels * 16 floats in total:
+                     *     bid / 4 * (inChannels * 16 * 16)
+                     */
+                    const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 64 * 4;
 
                     /* WT layout by fused very small buffer
-                        * 1) Each time access 4 (output channels) * 16 (tile elements)
-                        * 2) 4 tiles are completed in 16 (depth) loops.
-                        */
-                    float *WTp = WT + 64 * d + i * 64 * 16 + oc * img_cache_block * 64 * 16 / 4;
+                     * 1) Each time access 4 (output channels) * 16 (tile elements)
+                     * 2) 4 tiles are completed in 16 (depth) loops.
+                     */
+                    float *WTp = WT + 64 * d + (i - start_block_id) * 64 * 4 + oc * img_cache_block * 64 * 16 / 4;
 #ifdef ENABLE_KERNEL_TIMERS
                     tmr.startBench();
 #endif
@@ -898,8 +896,8 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
             }
         }
         /*
-        * Traverse all output channels in a GEMM cache block.
-        */
+         * Traverse all output channels in a GEMM cache block.
+         */
 #ifdef ENABLE_KERNEL_TIMERS
         tmr.startBench();
 #endif
@@ -920,9 +918,13 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                         int vy = conv_param->output_w - bidy * 6 - 6;
                         vx = std::min<int>(vx, 0);
                         vy = std::min<int>(vy, 0);
+                        float bias_value = 0.f;
+                        if (conv_param->bias_term)
+                            bias_value = bias_arr[oc + tc];
                         if (vx < -6 || vy < -6)
                             continue;
-                        WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WT + i * 64 * 16 + ti * 4 + tc * 16 + oc * img_cache_block * 64 * 16 / 4, outp, ldout, ldchannel, vx, vy, 64, bias_arr[oc + tc]);
+                        float* WTp = WT + (i - start_block_id) * 64 * 4 + ti * 4 + tc * 16 + oc * img_cache_block * 64 * 16 / 4;
+                        WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WTp, outp, ldout, ldchannel, vx, vy, 64, bias_value);
                     }
                 }
             }
