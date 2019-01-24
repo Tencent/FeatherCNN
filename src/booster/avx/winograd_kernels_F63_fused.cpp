@@ -815,27 +815,19 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     int nBlocks = nRowBlocks * nColBlocks;
     const int depth = 16;//64 elements appears in 16 128-bit vectors.
 
-    assert(nBlocks >= 1);
-    assert(conv_param->output_channels % 4 == 0);
-
     const int cache_block = 48;
     const int gemm_cache_block = 24;
 
     double input_transform_time = 0.f;
     double multiplication_time = 0.f;
     double output_transform_time = 0.f;
+
     Timer tmr;
-
-    //assert(nBlocks % 4 == 0);
-
-    //int pass = nBlocksAligned / cache_block;
-    //int r = nBlocksAligned % cache_block;
     int pass = nBlocks / cache_block;
     int r = nBlocks % cache_block;
     if (r > 0)
         ++pass;
-    //printf("nBlocks %d, pass block %d pass %d r %d\n", nBlocks, cache_block, pass, r);
-// #pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(static)
     for (int p = 0; p < pass; p++)
     {
         // int tid = omp_get_thread_num();
@@ -850,7 +842,6 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
 
         end_block_id = std::min<int>(end_block_id, nBlocks);
         int end_block_id_aligned = end_block_id & 0xFFFFFFFC;
-        // int block_leftovers = end_block_id % 4;
 #ifdef ENABLE_KERNEL_TIMERS
         tmr.startBench();
 #endif
@@ -883,21 +874,13 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                         * 3) 4 tiles have 16 * inChannels * 16 floats in total:
                         *     bid / 4 * (inChannels * 16 * 16)
                         */
-#if 1
                         const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 16 * 16;
-#else
-                        const float *vp = VT + d * 16 * conv_param->input_channels * gemm_cache_block + ((i - start_block_id) / 4) * 16 * conv_param->input_channels;
-#endif
+
                         /* WT layout by fused very small buffer
                         * 1) Each time access 4 (output channels) * 16 (tile elements)
                         * 2) 4 tiles are completed in 16 (depth) loops.
                         */
-#if 0
-                        float *WTp = WT + 64 * d;
-#else
-                        //float *WTp = WT + 64 * d + (i - g) * 64 * 16;
                         float *WTp = WT + 64 * d + (i - g) * 64 * 16 + oc * gemm_cache_block * 64 * 16 / 4;
-#endif
 #ifdef ENABLE_KERNEL_TIMERS
                         tmr.startBench();
 #endif
@@ -907,7 +890,6 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
 #ifdef ENABLE_KERNEL_TIMERS
                         multiplication_time += tmr.endBench();
 #endif
-                        //printf("i %d oc %d wp offset %d\n", i, oc, WTp -WT);
                     }
                 }
             }
