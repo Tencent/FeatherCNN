@@ -235,7 +235,7 @@ int WINOGRADF63FUSED_GetBufferSize(ConvParam *param, int* buffer_size, int* proc
     const int cache_block = 48;
     size_t winograd_mem_size = 0;
     winograd_mem_size += cache_block * 64 * param->input_channels; //fused VT
-    winograd_mem_size += cache_block * 64 * param->output_channels * 4; //fused WT
+    winograd_mem_size += cache_block * 64 * param->output_channels * 4 * 2; //fused WT
 
     *buffer_size = winograd_mem_size;
     *processed_kernel_size = 64 * param->input_channels * param->output_channels;

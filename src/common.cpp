@@ -13,7 +13,7 @@
 //specific language governing permissions and limitations under the License.
 
 #include "common.h"
-
+#include "booster/helper.h"
 #include <cstring>
 #include <vector>
 #include <cstdlib>

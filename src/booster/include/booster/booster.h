@@ -142,6 +142,10 @@ struct ConvParam
         printf("Stride HxW=(%d, %d)\n", stride_h, stride_w);
         printf("Paddings (%d %d %d %d)\n", pad_left, pad_bottom, pad_right, pad_top);
     }
+    double GetFLOPS()
+    {
+        return 2.0 * this->output_channels * this->input_channels * this->output_h * this->output_w * this->kernel_h * this->kernel_w / this->group;
+    }
 };
 
 typedef int (*GET_BUFFER_SIZE_FUNC)(ConvParam *param, int* buffer_size, int* processed_kernel_size);

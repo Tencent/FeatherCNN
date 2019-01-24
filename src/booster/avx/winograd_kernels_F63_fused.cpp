@@ -105,7 +105,6 @@ inline void mm_store_leftovers(float* &dst, __m128& left, __m128& right, const i
     }
     else
     {
-        // _mm_store_ps(dst, _mm_set1_ps(0.f));
         _mm_maskstore_ps(dst, mask, left);
     }
 }
@@ -471,7 +470,7 @@ inline void feather_avx_load_padded_registers_8x8(
     ptr += ldin;
 }
 
-void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *VT, const float *input, int startIdx, int endIdx, int cache_block)
+void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *VT, const float *input, int startIdx, int endIdx)
 {
     //Constants in transformation matrices.
     int nRowBlocks = (conv_param->output_w + 5) / 6;
@@ -558,7 +557,6 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
                     l6 = _mm256_loadu_ps(p6);
                     l7 = _mm256_loadu_ps(p7);
                 }
-
 
                 input_transform_avx(l0, l1, l2, l3, l4, l5, l6, l7,                  //Target
                                     t1, t2, s1, s2, m1, m2,                          //Auxiliary
@@ -730,12 +728,6 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
     {
         v0 = _mm256_load_ps(vp);
         v1 = _mm256_load_ps(vp + 8);
-        //u0 = _mm256_loadu_ps(up);
-        //u2 = _mm256_loadu_ps(up + 8);
-        //u1 = _mm256_permute2f128_ps(u0, u1, 0x11);
-        //u0 = _mm256_permute2f128_ps(u0, u1, 0x00);
-        //u3 = _mm256_permute2f128_ps(u2, u3, 0x11);
-        //u2 = _mm256_permute2f128_ps(u2, u3, 0x00);
 
         u2 = _mm256_broadcast_ps(vup + 2);
         u3 = _mm256_broadcast_ps(vup + 3);
@@ -801,7 +793,7 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *&WTp, const float *&UTp
 
 size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 {
-    return 32 * num_threads * inChannels * 64; /**depth in floats*/
+    return 32 * num_threads * inChannels * 64;
 }
 
 //#define ENABLE_KERNEL_TIMERS
@@ -819,23 +811,23 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
      * The depth is 16 due to 64 elems in each tile is held in 16 128-bit vectors.
      */
     const int depth = 16;
-    
-
-    const int cache_block = 48;
-    const int gemm_cache_block = 24;
+    const int img_cache_block = 48;
+    const int channel_cache_block = conv_param->input_channels;
+    // const int gemm_cache_block = 48;
 
     double input_transform_time = 0.f;
     double multiplication_time = 0.f;
     double output_transform_time = 0.f;
 
     // The buffer size for each thread.
-    const int thread_buffer_stride = cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * gemm_cache_block / 4;
+    const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels + conv_param->output_channels * 64 * 16 * img_cache_block / 4;
+    // const int thread_buffer_stride = img_cache_block * 64 * channel_cache_block + conv_param->output_channels * 64 * 4 * img_cache_block;
     // The UT buffer offset after VT start pos, which is the size of VT.
-    const int UT_offset = cache_block * 64 * conv_param->input_channels;
+    const int UT_offset = img_cache_block * 64 * conv_param->input_channels;
 
     Timer tmr;
-    int pass = nBlocks / cache_block;
-    int r = nBlocks % cache_block;
+    int pass = nBlocks / img_cache_block;
+    int r = nBlocks % img_cache_block;
     if (r > 0)
         ++pass;
 // #pragma omp parallel for schedule(static)
@@ -850,8 +842,8 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
         
         const float* UT = transformed_weights;
 
-        int start_block_id = p * cache_block;
-        int end_block_id = start_block_id + cache_block;
+        int start_block_id = p * img_cache_block;
+        int end_block_id = start_block_id + img_cache_block;
 
         end_block_id = std::min<int>(end_block_id, nBlocks);
         int end_block_id_aligned = end_block_id & 0xFFFFFFFC;
@@ -859,87 +851,82 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
         tmr.startBench();
 #endif
         //Winograd Input Transform
-        winogradInputTransformSeqFusedAVX4(conv_param, VT, input, start_block_id, end_block_id, gemm_cache_block);
+        winogradInputTransformSeqFusedAVX4(conv_param, VT, input, start_block_id, end_block_id);
 #ifdef ENABLE_KERNEL_TIMERS
         input_transform_time += tmr.endBench();
 #endif
-        // GEMM block inside a input transform block.
-        for (int g = start_block_id; g < end_block_id; g += gemm_cache_block)
+        int block_leftovers = end_block_id % 4;
+        //Depth is outside the loop so as to replay the cache for VT.
+        for (int d = 0; d < depth; ++d)
         {
-            int i_end = std::min<int>(g + gemm_cache_block, end_block_id);
-            int block_leftovers = i_end % 4;
-            //Depth is outside the loop so as to replay the cache for VT.
-            for (int d = 0; d < depth; ++d)
+            for (int oc = 0; oc < conv_param->output_channels; oc += 4)
             {
-                for (int oc = 0; oc < conv_param->output_channels; oc += 4)
+                //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
+                for (int i = start_block_id; i < end_block_id; i += 4)
                 {
-                    //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
-                    for (int i = g; i < i_end; i += 4)
-                    {
-                        /* UT pointer offsets:
+                    /* UT pointer offsets:
                          * 1) Input channels is in priority.
                          * 2) depth is prior to oc, the stride is 16 * ic
                          * 3) 4 output channels are batched together
                          */
 
-                        const float *UTp = UT + d * 16 * conv_param->input_channels + oc / 4 * conv_param->input_channels * 16 * depth;
+                    const float *UTp = UT + d * 16 * conv_param->input_channels + oc / 4 * conv_param->input_channels * 16 * depth;
 
-                        /* VT pointer offsets:
+                    /* VT pointer offsets:
                         * 1) 4 tiles are batched together
                         * 2) First 4 floats in each tile from all inChannels are consecutive.
                         * Therefore, depth should stride by 16 * inChannels.
                         * 3) 4 tiles have 16 * inChannels * 16 floats in total:
                         *     bid / 4 * (inChannels * 16 * 16)
                         */
-                        const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 16 * 16;
+                    const float *vp = VT + d * 16 * conv_param->input_channels + ((i - start_block_id) / 4) * conv_param->input_channels * 16 * 16;
 
-                        /* WT layout by fused very small buffer
+                    /* WT layout by fused very small buffer
                         * 1) Each time access 4 (output channels) * 16 (tile elements)
                         * 2) 4 tiles are completed in 16 (depth) loops.
                         */
-                        float *WTp = WT + 64 * d + (i - g) * 64 * 16 + oc * gemm_cache_block * 64 * 16 / 4;
+                    float *WTp = WT + 64 * d + i * 64 * 16 + oc * img_cache_block * 64 * 16 / 4;
 #ifdef ENABLE_KERNEL_TIMERS
-                        tmr.startBench();
+                    tmr.startBench();
 #endif
-                        // for(int i = 0; i < 2; ++i)
-                        TensorGEMMInnerKernel4x4x4_avx(WTp, UTp, vp, conv_param->input_channels);
+                    TensorGEMMInnerKernel4x4x4_avx(WTp, UTp, vp, conv_param->input_channels);
 
 #ifdef ENABLE_KERNEL_TIMERS
-                        multiplication_time += tmr.endBench();
+                    multiplication_time += tmr.endBench();
 #endif
-                    }
                 }
             }
-            /*
-            * Traverse all output channels in a GEMM cache block.
-            */
+        }
+        /*
+        * Traverse all output channels in a GEMM cache block.
+        */
 #ifdef ENABLE_KERNEL_TIMERS
-            tmr.startBench();
+        tmr.startBench();
 #endif
-            for (int oc = 0; oc < conv_param->output_channels; oc += 4)
+        for (int oc = 0; oc < conv_param->output_channels; oc += 4)
+        {
+            for (int i = start_block_id; i < end_block_id; i += 4)
             {
-                for (int i = g; i < i_end; i += 4)
+                for (int tc = 0; tc < 4; ++tc)
                 {
-                    for (int tc = 0; tc < 4; ++tc)
+                    for (int ti = 0; ti < 4; ++ti)
                     {
-                        for (int ti = 0; ti < 4; ++ti)
-                        {
-                            const int ldout = conv_param->output_w;
-                            const int ldchannel = conv_param->output_h * conv_param->output_w;
-                            int bidx = (i + ti) % nRowBlocks;
-                            int bidy = (i + ti) / nRowBlocks;
-                            float *outp = output + bidx * 6 + bidy * 6 * ldout + (oc + tc) * ldchannel;
-                            int vx = conv_param->output_h - bidx * 6 - 6;
-                            int vy = conv_param->output_w - bidy * 6 - 6;
-                            vx = std::min<int>(vx, 0);
-                            vy = std::min<int>(vy, 0);
-                            if (vx < -6 || vy < -6)
-                                continue;
-                            WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WT + (i - g) * 64 * 16 + ti * 4 + tc * 16 + oc * gemm_cache_block * 64 * 16 / 4, outp, ldout, ldchannel, vx, vy, 64, bias_arr[oc + tc]);
-                        }
+                        const int ldout = conv_param->output_w;
+                        const int ldchannel = conv_param->output_h * conv_param->output_w;
+                        int bidx = (i + ti) % nRowBlocks;
+                        int bidy = (i + ti) / nRowBlocks;
+                        float *outp = output + bidx * 6 + bidy * 6 * ldout + (oc + tc) * ldchannel;
+                        int vx = conv_param->output_h - bidx * 6 - 6;
+                        int vy = conv_param->output_w - bidy * 6 - 6;
+                        vx = std::min<int>(vx, 0);
+                        vy = std::min<int>(vy, 0);
+                        if (vx < -6 || vy < -6)
+                            continue;
+                        WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WT + i * 64 * 16 + ti * 4 + tc * 16 + oc * img_cache_block * 64 * 16 / 4, outp, ldout, ldchannel, vx, vy, 64, bias_arr[oc + tc]);
                     }
                 }
             }
+
 #ifdef ENABLE_KERNEL_TIMERS
             output_transform_time += tmr.endBench();
 #endif

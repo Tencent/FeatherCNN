@@ -91,6 +91,12 @@ void Timer::startBench()
     clock_gettime(CLOCK_MONOTONIC, &start);
 }
 
+double Timer::endBench()
+{
+    clock_gettime(CLOCK_MONOTONIC, &stop);
+    return (stop.tv_sec - start.tv_sec) * 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
+}
+
 void Timer::endBench(const char* comment)
 {
     clock_gettime(CLOCK_MONOTONIC, &stop);

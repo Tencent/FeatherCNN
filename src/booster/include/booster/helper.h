@@ -13,7 +13,20 @@
 //specific language governing permissions and limitations under the License.
 
 #pragma once
-#include "common.h"
+// #include "common.h"
+
+#if 0
+#include <android/log.h>
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "FeatherLib", __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "FeatherLib", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "FeatherLib", __VA_ARGS__)
+#else
+#include <stdio.h>
+#define LOGI(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
+#define LOGD(...) fprintf(stdout, __VA_ARGS__);fprintf(stdout,"\n");
+#define LOGE(...) fprintf(stderr, __VA_ARGS__);fprintf(stderr,"\n");
+#endif
+
 void print_floats(const float* arr, const int len);
 void print_floats(const float* arr, const int dimX, const int dimY);
 void diff(float* arr1, float* arr2, int len);
@@ -55,6 +68,7 @@ class Timer
         Timer() {}
         virtual ~Timer() {}
         void startBench();
+        double endBench();
         void endBench(const char *commets);
         void endBench(const char *commets, double fold);
     private:
