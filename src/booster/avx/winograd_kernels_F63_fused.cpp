@@ -162,66 +162,6 @@ inline void transpose8_avx_ps(
 }
 
 
-static inline void winograd_f6k3_output_transform_inplace(
-    __m128 &m0,
-    __m128 &m1,
-    __m128 &m2,
-    __m128 &m3,
-    __m128 &m4,
-    __m128 &m5,
-    __m128 &m6,
-    __m128 &m7)
-{
-    /*
-     * s0 = m0 + (m1 + m2) +      (m3 + m4) + 32 * (m5 + m6)
-     * s1 =      (m1 - m2) +  2 * (m3 - m4) + 16 * (m5 - m6)
-     * s2 =      (m1 + m2) +  4 * (m3 + m4) +  8 * (m5 + m6)
-     * s3 =      (m1 - m2) +  8 * (m3 - m4) +  4 * (m5 - m6)
-     * s4 =      (m1 + m2) + 16 * (m3 + m4) +  2 * (m5 + m6)
-     * s5 =      (m1 - m2) + 32 * (m3 - m4) +      (m5 - m6) + m7
-     */
-
-    const __m128 m1_add_m2 = _mm_add_ps(m1, m2);// m1 + m2;
-    const __m128 m1_sub_m2 = _mm_sub_ps(m1, m2);// m1 - m2;
-    const __m128 m3_add_m4 = _mm_add_ps(m3, m4);// m3 + m4;
-    const __m128 m3_sub_m4 = _mm_sub_ps(m3, m4);// m3 - m4;
-    const __m128 m5_add_m6 = _mm_add_ps(m5, m6);// m5 + m6;
-    const __m128 m5_sub_m6 = _mm_sub_ps(m5, m6);// m5 - m6;
-
-    // Finised with M[0-6] as **inputs** here.
-    m0 = _mm_add_ps(m0, m1_add_m2);// m0 + m1_add_m2;
-    m5 = _mm_add_ps(m7, m1_sub_m2);// m7 + m1_sub_m2;
-    // Finised with M[0-7] as **inputs** here.
-
-    const __m128 const_16 = _mm_set1_ps(16.0f);
-    m1 = _mm_fmadd_ps(const_16, m5_sub_m6, m1_sub_m2);
-    m4 = _mm_fmadd_ps(const_16, m3_add_m4, m1_add_m2);
-
-    const __m128 const_8 = _mm_set1_ps(8.0f);
-    m2 = _mm_fmadd_ps(const_8, m5_add_m6, m1_add_m2);
-    m3 = _mm_fmadd_ps(const_8, m3_sub_m4, m1_sub_m2);
-
-    const __m128 const_32 = _mm_set1_ps(32.0f);
-    m0 = _mm_fmadd_ps(const_32, m5_add_m6, m0);
-    m0 = _mm_add_ps(m0, m3_add_m4);// m0 += m3_add_m4;
-
-    m5 = _mm_fmadd_ps(const_32, m3_sub_m4, m5);
-    m5 = _mm_add_ps(m5, m5_sub_m6);// m5 += m5_sub_m6;
-
-    const __m128 const_2 = _mm_set1_ps(2.0f);
-    m1 = _mm_fmadd_ps(m3_sub_m4, const_2, m1);
-    m4 = _mm_fmadd_ps(m5_add_m6, const_2, m4);
-
-    const __m128 const_4 = _mm_set1_ps(4.0f);
-    m2 = _mm_fmadd_ps(m3_add_m4, const_4, m2);
-    m3 = _mm_fmadd_ps(m5_sub_m6, const_4, m3);
-
-    const __m128 const_0 = _mm_set1_ps(0.0f);
-    m6 = const_0;
-    m7 = const_0;
-}
-
-
 static inline void winograd_f6k3_output_transform_inplace_avx(
     __m256 &m0,
     __m256 &m1,
@@ -279,8 +219,6 @@ static inline void winograd_f6k3_output_transform_inplace_avx(
     m6 = const_0;
     m7 = const_0;
 }
-
-
 
 void naive_gemm_temp(int M, int N, int L, float *A, float *B, float *C)
 {
@@ -387,59 +325,6 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int inChannels, int outC
             winogradKernelTransformPacked(UTp, kernel + 9 * (j * inChannels + i), 16 * inChannels, UT, i, j);
         }
     }
-}
-inline void input_transform(
-    __m128 &r0,
-    __m128 &r1,
-    __m128 &r2,
-    __m128 &r3,
-    __m128 &r4,
-    __m128 &r5,
-    __m128 &r6,
-    __m128 &r7,
-    __m128 &t1,
-    __m128 &t2,
-    __m128 &s1,
-    __m128 &s2,
-    __m128 &p1,
-    __m128 &p2,
-    const __m128 &f5_25,
-    const __m128 &f4_25,
-    const __m128 &f4,
-    const __m128 &f2_5,
-    const __m128 &f2,
-    const __m128 &f1_25,
-    const __m128 &f0_5,
-    const __m128 &f0_25)
-{
-    r0 = _mm_add_ps(_mm_sub_ps(r0, r6), _mm_mul_ps(_mm_sub_ps(r4, r2), f5_25));// r0 - r6 + (r4 - r2) * f5_25;
-    r7 = _mm_add_ps(_mm_sub_ps(r7, r1), _mm_mul_ps(_mm_sub_ps(r3, r5), f5_25));// r7 - r1 + (r3 - r5) * f5_25;
-
-    //r6 - r4 * f5_25 can be reused
-    //r1 - r3 * f5_25 can be reused
-
-    t1 = _mm_sub_ps(_mm_add_ps(r2, r6), _mm_mul_ps(r4, f4_25));// r2 + r6 - r4 * f4_25;
-    t2 = _mm_sub_ps(_mm_add_ps(r1, r5), _mm_mul_ps(r3, f4_25));// r1 + r5 - r3 * f4_25;
-
-    s1 = _mm_mul_ps(r4, f1_25);// r4 * f1_25;
-    s2 = _mm_mul_ps(r3, f2_5);// r3 * f2_5;
-
-    p1 = _mm_add_ps(r6, _mm_sub_ps(_mm_mul_ps(r2, f0_25), s1));// r6 + (r2 * f0_25 - s1);
-    p2 = _mm_add_ps(_mm_sub_ps(_mm_mul_ps(r1, f0_5), s2), _mm_mul_ps(r5, f2));// r1 * f0_5 - s2 + r5 * f2;
-
-    r3 = _mm_add_ps(p1, p2);// p1 + p2;
-    r4 = _mm_sub_ps(p1, p2);// p1 - p2;
-
-    //2.5 * (r01 - r03 + r05)
-
-    p1 = _mm_add_ps(r6, _mm_mul_ps(_mm_sub_ps(r2, s1), f4));// r6 + (r2 - s1) * f4;
-    p2 = _mm_add_ps(_mm_sub_ps(_mm_mul_ps(r1, f2), s2), _mm_mul_ps(r5, f0_5));// r1 * f2 - s2 + r5 * f0_5;
-
-    r5 = _mm_add_ps(p1, p2);// p1 + p2;
-    r6 = _mm_sub_ps(p1, p2);// p1 - p2;
-
-    r1 = _mm_add_ps(t1, t2);
-    r2 = _mm_sub_ps(t1, t2);
 }
 
 inline void input_transform_avx(
@@ -723,7 +608,6 @@ void winogradInputTransformSeqFusedAVX4(booster::ConvParam* conv_param, float *V
         }
     }
 }
-
 
 template<bool HAS_RELU, bool HAS_BIAS>
 void WinogradOutputTransformBlockAVX(const float *WT, float *output, const int ldout, const int ldchannel, const int vx, const int vy, const int block_stride, const float bias)
