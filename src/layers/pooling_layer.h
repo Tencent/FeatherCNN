@@ -92,8 +92,8 @@ class PoolingLayer : public Layer<float>
 
         int Forward()
         {
-            fprintf(stderr, "Pooling layer %s\ninput shape %ld %ld %ld kernel shape %ld %ld stride %ld %ld\n", this->name().c_str(), input_channels, input_height, input_width, kernel_height, kernel_width, stride_height, stride_width);
-            fprintf(stderr, "output (%d %d)\n", output_height, output_width);
+//            fprintf(stderr, "Pooling layer %s\ninput shape %ld %ld %ld kernel shape %ld %ld stride %ld %ld\n", this->name().c_str(), input_channels, input_height, input_width, kernel_height, kernel_width, stride_height, stride_width);
+//            fprintf(stderr, "output (%d %d)\n", output_height, output_width);
             const float *input = _bottom_blobs[_bottom[0]]->data();
             float *output = _top_blobs[_top[0]]->data();
             float *p = output;

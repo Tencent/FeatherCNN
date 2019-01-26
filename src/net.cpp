@@ -34,7 +34,7 @@
                         return rt;                  \
                     }                               \
 
-//#define LAYER_TIMING
+#define LAYER_TIMING
 //#define LAYER_INIT_TIMING
 //#define PRINT_SETUP_LOG
 
@@ -209,7 +209,6 @@ int Net<Dtype>::Forward(float *input)
         // sleep(2);
 #ifdef LAYER_TIMING
         timespec tpstart, tpend;
-        LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
         clock_gettime(CLOCK_MONOTONIC, &tpstart);
 #endif
         //LOGD("Forward layer%d:%s %s\n", i, layers_cl[i]->name().c_str(), layers_cl[i]->type().c_str());
@@ -246,7 +245,7 @@ int Net<Dtype>::Forward(float *input)
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+        LOGD("Layer %s type %s spent %lfms", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
 #endif
     }
 

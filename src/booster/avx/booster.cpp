@@ -287,8 +287,8 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     }
     else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->input_h > 8 && param->input_w > 8 &&  param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
     {
-        //this->algo = WINOGRADF63FUSED;
-        this->algo = WINOGRADF63;
+        this->algo = WINOGRADF63FUSED;
+        //this->algo = WINOGRADF63;
     }
     else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
     {

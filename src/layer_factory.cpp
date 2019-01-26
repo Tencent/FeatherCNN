@@ -24,6 +24,7 @@
 #include "layers/batchnorm_layer.h"
 #include "layers/lrn_layer.h"
 #include "layers/relu_layer.h"
+#include "layers/leaky_relu_layer.h"
 #include "layers/prelu_layer.h"
 #include "layers/scale_layer.h"
 #include "layers/slice_layer.h"
@@ -32,6 +33,7 @@
 #include "layers/interp_layer.h"
 #include "layers/inner_product_layer.h"
 #include "layers/reshape_layer.h"
+#include "layers/yolov2_reorg_layer.h"
 
 #include "layers/softmax_layer.h"
 #include "layers/concat_layer.h"
@@ -90,6 +92,11 @@ Layer<Dtype> *GetReluLayer(const LayerParameter *layer_param, RuntimeParameter<D
 }
 
 template <class Dtype>
+Layer<Dtype> *GetLeakyReluLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new LeakyReluLayer(layer_param, rt_param);
+}
+template <class Dtype>
 Layer<Dtype> *GetPReluLayer(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *)new PReluLayer(layer_param, rt_param);
@@ -147,10 +154,17 @@ Layer<Dtype> *GetSoftmaxLayer(const LayerParameter *layer_param, RuntimeParamete
 {
     return (Layer<Dtype> *)new SoftmaxLayer(layer_param, rt_param);
 }
+
 template <class Dtype>
 Layer<Dtype> *GetReshapeLayer(const LayerParameter *layer_param, RuntimeParameter<Dtype> * rt_param)
 {
     return (Layer<Dtype> *)new ReshapeLayer(layer_param, rt_param);
+}
+
+template <class Dtype>
+Layer<Dtype> *GetYolov2ReorgLayer(const LayerParameter *layer_param, RuntimeParameter<float> * rt_param)
+{
+    return (Layer<Dtype> *)new Yolov2ReorgLayer(layer_param, rt_param);
 }
 
 void register_layer_creators()
@@ -163,6 +177,7 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Concat, GetConcatLayer);
     REGISTER_LAYER_CREATOR(Dropout, GetDropoutLayer);
     REGISTER_LAYER_CREATOR(ReLU, GetReluLayer);
+    REGISTER_LAYER_CREATOR(LeakyRelu, GetLeakyReluLayer);
     REGISTER_LAYER_CREATOR(PReLU, GetPReluLayer);
     REGISTER_LAYER_CREATOR(Scale, GetScaleLayer);
     REGISTER_LAYER_CREATOR(Slice, GetSliceLayer);
@@ -174,5 +189,6 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Softmax, GetSoftmaxLayer);
     REGISTER_LAYER_CREATOR(Filter, GetFilterLayer);
     REGISTER_LAYER_CREATOR(Reshape, GetReshapeLayer);
+    REGISTER_LAYER_CREATOR(Yolov2Reorg, GetYolov2ReorgLayer);
 }
 };

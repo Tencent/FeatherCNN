@@ -90,8 +90,7 @@ class ConvLayer : public Layer<float>
 
         int Forward()
         {
-            //_bottom_blobs[_bottom[0]]->PrintBlobInfo();
-            //_top_blobs[_top[0]]->PrintBlobInfo();
+	    //conv_param.LogParams(this->name().c_str());
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
             float* buffer = NULL;
@@ -108,7 +107,6 @@ class ConvLayer : public Layer<float>
             MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&processed_kernel, sizeof(float) * (processed_kernel_size)));
             conv_booster.Init(&conv_param, processed_kernel, kernel_data);
             MEMPOOL_CHECK_RETURN(this->common_mempool->Request(sizeof(float) * buffer_size));
-            printf("buffer size %d, processed_kernel_size %d\n", buffer_size, processed_kernel_size);
             return 0;
         }
 

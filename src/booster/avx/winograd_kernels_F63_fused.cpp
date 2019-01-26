@@ -899,6 +899,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
             winogradInputTransformSeqFusedAVX4(conv_param, VT, input_at_channel_block, start_block_id, end_block_id, cur_channel_cache_block);
             
             //Depth loop lay outside the outch loop so as to replay the VT cache.
+#pragma omp parallel for
             for (int d = 0; d < depth; ++d)
             {
                 for (int oc = 0; oc < conv_param->output_channels; oc += 4)
