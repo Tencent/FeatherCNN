@@ -318,7 +318,7 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int 
      * remaining output channel loop
      * remaining input channel block loop
      */
-    const int channel_cache_block = 384;
+    const int channel_cache_block = 128;
     int channel_pass = input_channels / channel_cache_block;
 
     if (input_channels % channel_cache_block > 0)
@@ -856,7 +856,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
      */
     const int depth = 16;
     const int img_cache_block = 32;
-    const int channel_cache_block = 384;
+    const int channel_cache_block = 128;
     // const int channel_cache_block = 128;
     const int out_mt_block = conv_param->output_channels; // For multithreading only
 
@@ -911,7 +911,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
 #if 1
                     const float *UTp = UT + oc / 4 * cur_channel_cache_block * 16
                                         + d * cur_channel_cache_block * conv_param->output_channels * 4
-                                        + cur_channel * conv_param->output_channels * 64;
+                                        + cur_channel * conv_param->output_channels * 64; //Seems to be redundant?
 #else               
                     const float *UTp = UT + cur_channel * conv_param->output_channels * 64 
                                           + oc / 4 * cur_channel_cache_block * 16 * depth 

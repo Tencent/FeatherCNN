@@ -107,8 +107,13 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 #ifdef TEST_WINOGRADF63FUSED
     printf("Forward fused Winograd F(6x6, 3x3)...\n");
     tmr.startBench();
+    Timer inner_tmr;
     for (int i = 0; i < nloops; ++i)
+    {
+        inner_tmr.startBench();
         winogradf63fused_booster.Forward(&conv_param, output_data_4, input_data, winogradf63fused_processed_kernel, winogradf63fused_buffer, bias_data); 
+        inner_tmr.endBench("WINOGRADF63FUSED spent");
+    }
     double winogradf63fused_time_ms = tmr.endBench() / nloops;
     double winogradf63fused_gflops = conv_param.GetFLOPS() / winogradf63fused_time_ms / 1.0e6;
     printf("WINOGRADF63FUSED spent %lfms at %5.3lfGFLOPS.\n", winogradf63fused_time_ms, winogradf63fused_gflops);
@@ -153,9 +158,9 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 int main()
 {
     // test_general_conv_kernels(4, 16, 12, 12, 3, 3, 1, 1, 1);
-    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 20);
+    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 1);
-    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 20);
+    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
     test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
     
     return 0;
