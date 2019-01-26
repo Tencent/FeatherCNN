@@ -122,7 +122,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     diff(output_data_2, output_data_3, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
 #ifdef TEST_WINOGRADF63FUSED
-    diff(output_data_2, output_data_4, conv_param.output_channels , conv_param.output_w * conv_param.output_h);
+    diff(output_data_2, output_data_4, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
     //Cleanup
 #ifdef TEST_NAIVE
@@ -152,9 +152,11 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 
 int main()
 {
-    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(4, 16, 12, 12, 3, 3, 1, 1, 1);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 20);
+    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 1);
     test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 20);
+    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
     
     return 0;
 }
