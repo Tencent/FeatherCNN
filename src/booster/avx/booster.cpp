@@ -228,7 +228,7 @@ int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* pr
     return 0;
 }
 
-//WINOGRADF63 Methods
+//WINOGRADF63FUSED Methods
 int WINOGRADF63FUSED_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
     int num_threads = 1;
@@ -271,6 +271,236 @@ int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, floa
     return 0;
 }
 
+//MKLDNN Methods
+int MKLDNN_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
+{
+    *buffer_size = 0;
+    // *processed_kernel_size = param->kernel_h * param->kernel_w * param->input_channels * param->output_channels;
+    *processed_kernel_size = 0;
+    return 0;
+}
+
+#include <mkldnn.h>
+#include <mm_malloc.h>
+
+#define CHECK(f) do { \
+    mkldnn_status_t s = f; \
+    if (s != mkldnn_success) { \
+        printf("[%s:%d] error: %s returns %d\n", __FILE__, __LINE__, #f, s); \
+        exit(2); \
+    } \
+} while(0)
+
+#define CHECK_TRUE(expr) do { \
+    int e_ = expr; \
+    if (!e_) { \
+        printf("[%s:%d] %s failed\n", __FILE__, __LINE__, #expr); \
+        exit(2); \
+    } \
+} while(0)
+
+void *aligned_malloc(size_t size, size_t alignment) {
+#ifdef _WIN32
+    return _aligned_malloc(size, alignment);
+#elif defined(_SX)
+    return malloc(size);
+#else
+    void *p;
+    return !posix_memalign(&p, alignment, size) ? p : NULL;
+#endif
+}
+
+#ifdef _WIN32
+void _free(void *ptr) {
+    _aligned_free(ptr);
+}
+#else
+void _free(void *ptr) {
+    free(ptr);
+}
+#endif
+
+static void MKLDNN_init_data_memory(uint32_t dim, const int *dims,
+        mkldnn_memory_format_t user_fmt, mkldnn_data_type_t mkldnn_f32,
+        mkldnn_engine_t engine, float *data, mkldnn_primitive_t *memory)
+{
+    mkldnn_memory_desc_t prim_md;
+    mkldnn_primitive_desc_t user_pd;
+    CHECK(mkldnn_memory_desc_init(&prim_md, dim, dims, mkldnn_f32, user_fmt));
+    CHECK(mkldnn_memory_primitive_desc_create(&user_pd, &prim_md, engine));
+    CHECK(mkldnn_primitive_create(memory, user_pd, NULL, NULL));
+
+    void *req = NULL;
+    CHECK(mkldnn_memory_get_data_handle(*memory, &req));
+    CHECK_TRUE(req == NULL);
+    CHECK(mkldnn_memory_set_data_handle(*memory, data));
+    CHECK(mkldnn_memory_get_data_handle(*memory, &req));
+    CHECK_TRUE(req == data);
+    CHECK(mkldnn_primitive_desc_destroy(user_pd));
+}
+
+
+mkldnn_status_t MKLDNN_prepare_reorder(
+        mkldnn_primitive_t *user_memory, /** in */
+        const_mkldnn_primitive_desc_t *prim_memory_pd, /** in */
+        int dir_is_user_to_prim, /** in: user -> prim or prim -> user */
+        mkldnn_primitive_t *prim_memory, /** out: memory primitive created */
+        mkldnn_primitive_t *reorder, /** out: reorder primitive created */
+        float *buffer)
+{
+    const_mkldnn_primitive_desc_t user_memory_pd;
+    mkldnn_primitive_get_primitive_desc(*user_memory, &user_memory_pd);
+
+    if (!mkldnn_memory_primitive_desc_equal(user_memory_pd, *prim_memory_pd)) {
+        /* memory_create(&p, m, NULL) means allocate memory */
+        CHECK(mkldnn_primitive_create(prim_memory, *prim_memory_pd,
+                NULL, NULL));
+        mkldnn_primitive_desc_t reorder_pd;
+        if (dir_is_user_to_prim) {
+            /* reorder primitive descriptor doesn't need engine, because it is
+             * already appeared in in- and out- memory primitive descriptors */
+            CHECK(mkldnn_reorder_primitive_desc_create(&reorder_pd,
+                        user_memory_pd, *prim_memory_pd));
+            mkldnn_primitive_at_t inputs = { *user_memory, 0 };
+            const_mkldnn_primitive_t outputs[] = { *prim_memory };
+            CHECK(mkldnn_primitive_create(reorder, reorder_pd, &inputs,
+                        outputs));
+        } else {
+            CHECK(mkldnn_reorder_primitive_desc_create(&reorder_pd,
+                        *prim_memory_pd, user_memory_pd));
+            mkldnn_primitive_at_t inputs = { *prim_memory, 0 };
+            const_mkldnn_primitive_t outputs[] = { *user_memory };
+            CHECK(mkldnn_primitive_create(reorder, reorder_pd, &inputs,
+                        outputs));
+        }
+        CHECK(mkldnn_memory_set_data_handle(*prim_memory, buffer));
+        CHECK(mkldnn_primitive_desc_destroy(reorder_pd));
+    } else {
+        *prim_memory = NULL;
+        *reorder = NULL;
+    }
+    return mkldnn_success;
+}
+
+int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
+{
+    int input_dims[4] = {1, param->input_channels, param->input_h, param->input_w};
+    int output_dims[4] = {1, param->output_channels, param->output_h, param->output_w};
+    int kernel_dims[4] = {param->output_channels, param->input_channels, param->kernel_h, param->kernel_w};
+    int bias_dims[1] = {param->output_channels};
+    int strides[2] = {param->stride_h, param->stride_w};
+    int padding_horizontal[2] = {param->pad_left, param->pad_right};
+    int padding_vertical[2] = {param->pad_top, param->pad_bottom};
+    mkldnn_engine_t engine;
+    CHECK(mkldnn_engine_create(&engine, mkldnn_cpu, 0 /* idx */));
+
+    mkldnn_primitive_t user_input_memory, user_output_memory, user_kernel_memory, user_bias_memory;
+    MKLDNN_init_data_memory(4, input_dims, mkldnn_nchw, mkldnn_f32, engine, param->input_fp32, &user_input_memory);
+    MKLDNN_init_data_memory(4, output_dims, mkldnn_nchw, mkldnn_f32, engine, param->output_fp32, &user_output_memory);
+    MKLDNN_init_data_memory(4, kernel_dims, mkldnn_nchw, mkldnn_f32, engine, kernel, &user_kernel_memory);
+    MKLDNN_init_data_memory(1, bias_dims, mkldnn_x, mkldnn_f32, engine, param->bias_fp32, &user_bias_memory);
+    
+    mkldnn_memory_desc_t conv_src_md, conv_weights_md, conv_bias_md, conv_dst_md;
+    CHECK(mkldnn_memory_desc_init(&conv_src_md, 4, input_dims, mkldnn_f32, mkldnn_any));
+    CHECK(mkldnn_memory_desc_init(&conv_weights_md, 4, kernel_dims, mkldnn_f32, mkldnn_any));
+    CHECK(mkldnn_memory_desc_init(&conv_bias_md, 1, bias_dims, mkldnn_f32, mkldnn_x));
+    CHECK(mkldnn_memory_desc_init(&conv_dst_md, 4, output_dims, mkldnn_f32, mkldnn_any));
+    
+    /* Create convolution primitive descriptor*/
+    mkldnn_convolution_desc_t conv_any_desc;
+    CHECK(mkldnn_convolution_forward_desc_init(&conv_any_desc, mkldnn_forward,
+                                               mkldnn_convolution_direct, &conv_src_md, &conv_weights_md,
+                                               &conv_bias_md, &conv_dst_md, strides, padding_horizontal,
+                                               padding_vertical, mkldnn_padding_zero));
+    mkldnn_primitive_desc_t conv_pd;
+    CHECK(mkldnn_primitive_desc_create(&conv_pd, &conv_any_desc, engine, NULL));
+
+    mkldnn_primitive_t conv_internal_src_memory, conv_internal_weights_memory,
+        conv_internal_dst_memory;
+
+
+    /* create reorder primitives between user data and convolution srcs
+     * if required */
+    mkldnn_primitive_t conv_reorder_src, conv_reorder_weights, conv_reorder_dst;
+
+    // src reorder
+    const_mkldnn_primitive_desc_t src_pd = mkldnn_primitive_desc_query_pd(
+        conv_pd, mkldnn_query_src_pd, 0);
+    size_t conv_src_size = mkldnn_memory_primitive_desc_get_size(src_pd);
+    float *conv_src_buffer = (float *)aligned_malloc(conv_src_size, 64);
+    CHECK(MKLDNN_prepare_reorder(&user_input_memory, &src_pd, 1,
+                          &conv_internal_src_memory, &conv_reorder_src, conv_src_buffer));
+    // dst reorder
+    const_mkldnn_primitive_desc_t dst_pd = mkldnn_primitive_desc_query_pd(
+        conv_pd, mkldnn_query_dst_pd, 0);
+    size_t conv_dst_size = mkldnn_memory_primitive_desc_get_size(dst_pd);
+    float *conv_dst_buffer = (float *)aligned_malloc(conv_dst_size, 64);
+    CHECK(MKLDNN_prepare_reorder(&user_output_memory, &dst_pd, 0,
+                          &conv_internal_dst_memory, &conv_reorder_dst, conv_dst_buffer));
+
+    // weights reorder
+    const_mkldnn_primitive_desc_t weights_pd = mkldnn_primitive_desc_query_pd(
+            conv_pd, mkldnn_query_weights_pd, 0);
+    size_t conv_weights_size
+            = mkldnn_memory_primitive_desc_get_size(weights_pd);
+    float *conv_weights_buffer = (float *)aligned_malloc(conv_weights_size, 64);
+    CHECK(MKLDNN_prepare_reorder(&user_kernel_memory, &weights_pd, 1,
+            &conv_internal_weights_memory, &conv_reorder_weights,
+            conv_weights_buffer));
+    mkldnn_primitive_t init_primitive;
+    mkldnn_stream_t init_stream;
+    CHECK(mkldnn_stream_create(&init_stream, mkldnn_eager));
+    CHECK(mkldnn_stream_submit(init_stream, 1, &conv_reorder_weights, NULL));
+    CHECK(mkldnn_stream_wait(init_stream, 1, NULL));
+    // print_floats(kernel, param->output_channels * param->input_channels, param->kernel_h * param->kernel_w);
+    mkldnn_stream_destroy(init_stream);
+
+    // Setup handle for the preprocessed kernel func.
+    mkldnn_primitive_t processed_kernel_memory;
+    CHECK(mkldnn_primitive_create(
+            &processed_kernel_memory, weights_pd, NULL, NULL));
+    CHECK(mkldnn_memory_set_data_handle(
+        processed_kernel_memory, conv_weights_buffer));
+
+    // print_floats(conv_weights_buffer, conv_weights_size / 8 / sizeof(float), 8);
+    mkldnn_primitive_t conv_src_memory = conv_internal_src_memory ?
+        conv_internal_src_memory : user_input_memory;
+    mkldnn_primitive_t conv_dst_memory = conv_internal_dst_memory ?
+        conv_internal_dst_memory : user_output_memory;
+
+    mkldnn_primitive_at_t conv_srcs[] = {
+        mkldnn_primitive_at(conv_src_memory, 0),
+        // mkldnn_primitive_at(processed_kernel_memory, 0),
+        mkldnn_primitive_at(conv_reorder_weights, 0),
+        mkldnn_primitive_at(user_bias_memory, 0),
+    };
+    const_mkldnn_primitive_t conv_dsts[] = { conv_internal_dst_memory };
+
+    /* finally create a convolution primitive */
+    mkldnn_primitive_t conv_primitives;
+    CHECK(mkldnn_primitive_create(&conv_primitives, conv_pd, conv_srcs, conv_dsts));
+
+    param->forward_primitives.clear();
+    if (conv_src_memory == conv_internal_src_memory)
+        param->forward_primitives.push_back(conv_reorder_src);
+    param->forward_primitives.push_back(conv_primitives);
+    if (conv_dst_memory == conv_internal_dst_memory)
+        param->forward_primitives.push_back(conv_reorder_dst);
+    printf("forward primitive num %ld\n", param->forward_primitives.size());
+    return 0;
+}
+
+int MKLDNN_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+{
+    mkldnn_stream_t stream;
+    CHECK(mkldnn_stream_create(&stream, mkldnn_eager));
+    CHECK(mkldnn_stream_submit(stream, param->forward_primitives.size(), param->forward_primitives.data(), NULL));
+    CHECK(mkldnn_stream_wait(stream, param->forward_primitives.size(), NULL));
+    // print_floats(conv_dst_buffer, param->output_channels * param->output_h, param->output_w);
+    // printf("-----------------------------\n");
+    // print_floats(param->output_fp32, param->output_channels * param->output_h, param->output_w);
+    return 0;
+}
 
 //Class wrappers
 ConvBooster::ConvBooster()
@@ -343,6 +573,11 @@ int ConvBooster::SetFuncs()
             this->GetBufferSize = DEPTHWISE_GetBufferSize;
             this->Init = DEPTHWISE_Init;
             this->Forward = DEPTHWISE_Forward;
+            return 0;
+        case MKLDNN:
+            this->GetBufferSize = MKLDNN_GetBufferSize;
+            this->Init = MKLDNN_Init;
+            this->Forward = MKLDNN_Forward;
             return 0;
         default:
             LOGE("This algo is not supported on AVX2.");

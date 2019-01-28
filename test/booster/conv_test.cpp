@@ -4,6 +4,249 @@
 #include "utils.h"
 // #define TEST_SGECONV
 #define TEST_WINOGRADF63FUSED
+// #define MKLDNN_STANDALONE_TEST
+#define TEST_MKLDNN
+
+
+#ifdef MKLDNN_STANDALONE_TEST
+#include <mkldnn.hpp>
+#include <mm_malloc.h>
+
+void test_mkldnn_split(booster::ConvParam *conv_param, float* output, float* input, float* kernel, const int nloop)
+{
+    float* dummy_bias = (float*) _mm_malloc(sizeof(float) * conv_param->output_channels, 32);
+    memset(dummy_bias, 0, sizeof(float) * conv_param->output_channels);
+    
+    auto cpu_engine = mkldnn::engine(mkldnn::engine::cpu, 0);
+
+    mkldnn::memory::dims conv_src_tz = {1, conv_param->input_channels, conv_param->input_h, conv_param->input_w};
+    mkldnn::memory::dims conv_weights_tz = {conv_param->output_channels, conv_param->input_channels, conv_param->kernel_h, conv_param->kernel_w};
+    mkldnn::memory::dims conv_dst_tz = {1, conv_param->output_channels, conv_param->output_h, conv_param->output_w};
+    mkldnn::memory::dims conv_bias_tz = {conv_param->output_channels};
+    mkldnn::memory::dims conv_strides = {1, 1};
+    mkldnn::memory::dims conv_padding = {conv_param->pad_left, conv_param->pad_top};
+
+    auto conv_user_src_memory = mkldnn::memory({{{conv_src_tz},
+                                                 mkldnn::memory::data_type::f32,
+                                                 mkldnn::memory::format::nchw},
+                                                cpu_engine},
+                                               input);
+    auto conv_user_dst_memory = mkldnn::memory({{{conv_dst_tz},
+                                                 mkldnn::memory::data_type::f32,
+                                                 mkldnn::memory::format::nchw},
+                                                cpu_engine},
+                                                output);
+    auto conv_user_weights_memory = mkldnn::memory({{{conv_weights_tz},
+                                                     mkldnn::memory::data_type::f32,
+                                                     mkldnn::memory::format::oihw},
+                                                    cpu_engine},
+                                                   kernel);
+    auto conv_user_bias_memory = mkldnn::memory({{{conv_bias_tz},
+                                                     mkldnn::memory::data_type::f32,
+                                                     mkldnn::memory::format::x},
+                                                    cpu_engine},
+                                                   dummy_bias);
+
+    auto conv_src_md = mkldnn::memory::desc({conv_src_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+    auto conv_bias_md = mkldnn::memory::desc({conv_bias_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+
+    auto conv_weights_md = mkldnn::memory::desc({conv_weights_tz},
+                                                mkldnn::memory::data_type::f32,
+                                                mkldnn::memory::format::any);
+
+    auto conv_dst_md = mkldnn::memory::desc({conv_dst_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+
+    auto conv_desc = mkldnn::convolution_forward::desc(mkldnn::prop_kind::forward,
+                                                       mkldnn::convolution_direct,
+                                                       conv_src_md,
+                                                       conv_weights_md,
+                                                       conv_bias_md,
+                                                       conv_dst_md,
+                                                       conv_strides,
+                                                       conv_padding,
+                                                       conv_padding,
+                                                       mkldnn::padding_kind::zero);
+    //Bind Engine
+    auto conv_prim_desc = mkldnn::convolution_forward::primitive_desc(conv_desc, cpu_engine);
+    
+    std::vector<mkldnn::primitive> input_ops;
+    std::vector<mkldnn::primitive> forward_ops;
+    std::vector<mkldnn::primitive> output_ops;
+    auto conv_src_memory = conv_user_src_memory;
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.src_primitive_desc()) !=
+        conv_user_src_memory.get_primitive_desc())
+    {
+        conv_src_memory = mkldnn::memory(conv_prim_desc.src_primitive_desc());
+        input_ops.push_back(mkldnn::reorder(conv_user_src_memory, conv_src_memory));
+    }
+
+    auto conv_weights_memory = conv_user_weights_memory;
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.weights_primitive_desc()) !=
+        conv_user_weights_memory.get_primitive_desc())
+    {
+        conv_weights_memory =
+            mkldnn::memory(conv_prim_desc.weights_primitive_desc());
+
+        input_ops.push_back(mkldnn::reorder(conv_user_weights_memory,
+                                      conv_weights_memory));
+    }
+    auto conv_dst_memory = conv_user_dst_memory;
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.dst_primitive_desc()) !=
+        conv_user_dst_memory.get_primitive_desc())
+    {
+        conv_dst_memory =
+            mkldnn::memory(conv_prim_desc.dst_primitive_desc());
+        output_ops.push_back(mkldnn::reorder(conv_dst_memory,
+                                             conv_user_dst_memory));
+    }
+
+    forward_ops.push_back(mkldnn::convolution_forward(conv_prim_desc, conv_src_memory,
+                                              conv_weights_memory, conv_user_bias_memory, conv_dst_memory));
+    // forward_ops.push_back(mkldnn::reorder(conv_user_dst_memory,
+    //                                          conv_dst_memory));
+
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(input_ops).wait();
+    Timer timer;
+    timer.startBench();
+    Timer mkldnn_tmr;
+    for(int i = 0; i < nloop; ++i)
+    {
+        mkldnn_tmr.startBench();
+        mkldnn::stream(mkldnn::stream::kind::eager).submit(forward_ops).wait();
+        mkldnn_tmr.endBench("MKLDNN latency: ");
+    }
+    timer.endBench("MKLDNN Avg Latency: ", (double)nloop);
+
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(output_ops).wait();
+}
+
+void test_mkldnn_pipeline(booster::ConvParam *conv_param, float* output, float* input, float* kernel, const int nloop)
+{
+    float* dummy_bias = (float*) _mm_malloc(sizeof(float) * conv_param->output_channels, 32);
+    memset(dummy_bias, 0, sizeof(float) * conv_param->output_channels);
+    
+    auto cpu_engine = mkldnn::engine(mkldnn::engine::cpu, 0);
+
+    mkldnn::memory::dims conv_src_tz = {1, conv_param->input_channels, conv_param->input_h, conv_param->input_w};
+    mkldnn::memory::dims conv_weights_tz = {conv_param->output_channels, conv_param->input_channels, conv_param->kernel_h, conv_param->kernel_w};
+    mkldnn::memory::dims conv_dst_tz = {1, conv_param->output_channels, conv_param->output_h, conv_param->output_w};
+    mkldnn::memory::dims conv_bias_tz = {conv_param->output_channels};
+    mkldnn::memory::dims conv_strides = {1, 1};
+    mkldnn::memory::dims conv_padding = {conv_param->pad_left, conv_param->pad_top};
+
+    auto conv_user_src_memory = mkldnn::memory({{{conv_src_tz},
+                                                 mkldnn::memory::data_type::f32,
+                                                 mkldnn::memory::format::nchw},
+                                                cpu_engine},
+                                               input);
+    auto conv_user_dst_memory = mkldnn::memory({{{conv_dst_tz},
+                                                 mkldnn::memory::data_type::f32,
+                                                 mkldnn::memory::format::nchw},
+                                                cpu_engine},
+                                                output);
+    auto conv_user_weights_memory = mkldnn::memory({{{conv_weights_tz},
+                                                     mkldnn::memory::data_type::f32,
+                                                     mkldnn::memory::format::oihw},
+                                                    cpu_engine},
+                                                   kernel);
+    auto conv_user_bias_memory = mkldnn::memory({{{conv_bias_tz},
+                                                     mkldnn::memory::data_type::f32,
+                                                     mkldnn::memory::format::x},
+                                                    cpu_engine},
+                                                   dummy_bias);
+
+    auto conv_src_md = mkldnn::memory::desc({conv_src_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+    auto conv_bias_md = mkldnn::memory::desc({conv_bias_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+
+    auto conv_weights_md = mkldnn::memory::desc({conv_weights_tz},
+                                                mkldnn::memory::data_type::f32,
+                                                mkldnn::memory::format::any);
+
+    auto conv_dst_md = mkldnn::memory::desc({conv_dst_tz},
+                                            mkldnn::memory::data_type::f32,
+                                            mkldnn::memory::format::any);
+
+    auto conv_desc = mkldnn::convolution_forward::desc(mkldnn::prop_kind::forward,
+                                                       mkldnn::convolution_direct,
+                                                       conv_src_md,
+                                                       conv_weights_md,
+                                                       conv_bias_md,
+                                                       conv_dst_md,
+                                                       conv_strides,
+                                                       conv_padding,
+                                                       conv_padding,
+                                                       mkldnn::padding_kind::zero);
+    //Bind Engine
+    auto conv_prim_desc = mkldnn::convolution_forward::primitive_desc(conv_desc, cpu_engine);
+    
+    std::vector<mkldnn::primitive> input_ops;
+    std::vector<mkldnn::primitive> forward_ops;
+    std::vector<mkldnn::primitive> output_ops;
+    auto conv_src_memory = conv_user_src_memory;
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.src_primitive_desc()) !=
+        conv_user_src_memory.get_primitive_desc())
+    {
+        conv_src_memory = mkldnn::memory(conv_prim_desc.src_primitive_desc());
+        forward_ops.push_back(mkldnn::reorder(conv_user_src_memory, conv_src_memory));
+    }
+
+    auto conv_weights_memory = conv_user_weights_memory;
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.weights_primitive_desc()) !=
+        conv_user_weights_memory.get_primitive_desc())
+    {
+        conv_weights_memory =
+            mkldnn::memory(conv_prim_desc.weights_primitive_desc());
+
+        input_ops.push_back(mkldnn::reorder(conv_user_weights_memory,
+                                      conv_weights_memory));
+    }
+
+    auto conv_dst_memory = conv_user_dst_memory;
+
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.dst_primitive_desc()) !=
+        conv_user_dst_memory.get_primitive_desc())
+    {
+        conv_dst_memory =
+            mkldnn::memory(conv_prim_desc.dst_primitive_desc());
+        
+    }
+
+    forward_ops.push_back(mkldnn::convolution_forward(conv_prim_desc, conv_src_memory,
+                                              conv_weights_memory, conv_user_bias_memory, conv_dst_memory));
+    
+    if (mkldnn::memory::primitive_desc(conv_prim_desc.dst_primitive_desc()) !=
+        conv_user_dst_memory.get_primitive_desc())
+        forward_ops.push_back(mkldnn::reorder(conv_dst_memory,
+                                             conv_user_dst_memory));
+
+    // forward_ops.push_back(mkldnn::reorder(conv_user_dst_memory,
+    //                                          conv_dst_memory));
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(input_ops).wait();
+    Timer timer;
+    timer.startBench();
+    Timer mkldnn_tmr;
+    for(int i = 0; i < nloop; ++i)
+    {
+        mkldnn_tmr.startBench();
+        mkldnn::stream(mkldnn::stream::kind::eager).submit(forward_ops).wait();
+        mkldnn_tmr.endBench("MKLDNN latency: ");
+    }
+    timer.endBench("MKLDNN Avg Latency: ", (double)nloop);
+    // mkldnn::stream(mkldnn::stream::kind::eager).submit(output_ops).wait();
+}
+#endif
+
+
 int test_general_conv_kernels(int output_channels, int input_channels, int input_h, int input_w, int kernel_h, int kernel_w, int stride, int pad, int nloops)
 {
     booster::ConvParam conv_param;
@@ -22,7 +265,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     conv_param.pad_top = pad;
     conv_param.group = 1;
     // conv_param.bias_term = true;
-    conv_param.bias_term = false;
+    conv_param.bias_term = true;
     conv_param.AssignOutputDim();
     conv_param.activation = booster::None;
     conv_param.LogParams("TEST");
@@ -38,6 +281,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     float* output_data_2 = (float*) malloc(sizeof(float) * conv_param.output_channels * conv_param.output_h * conv_param.output_w);
     float* output_data_3 = (float*) malloc(sizeof(float) * conv_param.output_channels * conv_param.output_h * conv_param.output_w);
     float* output_data_4 = (float*) malloc(sizeof(float) * conv_param.output_channels * conv_param.output_h * conv_param.output_w);
+    float* output_data_5 = (float*) malloc(sizeof(float) * conv_param.output_channels * conv_param.output_h * conv_param.output_w);
 
     float* bias_data = (float*) malloc(sizeof(float) * conv_param.output_channels);
 
@@ -83,6 +327,15 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     float* winogradf63fused_buffer = (float*) malloc(sizeof(float) * buffer_size);
     winogradf63fused_booster.Init(&conv_param, winogradf63fused_processed_kernel, kernel_data);
 #endif
+#ifdef TEST_MKLDNN
+    printf("Initializing MKLDNN...\n");
+    booster::ConvBooster mkldnn_booster;
+    conv_param.input_fp32 = input_data;
+    conv_param.output_fp32 = output_data_5;
+    conv_param.bias_fp32 = bias_data;
+    mkldnn_booster.ForceSelectAlgo(booster::ConvAlgo::MKLDNN);
+    mkldnn_booster.Init(&conv_param, NULL, kernel_data);
+#endif
 
     //Forward
 #ifdef TEST_NAIVE
@@ -98,7 +351,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     double im2col_time_ms = tmr.endBench() / nloops;
     double im2col_gflops = conv_param.GetFLOPS() / im2col_time_ms / 1.0e6;
     printf("IM2COL spent %lfms at %5.3lfGFLOPS.\n", im2col_time_ms, im2col_gflops);
-
+    // print_floats(output_data_2, conv_param.output_channels * conv_param.output_h, conv_param.output_w);
 #ifdef TEST_SGECONV
     printf("Forward sgeconv...\n");
     sgeconv_booster.Forward(&conv_param, output_data_3, input_data, sgeconv_processed_kernel, sgeconv_buffer, bias_data); 
@@ -117,7 +370,21 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     double winogradf63fused_time_ms = tmr.endBench() / nloops;
     double winogradf63fused_gflops = conv_param.GetFLOPS() / winogradf63fused_time_ms / 1.0e6;
     printf("WINOGRADF63FUSED spent %lfms at %5.3lfGFLOPS.\n", winogradf63fused_time_ms, winogradf63fused_gflops);
+    diff(output_data_2, output_data_4, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
+
+    printf("Forward MKLDNN...\n");
+    tmr.startBench();
+    for (int i = 0; i < nloops; ++i)
+    {
+        inner_tmr.startBench();
+        mkldnn_booster.Forward(&conv_param, NULL, NULL, NULL, NULL, NULL);
+        inner_tmr.endBench("MKLDNN spent");
+    }
+    double mkldnn_time_ms = tmr.endBench() / nloops;
+    double mkldnn_gflops = conv_param.GetFLOPS() / mkldnn_time_ms / 1.0e6;
+    printf("MKLDNN spent %lfms at %5.3lfGFLOPS.\n", mkldnn_time_ms, mkldnn_gflops);
+    diff(output_data_2, output_data_5, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 
     // Check results
 #ifdef TEST_NAIVE
@@ -127,7 +394,11 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     diff(output_data_2, output_data_3, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
 #ifdef TEST_WINOGRADF63FUSED
-    diff(output_data_2, output_data_4, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
+    
+#endif
+#ifdef MKLDNN_STANDALONE_TEST
+    // test_mkldnn_pipeline(&conv_param, output_data_5, input_data, kernel_data, nloops);
+    diff(output_data_2, output_data_5, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
     //Cleanup
 #ifdef TEST_NAIVE
@@ -150,6 +421,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     free(output_data_2);
     free(output_data_3);
     free(output_data_4);
+    free(output_data_5);
     free(bias_data);
     
     return 0;
@@ -157,11 +429,14 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 
 int main()
 {
-    // test_general_conv_kernels(4, 16, 12, 12, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(4, 4, 12, 12, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(4, 8, 8, 8, 3, 3, 1, 1, 1);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
-    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(192, 1280, 18, 18, 3, 3, 1, 1, 1);
     test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
-    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(3, 3, 24, 24, 3, 3, 1, 1, 30);
+    // test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 1);
     
     return 0;
 }

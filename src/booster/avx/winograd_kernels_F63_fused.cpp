@@ -858,7 +858,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     const int img_cache_block = 32;
     const int channel_cache_block = 128;
     // const int channel_cache_block = 128;
-    const int out_mt_block = conv_param->output_channels; // For multithreading only
+    const int outch_mt_block = conv_param->output_channels; // For multithreading only
 
     // The buffer size for each thread.
     const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels * 4 + conv_param->output_channels * 64 * 4 * img_cache_block;
@@ -868,7 +868,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
     // Slice the images into blocks.
     int img_pass = nBlocks / img_cache_block;
     int channel_pass = conv_param->input_channels / channel_cache_block;
-    int out_pass = conv_param->output_channels / out_mt_block;
+    int outch_pass = conv_param->output_channels / outch_mt_block;
     if (nBlocks % img_cache_block > 0)
         ++img_pass;
     if (conv_param->input_channels % channel_cache_block > 0)
@@ -899,7 +899,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
             winogradInputTransformSeqFusedAVX4(conv_param, VT, input_at_channel_block, start_block_id, end_block_id, cur_channel_cache_block);
             
             //Depth loop lay outside the outch loop so as to replay the VT cache.
-#pragma omp parallel for
+// #pragma omp parallel for
             for (int d = 0; d < depth; ++d)
             {
                 for (int oc = 0; oc < conv_param->output_channels; oc += 4)
@@ -913,6 +913,8 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
                     const float *UTp = UT + oc / 4 * cur_channel_cache_block * 16
                                         + d * cur_channel_cache_block * conv_param->output_channels * 4
                                         + cur_channel * conv_param->output_channels * 64; //Seems to be redundant?
+                    // const float* UTp = UT + d * cur_channel_cache_block * conv_param->output_channels * 4
+                    // + cur_channel * conv_param->output_channels * 64;
 #else               
                     const float *UTp = UT + cur_channel * conv_param->output_channels * 64 
                                           + oc / 4 * cur_channel_cache_block * 16 * depth 

@@ -1,7 +1,10 @@
 file(GLOB AVX_SRC ./*.cpp)
 file(GLOB AVX_HEADERS ./*.h)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a -fopenmp")
+if(USE_MKLDNN)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MKLDNN")
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -std=c++11 -march=core-avx2 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -std=c++11 -march=core-avx2 -O3 -Wno-format -Wno-unused-parameter")
 

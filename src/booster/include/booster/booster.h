@@ -35,10 +35,13 @@
 #else
 #define FEATHER_MEN_ALIGN(alignment) __attribute__((aligned(alignment)))
 #endif
+#define BOOSTER_USE_MKLDNN
+#ifdef BOOSTER_USE_MKLDNN
+#include <mkldnn.hpp>
+#endif
 
 namespace booster
 {
-
 enum ConvAlgo
 {
     NAIVE,
@@ -48,6 +51,9 @@ enum ConvAlgo
     WINOGRADF63,
     WINOGRADF63FUSED,
     WINOGRADF23,
+#ifdef BOOSTER_USE_MKLDNN
+    MKLDNN,
+#endif
 };
 
 enum ActivationType
@@ -74,7 +80,24 @@ struct ConvParam
     int pad_top;
     int group;
     bool bias_term;
+    
     ActivationType activation;
+    float* input_fp32;
+    float* output_fp32;
+    float* bias_fp32;
+#ifdef BOOSTER_USE_MKLDNN
+    std::vector<mkldnn_primitive_t> forward_primitives;
+    // mkldnn::stream *mkl_dnn_stream;
+    // std::vector<mkldnn::primitive> init_ops;
+    // std::vector<mkldnn::primitive> forward_ops;
+    // mkldnn::memory conv_weights_memory;
+    // mkldnn::memory conv_input_memory;
+    // mkldnn::memory conv_output_memory;
+    // mkldnn::memory user_input_memory;
+    // mkldnn::memory user_output_memory;
+    // float* user_input_memory;
+    // float* user_input_memory;
+#endif
 #ifdef FEATHER_OPENCL
     int channel_block_size;
     int padded_input_channels;
