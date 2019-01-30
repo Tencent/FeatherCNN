@@ -844,7 +844,8 @@ size_t getPackArraySize_F6x6_3x3(int inChannels, int num_threads)
 template<bool HAS_RELU, bool HAS_BIAS>
 void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias_arr, float* buffers, ThreadPool* thpool)
 {
-    int num_threads = thpool->threadNum();
+    // int num_threads = thpool->threadNum();
+    int num_threads = 1;
     int nRowBlocks = (conv_param->output_w + 5) / 6;
     int nColBlocks = (conv_param->output_h + 5) / 6;
     int nBlocks = nRowBlocks * nColBlocks;
@@ -899,7 +900,7 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
             winogradInputTransformSeqFusedAVX4(conv_param, VT, input_at_channel_block, start_block_id, end_block_id, cur_channel_cache_block);
             
             //Depth loop lay outside the outch loop so as to replay the VT cache.
-// #pragma omp parallel for
+#pragma omp parallel for
             for (int d = 0; d < depth; ++d)
             {
                 for (int oc = 0; oc < conv_param->output_channels; oc += 4)
@@ -945,6 +946,8 @@ void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float
         /*
          * Traverse all output channels in a GEMM cache block.
          */
+        #pragma omp parallel for
+
         for (int oc = 0; oc < conv_param->output_channels; oc += 4)
         {
             for (int i = start_block_id; i < end_block_id; i += 4)

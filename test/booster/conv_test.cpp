@@ -7,6 +7,28 @@
 #define TEST_WINOGRADF63FUSED
 #define TEST_MKLDNN
 
+
+void *aligned_malloc(size_t size, size_t alignment) {
+#ifdef _WIN32
+    return _aligned_malloc(size, alignment);
+#elif defined(_SX)
+    return malloc(size);
+#else
+    void *p;
+    return !posix_memalign(&p, alignment, size) ? p : NULL;
+#endif
+}
+
+#ifdef _WIN32
+void _free(void *ptr) {
+    _aligned_free(ptr);
+}
+#else
+void _free(void *ptr) {
+    free(ptr);
+}
+#endif
+
 int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo, float* kernel_data, int nloops)
 {
     booster::ConvBooster conv_booster;
@@ -15,8 +37,8 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     int buffer_size = 0;
     int processed_kernel_size = 0;
     conv_booster.GetBufferSize(param, &buffer_size, &processed_kernel_size);
-    float* conv_processed_kernel = (float*) malloc(sizeof(float) * processed_kernel_size);
-    float* conv_buffer = (float*) malloc(sizeof(float) * buffer_size);
+    float* conv_processed_kernel = (float*) aligned_malloc(sizeof(float) * processed_kernel_size, 64);
+    float* conv_buffer = (float*) aligned_malloc(sizeof(float) * buffer_size, 64);
     conv_booster.Init(param, conv_processed_kernel, kernel_data);
     printf("Forward %s...\n", conv_booster.GetAlgoName().c_str());
     Timer tmr;
@@ -34,6 +56,7 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     free(conv_processed_kernel);
     free(conv_buffer);
 }
+
 
 int test_general_conv_kernels(int output_channels, int input_channels, int input_h, int input_w, int kernel_h, int kernel_w, int stride, int pad, int nloops)
 {

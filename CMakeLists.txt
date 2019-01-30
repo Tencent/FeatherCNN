@@ -55,7 +55,7 @@ endif()
 
 #add_definitions(-Wall -Wextra -Wno-unused-function)
 add_definitions(-fPIC)
-add_definitions(-Ofast)
+#add_definitions(-Ofast)
 add_definitions(-ffast-math)
 # add_definitions(-march=native)
 
