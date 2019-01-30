@@ -417,7 +417,7 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
 
     mkldnn_primitive_t conv_internal_src_memory, conv_internal_weights_memory,
         conv_internal_dst_memory;
-
+    
 
     /* create reorder primitives between user data and convolution srcs
      * if required */
@@ -453,7 +453,7 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
     CHECK(mkldnn_stream_submit(init_stream, 1, &conv_reorder_weights, NULL));
     CHECK(mkldnn_stream_wait(init_stream, 1, NULL));
     // print_floats(kernel, param->output_channels * param->input_channels, param->kernel_h * param->kernel_w);
-    mkldnn_stream_destroy(init_stream);
+    CHECK(mkldnn_stream_destroy(init_stream));
 
     // Setup handle for the preprocessed kernel func.
     mkldnn_primitive_t processed_kernel_memory;
@@ -487,6 +487,9 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
     if (conv_dst_memory == conv_internal_dst_memory)
         param->forward_primitives.push_back(conv_reorder_dst);
     printf("forward primitive num %ld\n", param->forward_primitives.size());
+
+    CHECK(mkldnn_primitive_desc_destroy(conv_pd));
+    
     return 0;
 }
 

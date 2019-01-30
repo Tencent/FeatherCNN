@@ -187,7 +187,26 @@ class ConvBooster
         GET_BUFFER_SIZE_FUNC GetBufferSize;
         INIT_FUNC Init;
         FORWARD_FUNC Forward;
-
+        std::string GetAlgoName()
+        {
+            switch(this->algo)
+            {
+            case NAIVE:
+                return std::string("NAIVE");
+            case IM2COL:
+                return std::string("IM2COL");
+            case WINOGRADF63:
+                return std::string("WINOGRADF63");
+            case WINOGRADF63FUSED:
+                return std::string("WINOGRADF63FUSED");
+            case MKLDNN:
+                return std::string("MKLDNN");
+            case SGECONV:
+                return std::string("GECONV");
+            default:
+                return std::string("UNDEFINED");
+            }
+        }
     private:
         ConvAlgo algo;
 };
