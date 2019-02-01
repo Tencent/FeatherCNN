@@ -271,6 +271,12 @@ int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, floa
     return 0;
 }
 
+int DUMMY_Destroy(ConvParam *param)
+{
+    //Destroy nothing
+    return 0;
+}
+
 //MKLDNN Methods
 int MKLDNN_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
@@ -489,7 +495,7 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
     printf("forward primitive num %ld\n", param->forward_primitives.size());
 
     CHECK(mkldnn_primitive_desc_destroy(conv_pd));
-    
+
     return 0;
 }
 
@@ -502,6 +508,11 @@ int MKLDNN_Forward(ConvParam *param, float* output, float* input, float* process
     // print_floats(conv_dst_buffer, param->output_channels * param->output_h, param->output_w);
     // printf("-----------------------------\n");
     // print_floats(param->output_fp32, param->output_channels * param->output_h, param->output_w);
+    return 0;
+}
+
+int MKLDNN_Destroy(ConvParam *param)
+{
     return 0;
 }
 

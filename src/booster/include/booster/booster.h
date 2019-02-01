@@ -82,21 +82,18 @@ struct ConvParam
     bool bias_term;
     
     ActivationType activation;
+
+    // These arrays will change into buffers
+    // Don't rely on them too much
     float* input_fp32;
     float* output_fp32;
-    float* bias_fp32;
+    float* bias_fp32; 
+    float* kernel_fp32;
+    float* processed_kernel_fp32;
+    float* common_buffer_fp32;
+
 #ifdef BOOSTER_USE_MKLDNN
     std::vector<mkldnn_primitive_t> forward_primitives;
-    // mkldnn::stream *mkl_dnn_stream;
-    // std::vector<mkldnn::primitive> init_ops;
-    // std::vector<mkldnn::primitive> forward_ops;
-    // mkldnn::memory conv_weights_memory;
-    // mkldnn::memory conv_input_memory;
-    // mkldnn::memory conv_output_memory;
-    // mkldnn::memory user_input_memory;
-    // mkldnn::memory user_output_memory;
-    // float* user_input_memory;
-    // float* user_input_memory;
 #endif
 #ifdef FEATHER_OPENCL
     int channel_block_size;

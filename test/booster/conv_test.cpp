@@ -29,7 +29,7 @@ void _free(void *ptr) {
 }
 #endif
 
-int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo, float* kernel_data, int nloops)
+int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo, int nloops)
 {
     booster::ConvBooster conv_booster;
     conv_booster.ForceSelectAlgo(conv_algo);
@@ -39,7 +39,7 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     conv_booster.GetBufferSize(param, &buffer_size, &processed_kernel_size);
     float* conv_processed_kernel = (float*) aligned_malloc(sizeof(float) * processed_kernel_size, 64);
     float* conv_buffer = (float*) aligned_malloc(sizeof(float) * buffer_size, 64);
-    conv_booster.Init(param, conv_processed_kernel, kernel_data);
+    conv_booster.Init(param, conv_processed_kernel, param->kernel_fp32);
     printf("Forward %s...\n", conv_booster.GetAlgoName().c_str());
     Timer tmr;
     Timer inner_tmr;
@@ -92,6 +92,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     rand_fill<float>(bias_data, conv_param.output_channels);
     conv_param.input_fp32 = input_data;
     conv_param.bias_fp32 = bias_data;
+    conv_param.kernel_fp32 = kernel_data;
     bool im2col_is_ref = true;
 #ifdef RUN_NAIVE_REF
     im2col_is_ref = false;
@@ -101,21 +102,21 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     if (im2col_is_ref)
     {
         conv_param.output_fp32 = output_data_ref;
-        test_feather_booster(&conv_param, booster::IM2COL, kernel_data, 1);
+        test_feather_booster(&conv_param, booster::IM2COL, 1);
     } else {
         conv_param.output_fp32 = output_data;
-        test_feather_booster(&conv_param, booster::IM2COL, kernel_data, nloops);
+        test_feather_booster(&conv_param, booster::IM2COL, nloops);
         diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
     }
     
 #ifdef TEST_WINOGRADF63FUSED
     conv_param.output_fp32 = output_data;
-    test_feather_booster(&conv_param, booster::WINOGRADF63FUSED, kernel_data, nloops);
+    test_feather_booster(&conv_param, booster::WINOGRADF63FUSED, nloops);
     diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
 #ifdef TEST_MKLDNN
     conv_param.output_fp32 = output_data;
-    test_feather_booster(&conv_param, booster::MKLDNN, kernel_data, nloops);
+    test_feather_booster(&conv_param, booster::MKLDNN, nloops);
     diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
 
@@ -134,9 +135,9 @@ int main()
     // test_general_conv_kernels(4, 4, 12, 12, 3, 3, 1, 1, 1);
     // test_general_conv_kernels(4, 8, 8, 8, 3, 3, 1, 1, 1);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
-    // test_general_conv_kernels(192, 1280, 18, 18, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
     test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
-    test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
+    // test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
     // test_general_conv_kernels(256, 512, 36, 36, 1, 1, 1, 1, 30);
     // test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
     // test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 1);
