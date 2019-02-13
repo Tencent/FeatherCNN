@@ -35,7 +35,7 @@
 #else
 #define FEATHER_MEN_ALIGN(alignment) __attribute__((aligned(alignment)))
 #endif
-#define BOOSTER_USE_MKLDNN
+// #define BOOSTER_USE_MKLDNN
 #ifdef BOOSTER_USE_MKLDNN
 #include <mkldnn.hpp>
 #endif
@@ -62,6 +62,23 @@ enum ActivationType
     ReLU,
 };
 
+enum LayoutType
+{
+    FLAT,
+    NCHW,
+    NHWC,
+    NCHW4,
+    NCHW8,
+    NCHW16,
+};
+
+struct Matrix
+{
+    float* buffer_fp32;
+    LayoutType layout;
+    size_t data_size;
+};
+
 struct ConvParam
 {
     int output_channels;
@@ -83,7 +100,7 @@ struct ConvParam
     
     ActivationType activation;
 
-    // These arrays will change into buffers
+    // These raw pointers will change into some form of structs
     // Don't rely on them too much
     float* input_fp32;
     float* output_fp32;
@@ -169,8 +186,8 @@ struct ConvParam
 };
 
 typedef int (*GET_BUFFER_SIZE_FUNC)(ConvParam *param, int* buffer_size, int* processed_kernel_size);
-typedef int (*INIT_FUNC)(ConvParam *param, float* processed_kernel, float* kernel);
-typedef int (*FORWARD_FUNC)(ConvParam *param, float* output, float* input, float* kernel, float* buffer, float* bias_arr);
+typedef int (*INIT_FUNC)(ConvParam *param);
+typedef int (*FORWARD_FUNC)(ConvParam *param);
 
 //ConvBooster doesn't allocate any memory.
 class ConvBooster
@@ -196,8 +213,10 @@ class ConvBooster
                 return std::string("WINOGRADF63");
             case WINOGRADF63FUSED:
                 return std::string("WINOGRADF63FUSED");
+#ifdef BOOSTER_USE_MKLDNN
             case MKLDNN:
                 return std::string("MKLDNN");
+#endif
             case SGECONV:
                 return std::string("GECONV");
             default:

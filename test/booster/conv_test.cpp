@@ -39,7 +39,9 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     conv_booster.GetBufferSize(param, &buffer_size, &processed_kernel_size);
     float* conv_processed_kernel = (float*) aligned_malloc(sizeof(float) * processed_kernel_size, 64);
     float* conv_buffer = (float*) aligned_malloc(sizeof(float) * buffer_size, 64);
-    conv_booster.Init(param, conv_processed_kernel, param->kernel_fp32);
+    param->processed_kernel_fp32 = conv_processed_kernel;
+    param->common_buffer_fp32 = conv_buffer;
+    conv_booster.Init(param);
     printf("Forward %s...\n", conv_booster.GetAlgoName().c_str());
     Timer tmr;
     Timer inner_tmr;
@@ -47,7 +49,7 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     for (int i = 0; i < nloops; ++i)
     {
         inner_tmr.startBench();
-        conv_booster.Forward(param, param->output_fp32, param->input_fp32, conv_processed_kernel, conv_buffer, param->bias_fp32); 
+        conv_booster.Forward(param); 
         inner_tmr.endBench((conv_booster.GetAlgoName() + " forward:").c_str());
     }
     double time_ms = tmr.endBench() / nloops;
@@ -55,6 +57,7 @@ int test_feather_booster(booster::ConvParam* param, booster::ConvAlgo conv_algo,
     printf("Booster %s spent %lfms at %5.3lfGFLOPS.\n", conv_booster.GetAlgoName().c_str(), time_ms, gflops);
     free(conv_processed_kernel);
     free(conv_buffer);
+    return 0;
 }
 
 

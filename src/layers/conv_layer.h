@@ -57,7 +57,7 @@ class ConvLayer : public Layer<float>
             if (conv_param.bias_term)
             {
                 assert(this->_weight_blobs.size() == 2);
-                bias_data = this->_weight_blobs[1]->data();
+                conv_param.bias_fp32 = this->_weight_blobs[1]->data();
             }
         }
 
@@ -94,8 +94,11 @@ class ConvLayer : public Layer<float>
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
             float* buffer = NULL;
-            MEMPOOL_CHECK_RETURN(this->common_mempool->GetPtr(&buffer));
-            conv_booster.Forward(&conv_param, output, input, processed_kernel, buffer, bias_data);
+            conv_param.input_fp32 = input;
+            conv_param.output_fp32 = output;
+            
+            MEMPOOL_CHECK_RETURN(this->common_mempool->GetPtr(&(conv_param.common_buffer_fp32)));
+            conv_booster.Forward(&conv_param);
             return 0;
         }
 
@@ -105,7 +108,8 @@ class ConvLayer : public Layer<float>
             int processed_kernel_size = 0;
             int ret = conv_booster.GetBufferSize(&conv_param, &buffer_size, &processed_kernel_size);
             MEMPOOL_CHECK_RETURN(this->private_mempool.Alloc(&processed_kernel, sizeof(float) * (processed_kernel_size)));
-            conv_booster.Init(&conv_param, processed_kernel, kernel_data);
+            conv_param.processed_kernel_fp32 = processed_kernel;
+            conv_booster.Init(&conv_param);
             MEMPOOL_CHECK_RETURN(this->common_mempool->Request(sizeof(float) * buffer_size));
             return 0;
         }

@@ -32,28 +32,28 @@ int NAIVE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kerne
     return 0;
 }
 
-int NAIVE_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int NAIVE_Init(ConvParam *param)
 {
-    memcpy(processed_kernel, kernel, sizeof(float) * param->output_channels * param->input_channels * param->kernel_h * param->kernel_w);
+    memcpy(param->processed_kernel_fp32, param->kernel_fp32, sizeof(float) * param->output_channels * param->input_channels * param->kernel_h * param->kernel_w);
     return 0;
 }
 
-int NAIVE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int NAIVE_Forward(ConvParam *param)
 {
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    im2col(param, buffer, input);
-    naive_sgemm(M, N, K, processed_kernel, buffer, output);
+    im2col(param, param->common_buffer_fp32, param->input_fp32);
+    naive_sgemm(M, N, K, param->processed_kernel_fp32, param->common_buffer_fp32, param->output_fp32);
     if (param->bias_term)
     {
         size_t out_stride = param->output_w * param->output_h;
         for (int i = 0; i < param->output_channels; ++i)
         {
-            float bias = bias_arr[i];
+            float bias = param->bias_fp32[i];
             for (int j = 0; j < out_stride; ++j)
             {
-                output[out_stride * i + j] = output[out_stride * i + j] + bias;
+                param->output_fp32[out_stride * i + j] = param->output_fp32[out_stride * i + j] + bias;
             }
         }
     }
@@ -70,17 +70,17 @@ int IM2COL_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kern
     return 0;
 }
 
-int IM2COL_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int IM2COL_Init(ConvParam *param)
 {
     const int nc = 160;
     const int kc = 320;
     const int M = param->output_channels;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    packed_sgemm_init<6>(M, K, kc, processed_kernel, kernel, K);
+    packed_sgemm_init<6>(M, K, kc, param->processed_kernel_fp32, param->kernel_fp32, K);
     return 0;
 }
 
-int IM2COL_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int IM2COL_Forward(ConvParam *param)
 {
     const int nc = 160;
     const int kc = 320;
@@ -88,16 +88,16 @@ int IM2COL_Forward(ConvParam *param, float* output, float* input, float* process
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    float* im2col_buf = buffer + offset;
-    im2col(param, im2col_buf, input);
+    float* im2col_buf = param->common_buffer_fp32 + offset;
+    im2col(param, im2col_buf, param->input_fp32);
     if ((!param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<false, false>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
+        packed_sgemm_activation<false, false>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     else if ((param->bias_term) && (param->activation == None))
-        packed_sgemm_activation<true,  false>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
+        packed_sgemm_activation<true,  false>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     else if ((!param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<false,  true>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
+        packed_sgemm_activation<false,  true>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     else if ((param->bias_term) && (param->activation == ReLU))
-        packed_sgemm_activation<true,   true>(M, N, K, processed_kernel, im2col_buf, N, output, N, nc, kc, bias_arr, 1, buffer);
+        packed_sgemm_activation<true,   true>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     return 0;
 }
 
@@ -107,12 +107,12 @@ int SGECONV_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_ker
     return 0;
 }
 
-int SGECONV_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int SGECONV_Init(ConvParam *param)
 {
     return 0;
 }
 
-int SGECONV_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int SGECONV_Forward(ConvParam *param)
 {
     return 0;
 }
@@ -127,13 +127,13 @@ int DEPTHWISE_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_k
     return 0;
 }
 
-int DEPTHWISE_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int DEPTHWISE_Init(ConvParam *param)
 {
-    memcpy(processed_kernel, kernel, sizeof(float) * param->group * param->kernel_h * param->kernel_w);
+    memcpy(param->processed_kernel_fp32, param->kernel_fp32, sizeof(float) * param->group * param->kernel_h * param->kernel_w);
     return 0;
 }
 
-int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int DEPTHWISE_Forward(ConvParam *param)
 {
     void (*dwConv)(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
     if (param->bias_term && (param->activation == ReLU))
@@ -149,12 +149,12 @@ int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* proc
     {
 		ConvParam padded_param = *param;
 		padded_param.AssignPaddedDim();
-        pad_input(buffer, input, param->input_channels, param->input_w, param->input_h, param->pad_left,
+        pad_input(param->common_buffer_fp32, param->input_fp32, param->input_channels, param->input_w, param->input_h, param->pad_left,
                   param->pad_top, param->pad_right, param->pad_bottom);
-		dwConv(output, buffer, param->input_channels, padded_param.input_w, padded_param.input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
+		dwConv(param->output_fp32, param->common_buffer_fp32, param->input_channels, padded_param.input_w, padded_param.input_h, param->stride_w, param->stride_h, param->processed_kernel_fp32, param->kernel_w, param->kernel_h, param->group, 1, param->bias_fp32);
     }
     else
-        dwConv(output, input, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, processed_kernel, param->kernel_w, param->kernel_h, param->group, 1, bias_arr);
+        dwConv(param->output_fp32, param->input_fp32, param->input_channels, param->input_w, param->input_h, param->stride_w, param->stride_h, param->processed_kernel_fp32, param->kernel_w, param->kernel_h, param->group, 1, param->bias_fp32);
     return 0;
 }
 //WINOGRADF23 Methods
@@ -163,12 +163,12 @@ int WINOGRADF23_GetBufferSize(ConvParam *param, int* buffer_size, int* processed
     return 0;
 }
 
-int WINOGRADF23_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int WINOGRADF23_Init(ConvParam *param)
 {
     return 0;
 }
 
-int WINOGRADF23_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF23_Forward(ConvParam *param)
 {
     return 0;
 }
@@ -195,13 +195,13 @@ int WINOGRADF63_GetBufferSize(ConvParam *param, int* buffer_size, int* processed
     return 0;
 }
 
-int WINOGRADF63_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int WINOGRADF63_Init(ConvParam *param)
 {
-    transformKernel_F6x6_3x3(processed_kernel, kernel, param->input_channels, param->output_channels);
+    transformKernel_F6x6_3x3(param->processed_kernel_fp32, param->kernel_fp32, param->input_channels, param->output_channels);
     return 0;
 }
 
-int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF63_Forward(ConvParam *param)
 {
     const size_t inputw = param->input_w + param->pad_left + param->pad_right;
     const size_t inputh = param->input_h + param->pad_top + param->pad_bottom;
@@ -210,11 +210,11 @@ int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* pr
     const int nBlocks = nRowBlocks * nColBlocks;
 
     //Get addresses
-    float *VT = buffer;
+    float *VT = param->common_buffer_fp32;
     float *WT = VT + 64 * nBlocks * param->input_channels;                      //Offset by sizeof VT
     float *padded_input = WT + 64 * nBlocks * param->output_channels;           //Offset by sizeof WT
     float *pack_array = padded_input + inputw * inputh * param->input_channels; //Offset by sizeof WT
-    pad_input(padded_input, input, param->input_channels, param->input_w, param->input_h, param->pad_left, param->pad_top, param->pad_right, param->pad_bottom);
+    pad_input(padded_input, param->input_fp32, param->input_channels, param->input_w, param->input_h, param->pad_left, param->pad_top, param->pad_right, param->pad_bottom);
     WinogradOutType out_type;
     if ((!param->bias_term) && (param->activation == None))
         out_type = Nothing;
@@ -224,7 +224,7 @@ int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* pr
         out_type = Relu;
     else if ((param->bias_term) && (param->activation == ReLU))
         out_type = BiasReLU;
-    winogradNonFusedTransform_F6x6_3x3(output, param->output_channels, WT, VT, processed_kernel, padded_input, param->input_channels, inputh, inputw, out_type, bias_arr, pack_array, 1);
+    winogradNonFusedTransform_F6x6_3x3(param->output_fp32, param->output_channels, WT, VT, param->processed_kernel_fp32, padded_input, param->input_channels, inputh, inputw, out_type, param->bias_fp32, pack_array, 1);
     return 0;
 }
 
@@ -242,31 +242,31 @@ int WINOGRADF63FUSED_GetBufferSize(ConvParam *param, int* buffer_size, int* proc
     return 0;
 }
 
-int WINOGRADF63FUSED_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int WINOGRADF63FUSED_Init(ConvParam *param)
 {
-    Winograd_F63_Fused::transformKernel_F6x6_3x3(processed_kernel, kernel, param->input_channels, param->output_channels);
+    Winograd_F63_Fused::transformKernel_F6x6_3x3(param->processed_kernel_fp32, param->kernel_fp32, param->input_channels, param->output_channels);
     return 0;
 }
 
-int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF63FUSED_Forward(ConvParam *param)
 {
     // printf("Fused Winograd Forward\n");
     // param->LogParams("FORWARD_TEST");
     if (!param->bias_term && param->activation == None)
     {
-        Winograd_F63_Fused::WinogradF63Fused<false, false>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<false, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
     }
     else if (!param->bias_term && param->activation == ReLU)
     {
-        Winograd_F63_Fused::WinogradF63Fused<true, false>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<true, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
     }
     else if (param->bias_term && param->activation == None)
     {
-        Winograd_F63_Fused::WinogradF63Fused<false, true>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<false, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
     }
     else if (param->bias_term && param->activation == ReLU)
     {
-        Winograd_F63_Fused::WinogradF63Fused<true, true>(param, output, input, processed_kernel, bias_arr, buffer, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<true, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
     }
     return 0;
 }
@@ -388,7 +388,7 @@ mkldnn_status_t MKLDNN_prepare_reorder(
     return mkldnn_success;
 }
 
-int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
+int MKLDNN_Init(ConvParam *param)
 {
     int input_dims[4] = {1, param->input_channels, param->input_h, param->input_w};
     int output_dims[4] = {1, param->output_channels, param->output_h, param->output_w};
@@ -403,7 +403,7 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
     mkldnn_primitive_t user_input_memory, user_output_memory, user_kernel_memory, user_bias_memory;
     MKLDNN_init_data_memory(4, input_dims, mkldnn_nchw, mkldnn_f32, engine, param->input_fp32, &user_input_memory);
     MKLDNN_init_data_memory(4, output_dims, mkldnn_nchw, mkldnn_f32, engine, param->output_fp32, &user_output_memory);
-    MKLDNN_init_data_memory(4, kernel_dims, mkldnn_nchw, mkldnn_f32, engine, kernel, &user_kernel_memory);
+    MKLDNN_init_data_memory(4, kernel_dims, mkldnn_nchw, mkldnn_f32, engine, param->kernel_fp32, &user_kernel_memory);
     MKLDNN_init_data_memory(1, bias_dims, mkldnn_x, mkldnn_f32, engine, param->bias_fp32, &user_bias_memory);
     
     mkldnn_memory_desc_t conv_src_md, conv_weights_md, conv_bias_md, conv_dst_md;
@@ -499,7 +499,7 @@ int MKLDNN_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int MKLDNN_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int MKLDNN_Forward(ConvParam *param)
 {
     mkldnn_stream_t stream;
     CHECK(mkldnn_stream_create(&stream, mkldnn_eager));
