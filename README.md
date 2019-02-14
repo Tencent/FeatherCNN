@@ -7,7 +7,7 @@
 ## Introduction
 
 FeatherCNN is a high-performance lightweight CNN inference library, developed by Tencent AI Platform Department.
-FeatureCNN origins from our Game AI project for King of Glory (Chinese: 王者荣耀), in which we aim to build a neural model for MOBA Game AI and run it on mobile devices.
+FeatureCNN origins from our Game AI project for King of Glory (Chinese: 王者荣耀), in which we aim to build a neural model for MOBA Game AI and deploy it with the game, and run it online on a mobile device.
 FeatherCNN targets at ARM CPUs.
 <!---We will extend it to cover other architecutures in the near future.--->
 
