@@ -38,5 +38,5 @@ namespace Winograd_F63_Fused
 void transformKernel_F6x6_3x3(float* UT, float* kernel, int inChannels, int outChannels);
 
 template <bool FuseReLU, bool FuseBias>
-void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers, ThreadPool* thpool);
+void WinogradF63Fused(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
 };

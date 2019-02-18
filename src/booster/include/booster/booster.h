@@ -30,6 +30,8 @@
 #include "CLHPP/clhpp_runtime.hpp"
 #endif
 
+#include <booster/thpool.h>
+
 #ifdef _WIN32
 #define FEATHER_MEN_ALIGN(alignment) __declspec(align(alignment))
 #else
@@ -108,7 +110,7 @@ struct ConvParam
     float* kernel_fp32;
     float* processed_kernel_fp32;
     float* common_buffer_fp32;
-
+    ThreadPool* thpool;
 #ifdef BOOSTER_USE_MKLDNN
     std::vector<mkldnn_primitive_t> forward_primitives;
 #endif

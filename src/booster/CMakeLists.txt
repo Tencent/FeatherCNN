@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 2.8.10)
 
 file(GLOB LIB_HEADERS ./include/booster/*.h)
 
+if(BOOSTER_MKLDNN)
+message(STATUS "Compiling with MKLDNN")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOSTER_USE_MKLDNN")
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wno-format")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -std=c++11 -Wall")
 
@@ -26,7 +31,6 @@ add_subdirectory(./arm)
   endif()
 
 endif()
-
 
 set(BOOSTER_INSTALL_DIR "${PROJECT_BINARY_DIR}/install/booster")
 

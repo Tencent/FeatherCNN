@@ -254,19 +254,19 @@ int WINOGRADF63FUSED_Forward(ConvParam *param)
     // param->LogParams("FORWARD_TEST");
     if (!param->bias_term && param->activation == None)
     {
-        Winograd_F63_Fused::WinogradF63Fused<false, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<false, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32);
     }
     else if (!param->bias_term && param->activation == ReLU)
     {
-        Winograd_F63_Fused::WinogradF63Fused<true, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<true, false>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32);
     }
     else if (param->bias_term && param->activation == None)
     {
-        Winograd_F63_Fused::WinogradF63Fused<false, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<false, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32);
     }
     else if (param->bias_term && param->activation == ReLU)
     {
-        Winograd_F63_Fused::WinogradF63Fused<true, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32, NULL);
+        Winograd_F63_Fused::WinogradF63Fused<true, true>(param, param->output_fp32, param->input_fp32, param->processed_kernel_fp32, param->bias_fp32, param->common_buffer_fp32);
     }
     return 0;
 }
@@ -286,7 +286,6 @@ int MKLDNN_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kern
     return 0;
 }
 
-#include <mkldnn.h>
 #include <mm_malloc.h>
 
 #define CHECK(f) do { \
