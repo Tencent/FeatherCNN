@@ -21,7 +21,7 @@
 #ifdef _WIN32
 	#define HAVE_STRUCT_TIMESPEC
 #endif
-#include <pthread.h>
+//#include <pthread.h>
 
 #ifdef FEATHER_OPENCL
 #include <sys/system_properties.h>

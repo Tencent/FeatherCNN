@@ -28,15 +28,22 @@
 #include <stdio.h>
 #include <cstring>
 
+#ifndef _WINDOWS
 #define CHECK_TYPE(rt) if (!CheckDtype())           \
                     {                               \
                         LOGE("Dtype check failed. Please use uint16_t or float for GPU_CL; float for CPU"); \
                         return rt;                  \
                     }                               \
-
 #define LAYER_TIMING
 //#define LAYER_INIT_TIMING
 //#define PRINT_SETUP_LOG
+#else
+#define CHECK_TYPE(rt) if (!CheckDtype())           \
+                    {                               \
+                        LOGE("Dtype check failed. Please use uint16_t or float for GPU_CL; float for CPU"); \
+                        return rt;                  \
+                    }
+#endif
 
 
 namespace feather
