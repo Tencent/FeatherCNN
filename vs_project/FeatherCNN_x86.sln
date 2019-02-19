@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FeatherCNN_x86", "FeatherCNN_x86\FeatherCNN_x86.vcxproj", "{21FFB48B-6F2E-48C1-AE1F-892CEC252EAC}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "FeatherCNN_x86\test.vcxproj", "{4029ECA8-2AA4-431A-8257-7FA8785BDF1E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{21FFB48B-6F2E-48C1-AE1F-892CEC252EAC} = {21FFB48B-6F2E-48C1-AE1F-892CEC252EAC}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
