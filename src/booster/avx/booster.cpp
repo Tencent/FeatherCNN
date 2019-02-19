@@ -231,12 +231,15 @@ int WINOGRADF63_Forward(ConvParam *param)
 //WINOGRADF63FUSED Methods
 int WINOGRADF63FUSED_GetBufferSize(ConvParam *param, int* buffer_size, int* processed_kernel_size)
 {
-    int num_threads = 1;
-    const int cache_block = 48;
+    int num_threads = param->thpool->threadNum();
+    const int cache_block = 32;
+    const int inch_cache_block = 192;
     size_t winograd_mem_size = 0;
-    winograd_mem_size += cache_block * 64 * param->input_channels * 4; //fused VT
-    winograd_mem_size += cache_block * 64 * param->output_channels * 4; //fused WT
-
+    winograd_mem_size += cache_block * 64 * inch_cache_block * 4; //fused VT
+    winograd_mem_size += cache_block * 64 * param->output_channels * 16; //fused WT
+    
+    winograd_mem_size = winograd_mem_size * num_threads;
+    
     *buffer_size = winograd_mem_size;
     *processed_kernel_size = 64 * param->input_channels * param->output_channels;
     return 0;
