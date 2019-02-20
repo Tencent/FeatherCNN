@@ -25,6 +25,7 @@
     <ClCompile Include="..\..\src\booster\avx\depthwise.cpp" />
     <ClCompile Include="..\..\src\booster\avx\generic_kernels.cpp" />
     <ClCompile Include="..\..\src\booster\avx\helper.cpp" />
+    <ClCompile Include="..\..\src\booster\avx\sgeconv.cpp" />
     <ClCompile Include="..\..\src\booster\avx\sgemm.cpp" />
     <ClCompile Include="..\..\src\booster\avx\sgemv.cpp" />
     <ClCompile Include="..\..\src\booster\avx\winograd_kernels_F63.cpp" />

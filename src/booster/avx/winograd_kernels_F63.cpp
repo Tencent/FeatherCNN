@@ -348,7 +348,7 @@ void winogradInputFrameTransformSeq(float *VT, int inChannels, float *input, int
     //printf("diff %d, %d\n", hdiff, wdiff);
     //print_floats(input, inChannels* inputh , inputw);
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 	#pragma omp parallel for num_threads(num_threads) schedule(static)
 #else
     #pragma omp parallel for num_threads(num_threads) collapse(2) schedule(static)
@@ -1094,7 +1094,7 @@ void winogradOutputTransform(float *output, int outputh, int outputw, int ldout,
     int nBlocksAligned = nBlocks & 0xFFFFFFFC;
     int rem = nBlocks & 0x3;
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 	#pragma omp parallel for num_threads(num_threads) schedule(static)
 #else
     #pragma omp parallel for num_threads(num_threads) schedule(static) collapse(3)

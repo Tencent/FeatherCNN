@@ -126,6 +126,9 @@
     <ClCompile Include="..\..\src\layers\softmax_layer.cpp">
       <Filter>源文件\layers</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\booster\avx\sgeconv.cpp">
+      <Filter>源文件\booster\avx</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\blob.h">

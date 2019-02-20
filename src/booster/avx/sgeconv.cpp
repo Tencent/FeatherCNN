@@ -459,7 +459,7 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
-#ifdef _WINDOWS
+#ifdef _WIN32
             FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
             FEATHER_MEN_ALIGN(32) float* packB = new float[kc * nc];
 #else
@@ -479,7 +479,7 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
             pack_B_im2col_stride_1_avx(conv_param, kc, nc, nt * nt, packB, pB, B, N);
             compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 			delete[] loadC;
 			delete[] packB;
 #endif
@@ -488,14 +488,12 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
     {
         int kt = KBlocks - 1;
         k_len = (K - kt * kc);
-		// BUG: why alloc loadC twice? Comment line below for now, and a review was badly needed.
-        // FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
             //float loadC[6 * nc];
             //float* pA = packA + kt * kc * M_align;
-#ifdef _WINDOWS
+#ifdef _WIN32
             FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
             FEATHER_MEN_ALIGN(32) float* packB = new float[kc * nc];
 #else
@@ -514,7 +512,7 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
             pack_B_avx(k_len, n_len, packB, pB, N);
             compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 			delete[] loadC;
 			delete[] packB;
 #endif
