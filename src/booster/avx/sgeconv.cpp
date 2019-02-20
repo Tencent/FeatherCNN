@@ -459,8 +459,13 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
-            FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
-            FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+#ifdef _WINDOWS
+            FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
+            FEATHER_MEN_ALIGN(32) float* packB = new float[kc * nc];
+#else
+			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+#endif
             //float* pA = packA + kt * kc * M_align;
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
@@ -473,19 +478,30 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
             // pack_B_avx(k_len, n_len, packB, pB, N);
             pack_B_im2col_stride_1_avx(conv_param, kc, nc, nt * nt, packB, pB, B, N);
             compute_block_activation<false, false>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
+
+#ifdef _WINDOWS
+			delete[] loadC;
+			delete[] packB;
+#endif
         }
     }
     {
         int kt = KBlocks - 1;
         k_len = (K - kt * kc);
-        FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+		// BUG: why alloc loadC twice? Comment line below for now, and a review was badly needed.
+        // FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
 //#pragma omp parallel for num_threads(2)
         for (int nt = 0; nt < NBlocks; ++nt)
         {
             //float loadC[6 * nc];
             //float* pA = packA + kt * kc * M_align;
-            FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
-            FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+#ifdef _WINDOWS
+            FEATHER_MEN_ALIGN(32) float* loadC = new float[6 * nc];
+            FEATHER_MEN_ALIGN(32) float* packB = new float[kc * nc];
+#else
+			FEATHER_MEN_ALIGN(32) float loadC[6 * nc];
+			FEATHER_MEN_ALIGN(32) float packB[kc * nc];
+#endif
             float* pA = packA + kt * kc * M;
             float* pB = B + kt * kc * ldb + nt * nc;
             float* pC = C + nt * nc;
@@ -497,6 +513,11 @@ void packed_sgeconv_im2col_activation(booster::ConvParam *conv_param, float *pac
             memset(packB, 0, sizeof(float) * kc * nc);
             pack_B_avx(k_len, n_len, packB, pB, N);
             compute_block_activation<fuseBias, fuseRelu>(M, n_len, k_len, pA, packB, loadC, pC, ldc, bias, M);
+
+#ifdef _WINDOWS
+			delete[] loadC;
+			delete[] packB;
+#endif
         }
     }
     //_mm_free(packB);

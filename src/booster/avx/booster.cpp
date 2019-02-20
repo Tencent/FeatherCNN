@@ -136,6 +136,7 @@ int DEPTHWISE_Init(ConvParam *param, float* processed_kernel, float* kernel)
 int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
 {
     void (*dwConv)(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
+	dwConv = nullptr;
     if (param->bias_term && (param->activation == ReLU))
         dwConv = dwConv_template<true, true>;
     else if (param->bias_term && !(param->activation == ReLU))

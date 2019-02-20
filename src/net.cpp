@@ -34,7 +34,7 @@
                         return rt;                  \
                     }                               \
 
-#define LAYER_TIMING
+//#define LAYER_TIMING
 //#define LAYER_INIT_TIMING
 //#define PRINT_SETUP_LOG
 
