@@ -275,7 +275,7 @@ void winogradKernelTransform_F6x6_3x3(float *transKernel, float *kernel)
     //print_floats(bigBlock, 8, 8);
 }
 
-void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride, float *base, int oi, int oj)
+void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride, float *base)
 {
     float ktm[24] =
     {
@@ -309,7 +309,7 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
     }
 }
 
-void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int outChannels)
+void transformKernel_F6x6_3x3_orig(float *UT, float *kernel, int input_channels, int outChannels)
 {
     /* Data layout for kernel transformation (UT):
      *
@@ -320,15 +320,15 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int 
      */
     const int inch_cache_block = 192;
     const int outch_cache_block = outChannels;
-    int channel_pass = input_channels / inch_cache_block;
+    int inch_pass = input_channels / inch_cache_block;
 
     if (input_channels % inch_cache_block > 0)
-        ++channel_pass;
+        ++inch_pass;
     int inChannels = inch_cache_block;
-    for (int q = 0; q < channel_pass; ++q)
+    for (int q = 0; q < inch_pass; ++q)
     {
         int cur_inch = q * inch_cache_block;
-        if (q == channel_pass - 1)
+        if (q == inch_pass - 1)
             inChannels = input_channels - cur_inch;
         for (int i = 0; i < inChannels; ++i)
         {
@@ -341,7 +341,7 @@ void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int 
                 UTp += (j / 4) * (16 * inChannels);     //Big block id for every 4 output channels.
                 UTp += 16 * i;                          //input channel offset.
                 UTp += (j & 0x3) * 4;                   //Starting point in each 4 outch batch.
-                winogradKernelTransformPacked(UTp, kernel + 9 * (j * input_channels + i + cur_inch), 4 * inChannels * outChannels, UT, i, j);
+                winogradKernelTransformPacked(UTp, kernel + 9 * (j * input_channels + i + cur_inch), 4 * inChannels * outChannels, UT);
 #else
                 float *UTp = UT + (j / 4) * (256 * inChannels) //Big block id for every 4 output channels.
                              + 16 * i                          //input channel offset.
@@ -840,17 +840,17 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
 {
     int nRowBlocks = (conv_param->output_w + 5) / 6;
     const int depth = 16;
-    int channel_pass = inch_pass;
     int cur_inch_cache_block = inch_cache_block;
     int cur_outch_cache_block = end_outch_id - start_outch_id;
     // const float* UTpt = UT;
 
-    for (int q = 0; q < channel_pass; ++q)
+    for (int q = 0; q < inch_pass; ++q)
     {
         int cur_inch = q * inch_cache_block;
         const float *input_at_channel_block = conv_param->input_fp32 + cur_inch * conv_param->input_h * conv_param->input_w;
-        if (q == channel_pass - 1)
+        if (q == inch_pass - 1)
             cur_inch_cache_block = conv_param->input_channels - cur_inch;
+        // printf("inch %d\n", cur_inch_cache_block);
         //Winograd Input Transform
         winogradInputTransformSeqFusedAVX4(conv_param, VT, input_at_channel_block, start_block_id, end_block_id, cur_inch_cache_block);
 
@@ -860,9 +860,9 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
 
         for (int d = 0; d < depth; ++d)
         {
-            const float *UTp = UT + cur_inch * cur_outch_cache_block * 64 + d * cur_inch_cache_block * conv_param->output_channels * 4;
+            const float *UTp = UT + cur_inch * cur_outch_cache_block * 64 + d * cur_inch_cache_block * cur_outch_cache_block * 4;
             const float *UTpt = UTp;
-            for (int oc = 0; oc < cur_outch_cache_block; oc += 4)
+            for (int oc = start_outch_id; oc < end_outch_id; oc += 4)
             {
                 //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
                 for (int i = start_block_id; i < end_block_id; i += 4)
@@ -880,10 +880,11 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
                                     * 1) Each time access 4 (output channels) * 16 (tile elements)
                                     * 2) 4 tiles are computed in 16 (depth) loops.
                                     */
-                    float *WTp = WT + 64 * d + (i - start_block_id) * 64 * 4 + oc * img_cache_block * 64 * 16 / 4;
+                    float *WTp = WT + 64 * d + (i - start_block_id) * 256 + (oc - start_outch_id) * img_cache_block * 256;
                     TensorGEMMInnerKernel4x4x4_avx(WTp, UTpt, vp, cur_inch_cache_block, q == 0);
                 }
                 UTpt += cur_inch_cache_block * 16;
+                // UTpt += cur_inch_cache_block * 8;
             }
         }
     }
@@ -891,6 +892,7 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
     /* Output Transform */
     for (int oc = start_outch_id; oc < end_outch_id; oc += 4)
     {
+        // printf("oc %d\n", oc);
         for (int i = start_block_id; i < end_block_id; i += 4)
         {
             for (int tc = 0; tc < 4; ++tc)
@@ -901,7 +903,7 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
                     const int ldchannel = conv_param->output_h * conv_param->output_w;
                     int bidx = (i + ti) % nRowBlocks;
                     int bidy = (i + ti) / nRowBlocks;
-                    float *outp = conv_param->output_fp32 + bidx * 6 + bidy * 6 * ldout + (oc + tc + start_outch_id) * ldchannel;
+                    float *outp = conv_param->output_fp32 + bidx * 6 + bidy * 6 * ldout + (oc + tc) * ldchannel;
                     int vx = conv_param->output_h - bidx * 6 - 6;
                     int vy = conv_param->output_w - bidy * 6 - 6;
                     vx = std::min<int>(vx, 0);
@@ -911,7 +913,7 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
                         bias_value = conv_param->bias_fp32[oc + tc];
                     if (vx < -6 || vy < -6)
                         continue;
-                    float *WTp = WT + (i - start_block_id) * 64 * 4 + ti * 4 + tc * 16 + oc * img_cache_block * 64 * 16 / 4;
+                    float *WTp = WT + (i - start_block_id) * 256 + ti * 4 + tc * 16 + (oc - start_outch_id) * img_cache_block * 256;
                     WinogradOutputTransformBlockAVX<HAS_RELU, HAS_BIAS>(WTp, outp, ldout, ldchannel, vx, vy, 64, bias_value);
                 }
             }
@@ -920,9 +922,11 @@ void ComputeCacheBlock(booster::ConvParam *conv_param, const float* UT, float* V
     #endif
 }
 
+#define OUTCH_BLOCK_TEST
 template <bool HAS_RELU, bool HAS_BIAS>
 void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float *input, const float *transformed_weights, const float *bias_arr, float *buffers)
 {
+    // print_floats(conv_param->processed_kernel_fp32, 16 * 16, 64);
     assert(input == conv_param->input_fp32);
     // int num_threads = thpool->threadNum();
     int num_threads = conv_param->thpool->threadNum();
@@ -939,22 +943,26 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
     const int depth = 16;
     const int img_cache_block = 32;
     const int inch_cache_block = 192;
-    const int outch_cache_block = conv_param->output_channels; // For multithreading only
-
+#ifdef OUTCH_BLOCK_TEST
+    const int outch_cache_block = 96;
+#else
+    const int outch_cache_block = conv_param->output_channels;
+#endif
     // The buffer size for each thread.
-    const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels * 4 + conv_param->output_channels * 64 * 4 * img_cache_block;
+    // const int thread_buffer_stride = img_cache_block * 64 * conv_param->input_channels * 4 + conv_param->output_channels * 64 * 4 * img_cache_block;
+    const int thread_buffer_stride = img_cache_block * 64 * inch_cache_block * 4 + outch_cache_block * 64 * 4 * img_cache_block;
 
     // The UT buffer offset after VT start pos, which is the size of VT.
     // const int UT_offset = img_cache_block * 64 * conv_param->input_channels * 4;
     const int VT_offset = img_cache_block * 64 * inch_cache_block * 4;
     // Slice the images into blocks.
     int img_pass = nBlocks / img_cache_block;
-    int channel_pass = conv_param->input_channels / inch_cache_block;
+    int inch_pass = conv_param->input_channels / inch_cache_block;
     int outch_pass = conv_param->output_channels / outch_cache_block;
     if (nBlocks % img_cache_block > 0)
         ++img_pass;
     if (conv_param->input_channels % inch_cache_block > 0)
-        ++channel_pass;
+        ++inch_pass;
     if (conv_param->output_channels % outch_cache_block > 0)
         ++outch_pass;
     int cur_outch_cache_block = outch_cache_block;
@@ -974,20 +982,19 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
             int end_outch_id = (r + 1) * outch_cache_block;
             end_outch_id = std::min<int>(end_outch_id, conv_param->output_channels);
 
-            cur_outch_cache_block = end_outch_id - start_outch_id;
-
             thread_futures.emplace_back(
-                conv_param->thpool->enqueue([conv_param, thread_buffer_stride, inch_cache_block, channel_pass, outch_cache_block, img_cache_block, start_outch_id, cur_outch_cache_block, start_block_id, end_block_id]
+                conv_param->thpool->enqueue([conv_param, thread_buffer_stride, inch_cache_block, inch_pass, outch_cache_block, img_cache_block, start_outch_id, end_outch_id, start_block_id, end_block_id]
                 {
                 int tid = conv_param->thpool->threadID(std::this_thread::get_id());
                 float *VT = conv_param->common_buffer_fp32 + tid * thread_buffer_stride;
                 float *WT = VT + VT_offset;
-                const float *UT = conv_param->processed_kernel_fp32;
-
+                const float *UT = conv_param->processed_kernel_fp32 + start_outch_id * conv_param->input_channels * 64;
+                // printf("outch %d %d\n", start_outch_id, end_outch_id);
+                
                 ComputeCacheBlock<HAS_RELU, HAS_BIAS>(conv_param, UT, VT, WT,
-                                                      inch_cache_block, channel_pass,
+                                                      inch_cache_block, inch_pass,
                                                       outch_cache_block, img_cache_block,
-                                                      start_outch_id, cur_outch_cache_block,
+                                                      start_outch_id, end_outch_id,
                                                       start_block_id, end_block_id);
                 }));
         }
@@ -1003,4 +1010,59 @@ template void WinogradF63Fused<false, false>(booster::ConvParam* conv_param, flo
 template void WinogradF63Fused<false, true>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
 template void WinogradF63Fused<true, false>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
 template void WinogradF63Fused<true, true>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
+
+void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int output_channels)
+{
+    /* Data layout for kernel transformation (UT):
+     *
+     * 4 output channels always batched together
+     * input channel block
+     * remaining output channel loop
+     * remaining input channel block loop
+     */
+    const int inch_cache_block = 192;
+#ifdef OUTCH_BLOCK_TEST
+    const int outch_cache_block = 96;
+#else
+    const int outch_cache_block = output_channels;
+#endif
+    int inch_pass = input_channels / inch_cache_block;
+    int outch_pass = output_channels / outch_cache_block;
+    if (input_channels % inch_cache_block > 0)
+        ++inch_pass;
+    if (output_channels % outch_cache_block > 0)
+        ++outch_pass;
+
+
+    for (int r = 0; r < outch_pass; ++r)
+    {
+        int start_outch_id = r * outch_cache_block;
+        int end_outch_id = (r + 1) * outch_cache_block;
+        end_outch_id = std::min<int>(end_outch_id, output_channels);
+        int cur_outch_block = end_outch_id - start_outch_id;
+        int inch_block = inch_cache_block;
+
+        for (int q = 0; q < inch_pass; ++q)
+        {
+            int cur_inch = q * inch_cache_block;
+            if (q == inch_pass - 1)
+                inch_block = input_channels - cur_inch;
+            // printf("inch block %d\n", inch_block);
+            for (int ic = 0; ic < inch_block; ++ic)
+            {
+                for (int oc = start_outch_id; oc < end_outch_id; ++oc)
+                {
+                    const int oc_offset = oc - start_outch_id;
+                    float *UTp = UT + start_outch_id * input_channels * 64; // outch block.
+                    UTp += cur_inch * cur_outch_block * 64;     // inch cache block, each kernel is transformed into one 8x8 tile.
+                    UTp += (oc_offset / 4) * (16 * inch_block); // Big block id for every 4 output channels.
+                    UTp += 16 * ic;                             // input channel offset.
+                    UTp += (oc_offset & 0x3) * 4;               // Starting point in each 4 outch batch.
+                    const int cid = oc * input_channels + ic + cur_inch;
+                    winogradKernelTransformPacked(UTp, kernel + 9 * cid, 4 * inch_block * cur_outch_block, UT);
+                }
+            }
+        }
+    }
+}
 }; // namespace fused
