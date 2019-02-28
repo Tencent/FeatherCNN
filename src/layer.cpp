@@ -50,6 +50,12 @@ Layer<Dtype>::Layer(const void* layer_param_in, RuntimeParameter<Dtype>* rt_para
         p_blob->FromProto(layer_param->blobs()->Get(i));
         _weight_blobs.push_back(p_blob);
     }
+
+#ifdef FEATHER_OPENCL
+    if (rt_param->device_type() == DeviceType::GPU_CL)
+        this->mem_type = rt_param->mem_type();
+#endif
+
 }
 
 template<class Dtype>
@@ -282,7 +288,7 @@ int Layer<Dtype>::SetKernelParameters()
 }
 
 template<class Dtype>
-int Layer<Dtype>::ResetWorkSize(std::string kname, size_t output_height, size_t output_width)
+int Layer<Dtype>::ResetWorkSize(std::string kname, int output_height, int output_width)
 {
     clhpp_feather::CLKernelInfo& kernel_info = this->cl_kernel_info_map[kname];
 
@@ -304,7 +310,7 @@ int Layer<Dtype>::ResetWorkSize(std::string kname, size_t output_height, size_t 
 }
 
 template <class Dtype>
-int Layer<Dtype>::SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size)
+int Layer<Dtype>::SetWorkSize(std::string kname, int output_height, int output_width, int& channel_block_size)
 {
     clhpp_feather::CLKernelInfo& kernel_info = this->cl_kernel_info_map[kname];
     std::vector<size_t>& gws = kernel_info.gws;

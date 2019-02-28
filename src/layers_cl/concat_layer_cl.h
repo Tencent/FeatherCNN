@@ -40,12 +40,12 @@ class ConcatLayerCL: public Layer<Dtype>
 
 
     private:
-        size_t output_height;
-        size_t output_width;
-        size_t output_channels;
-        size_t input0_channels;
-        size_t input1_channels;
-        size_t channel_block_size;
+        int output_height;
+        int output_width;
+        int output_channels;
+        int input0_channels;
+        int input1_channels;
+        int channel_block_size;
         bool fuse_relu;
         bool divisible;
 

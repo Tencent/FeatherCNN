@@ -41,10 +41,10 @@ class ScaleLayerCL : public Layer<Dtype>
         }
 
     private:
-        size_t output_channels;
-        size_t output_width;
-        size_t output_height;
-        size_t channel_block_size;
+        int output_channels;
+        int output_width;
+        int output_height;
+        int channel_block_size;
 
         bool fuse_scale;
         bool fuse_relu;
