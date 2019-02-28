@@ -13,7 +13,7 @@ FeatherCNN targets at ARM CPUs.
 
 Comparing with other libraries, FeatherCNN has the following features:
 
-- **High Performance** FeatherCNN delivers **state-of-the-art** inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux). 
+- **High Performance** FeatherCNN delivers **state-of-the-art** inference computing performance on a wide range of devices, including mobile phones (iOS/Android), embedded devices (Linux) as well as ARM-based servers (Linux).
 
 - **Easy Deployment** FeatherCNN packs everything in a single code base to get rid of third-party dependencies. Hence, it facilitates deployment on mobile platforms.
 <!---
@@ -102,6 +102,8 @@ BTW, you can also get the blob's data size by calling
 size_t data_size = 0;
 forward_net.GetBlobDataSize(&data_size, BLOB_NAME);
 ```
+
+tips: The `GPU_CL` implementation does not contain softmax layer. Please remove softmax layer from caffe prototxt if you are using GPU. User should compute softmax manuanlly with the output of network.
 
 ## Performance Benchmarks
 We have tested FeatherCNN on a bunch of devices, see [**this page**](https://github.com/Tencent/FeatherCNN/wikis/Benchmarks) for details.
