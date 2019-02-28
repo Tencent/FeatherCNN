@@ -38,11 +38,11 @@ class InnerProductLayerCL : public Layer<Dtype>
         virtual int Fuse(Layer<Dtype> *next_layer);
 
     protected:
-        size_t input_width;
-        size_t input_height;
-        size_t channel_block_size;
+        int input_width;
+        int input_height;
+        int channel_block_size;
 
-        size_t output_channels;
+        int output_channels;
 
         Dtype *kernel_data;
         Dtype *bias_data;

@@ -52,9 +52,9 @@ class Layer
 
         virtual int SetBuildOptions();
 
-        virtual int SetWorkSize(std::string kname, size_t output_height, size_t output_width, size_t& channel_block_size);
+        virtual int SetWorkSize(std::string kname, int output_height, int output_width, int& channel_block_size);
 
-        virtual int ResetWorkSize(std::string kname, size_t output_height, size_t output_width);
+        virtual int ResetWorkSize(std::string kname, int output_height, int output_width);
 
         virtual int ForwardCL();
 
@@ -111,6 +111,7 @@ class Layer
 
 #ifdef FEATHER_OPENCL
         std::map<std::string, clhpp_feather::CLKernelInfo> cl_kernel_info_map;
+        clhpp_feather::OpenCLMemType mem_type;
 #endif
 };
 

@@ -39,19 +39,19 @@ class PoolingLayerCL : public Layer<Dtype>
 
     private:
         bool fuse_relu;
-        size_t input_height;
-        size_t input_width;
-        size_t input_channels;
-        size_t output_height;
-        size_t output_width;
-        size_t output_channels;
-        size_t pad_height;
-        size_t pad_width;
-        size_t kernel_height;
-        size_t kernel_width;
-        size_t stride_height;
-        size_t stride_width;
-        size_t channel_block_size;
+        int input_height;
+        int input_width;
+        int input_channels;
+        int output_height;
+        int output_width;
+        int output_channels;
+        int pad_height;
+        int pad_width;
+        int kernel_height;
+        int kernel_width;
+        int stride_height;
+        int stride_width;
+        int channel_block_size;
         bool global_pooling;
         PoolingParameter_::PoolMethod method;
 };

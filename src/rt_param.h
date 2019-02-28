@@ -115,6 +115,10 @@ class RuntimeParameter
         {
             return _cl_runtime->device();
         }
+        clhpp_feather::OpenCLMemType mem_type() const
+        {
+            return _cl_runtime->get_mem_type();
+        }
         clhpp_feather::OpenCLRuntime* cl_runtime() const
         {
             return _cl_runtime;
