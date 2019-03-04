@@ -313,6 +313,7 @@ void winogradKernelTransformPackedNaive(float *transKernel, float *kernel, int s
 
 void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride)
 {
+#if 0
     float ktm[24] =
     {
         1.0f, 0.0f, 0.0f,
@@ -327,15 +328,15 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
 
     float midBlock[24];
     float outBlock[24];
-    float bigBlock[64];
 
-#if 0
+
     //print_floats(kernel, 3, 3);
     naive_gemm_temp(8, 3, 3, ktm, kernel, midBlock);
     transpose_temp(8, 3, midBlock, outBlock);
     naive_gemm_temp(8, 8, 3, ktm, outBlock, bigBlock);
     //print_floats(bigBlock, 8, 8);
 #else
+    float bigBlock[64];
     __m256 k0, k1, k2; // different rows of kernel.
     k0 = _mm256_loadu_ps(kernel);
     k1 = _mm256_loadu_ps(kernel + 3);
@@ -406,6 +407,144 @@ void winogradKernelTransformPacked(float *transKernel, float *kernel, int stride
         //printf("offset %d\n", i * stride);
         //printf("UTp offset %d i %d j %d\n", transKernel+i*stride - base, oi, oj);
     }
+}
+
+
+void winogradKernelTransformPackedPartial(float *transKernel, float *kernel, int depth_id)
+{
+    // float bigBlock[64];
+    __m256 k0, k1, k2; // different rows of kernel.
+    k0 = _mm256_loadu_ps(kernel);
+    k1 = _mm256_loadu_ps(kernel + 3);
+    k2 = _mm256_loadu_ps(kernel + 6);
+    // Kernel transformation.
+    __m256 t0, t1, t2, t3, t4, t5, t6, t7, c0;
+    
+    #if 1
+    t0 = k0;
+    t1 = k0 + k1 + k2;
+    t2 = k0 - k1 + k2;
+    
+    
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    t1 = _mm256_mul_ps(c0, t1);
+    t2 = _mm256_mul_ps(c0, t2);
+    t3 = k0 + 2 * k1 + 4 * k2;
+    t4 = k0 - 2 * k1 + 4 * k2;
+    c0 = _mm256_set1_ps(1.0f / 90);
+    t3 = _mm256_mul_ps(c0, t3);
+    t4 = _mm256_mul_ps(c0, t4);
+    t5 = 4 * k0 + 2 * k1 + k2;
+    t6 = 4 * k0 - 2 * k1 + k2;
+    c0 = _mm256_set1_ps(1.0f / 180);
+    t5 = _mm256_mul_ps(c0, t5);
+    t6 = _mm256_mul_ps(c0, t6);
+    t7 = k2;
+
+    transpose8_avx_ps(t0, t1, t2, t3, t4, t5, t6, t7);
+
+    k0 = t0;
+    k1 = t1;
+    k2 = t2;
+
+    // Kernel transformation again and store.
+    __m128 reg;
+    int vec_id = depth_id / 2;
+    const int st_id = depth_id % 2;
+    if (vec_id == 0)
+    {
+        t0 = k0;    
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t0, 0);
+        else
+            reg = _mm256_extractf128_ps(t0, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    if (vec_id == 1)
+    {
+        t1 = k0 + k1 + k2;
+        t1 = _mm256_mul_ps(c0, t1);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t1, 0);
+        else
+            reg = _mm256_extractf128_ps(t1, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    if (vec_id == 2)
+    {
+        t2 = k0 - k1 + k2;
+        t2 = _mm256_mul_ps(c0, t2);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t2, 0);
+        else
+            reg = _mm256_extractf128_ps(t2, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    c0 = _mm256_set1_ps(1.0f / 90);
+    if (vec_id == 3)
+    {
+        t3 = k0 + 2 * k1 + 4 * k2;
+        t3 = _mm256_mul_ps(c0, t3);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t3, 0);
+        else
+            reg = _mm256_extractf128_ps(t3, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    if (vec_id == 4)
+    {
+        t4 = k0 - 2 * k1 + 4 * k2;
+        t4 = _mm256_mul_ps(c0, t4);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t4, 0);
+        else
+            reg = _mm256_extractf128_ps(t4, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    c0 = _mm256_set1_ps(1.0f / 180);
+    if (vec_id == 5)
+    {
+        t5 = 4 * k0 + 2 * k1 + k2;
+        t5 = _mm256_mul_ps(c0, t5);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t5, 0);
+        else
+            reg = _mm256_extractf128_ps(t5, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    if (vec_id == 6)
+    {
+        t6 = 4 * k0 - 2 * k1 + k2;
+        t6 = _mm256_mul_ps(c0, t6);
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t6, 0);
+        else
+            reg = _mm256_extractf128_ps(t6, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    if (vec_id == 7)
+    {
+        t7 = k2;
+        if (st_id == 0)
+            reg = _mm256_extractf128_ps(t7, 0);
+        else
+            reg = _mm256_extractf128_ps(t7, 1);
+        _mm_store_ps(transKernel, reg);
+    }
+    #else
+    t0 = k0;
+    t1 = k0 + k1 + k2;
+    t2 = k0 - k1 + k2;
+    t3 = k0;
+    t4 = k0 + k1 + k2;
+    t5 = k0 - k1 + k2;
+    t6 = k0;
+    t7 = k0 + k1 + k2;
+    __m128 reg;
+    reg = _mm256_extractf128_ps(t2, 1);
+    _mm_store_ps(transKernel, reg);
+    #endif
 }
 
 
@@ -934,7 +1073,7 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *WTp, const float *UTp, 
     _mm256_store_ps(wp + 48, vc30);
     _mm256_store_ps(wp + 56, vc31);
 }
-
+#define BLOCK_KERNEL_TRANSFORM
 template <bool HAS_RELU, bool HAS_BIAS>
 void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, float* VT, float* WT, int inch_cache_block, int inch_pass, int outch_cache_block, int img_cache_block, int start_outch_id, int end_outch_id, int start_block_id, int end_block_id, float* UT_tmp_arr)
 {
@@ -966,6 +1105,7 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
         //     const float *kernel_at_channel = ;
         // }
 
+#ifdef BLOCK_KERNEL_TRANSFORM
         /* Kernel transform */
         {
             const int inch_block = cur_inch_cache_block;
@@ -986,6 +1126,14 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
                 }
             }
         }
+
+        // for(int d = 0; d < depth; ++d)
+        // {  
+        //     printf("===============d=%d================\n", d);
+        //     print_floats(UT_tmp_arr + d * cur_inch_cache_block * cur_outch_cache_block * 4, 64, 16);
+            
+        // }
+#endif
         // print_floats(UT_tmp_arr, 16, 64);
         // print_floats(conv_param->processed_kernel_fp32, 16, 64);
         // diff(UT_tmp_arr, conv_param->processed_kernel_fp32, 16 * 16, 64);
@@ -994,12 +1142,67 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
             // const float *UTp = UT + cur_inch * cur_outch_cache_block * 64 + d * cur_inch_cache_block * cur_outch_cache_block * 4;
             // const float *UTpt = UTp;
             // printf("cur inch %d\n", cur_inch);
+#ifdef BLOCK_KERNEL_TRANSFORM
             const float *UTpt = UT_tmp_arr + d * cur_inch_cache_block * cur_outch_cache_block * 4;
+#else
+            // {
+            //     const int inch_block = cur_inch_cache_block;
+            //     for (int ic = 0; ic < inch_block; ++ic)
+            //     {
+            //         for (int oc = start_outch_id; oc < end_outch_id; ++oc)
+            //         {
+            //             // int oc = oc;
+            //             // const int inch_block = cur_inch_cache_block;
+            //             const int oc_offset = oc - start_outch_id;
+            //             // float *UTp = UT_tmp_arr + start_outch_id * conv_param->input_channels * 64; // outch block.
+            //             float *UTp = UT_tmp_arr;
+            //             // UTp += cur_inch * cur_outch_block * 64;  // inch cache block, each kernel is transformed into one 8x8 tile.
+            //             UTp += (oc_offset / 4) * (16 * inch_block); // Big block id for every 4 output channels.
+            //             UTp += 16 * ic;                             // input channel offset.
+            //             UTp += (oc_offset & 0x3) * 4;               // Starting point in each 4 outch batch.
+            //             const int cid = oc * conv_param->input_channels + ic + cur_inch;
+            //             winogradKernelTransformPackedPartial(UTp, conv_param->kernel_fp32 + 9 * cid, d);
+            //             // printf("kernel offset %d\n", cid * 9);
+            //         }
+            //     }
+            // }
+            // const float *UTpt = UT_tmp_arr;
+            // printf("===============d=%d================\n", d);
+            // print_floats(UT_tmp_arr, 64, 16);
+
+#endif
+
             // printf("offset %d\n", cur_inch * cur_outch_cache_block * 64 + d * cur_inch_cache_block * cur_outch_cache_block * 4);
             for (int oc = start_outch_id; oc < end_outch_id; oc += 4)
             {
+#ifndef BLOCK_KERNEL_TRANSFORM
                 //Kernel transformation
-                
+                {
+                    const int inch_block = cur_inch_cache_block;
+                    for (int ic = 0; ic < inch_block; ++ic)
+                    {
+                        // for (int oc = start_outch_id; oc < end_outch_id; ++oc)
+                        for(int t = 0; t < 4; ++t)
+                        {
+                            // int oc = oc;
+                            // const int inch_block = cur_inch_cache_block;
+                            int oc_offset = t;
+                            // float *UTp = UT_tmp_arr + start_outch_id * conv_param->input_channels * 64; // outch block.
+                            float *UTp = UT_tmp_arr;
+                            // UTp += cur_inch * cur_outch_block * 64;  // inch cache block, each kernel is transformed into one 8x8 tile.
+                            UTp += (oc_offset / 4) * (16 * inch_block); // Big block id for every 4 output channels.
+                            UTp += 16 * ic;                             // input channel offset.
+                            UTp += (oc_offset & 0x3) * 4;               // Starting point in each 4 outch batch.
+                            const int cid = (oc + t) * conv_param->input_channels + ic + cur_inch;
+                            winogradKernelTransformPackedPartial(UTp, conv_param->kernel_fp32 + 9 * cid, d);
+                            // printf("kernel offset %d\n", cid * 9);
+                            // printf("UT offset %d\n", UTp - UT_tmp_arr);
+                        }
+                    }
+                }
+                const float *UTpt = UT_tmp_arr;
+                ///////////////////////////////////
+#endif
                 //Range in a small cache block. I hope this part of VT resides in L1d cache (32KB).
                 for (int i = start_block_id; i < end_block_id; i += 4)
                 {
@@ -1023,7 +1226,6 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
             }
         }
     }
-    #if 1
     /* Output Transform */
     for (int oc = start_outch_id; oc < end_outch_id; oc += 4)
     {
@@ -1054,7 +1256,6 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
             }
         }
     }
-    #endif
 }
 
 
@@ -1080,7 +1281,7 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
     const int img_cache_block = 32;
     const int inch_cache_block = 32;
 #ifdef OUTCH_BLOCK_TEST
-    const int outch_cache_block = 32;
+    const int outch_cache_block = 16;
 #else
     const int outch_cache_block = conv_param->output_channels;
 #endif
