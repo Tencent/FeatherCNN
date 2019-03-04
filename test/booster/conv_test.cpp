@@ -83,7 +83,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     conv_param.activation = booster::None;
     conv_param.LogParams("TEST");
 
-    ThreadPool *thread_pool = new ThreadPool(4);
+    ThreadPool *thread_pool = new ThreadPool(1);
     conv_param.thpool = thread_pool;
 
     float* kernel_data = (float*) malloc(sizeof(float) * conv_param.kernel_h * conv_param.kernel_w * conv_param.input_channels * conv_param.output_channels);
@@ -143,7 +143,7 @@ int main()
     // test_general_conv_kernels(16, 16, 8, 8, 3, 3, 1, 1, 1);
     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
     // test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
-    // test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
+    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
     // test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
     // test_general_conv_kernels(256, 512, 36, 36, 1, 1, 1, 1, 30);
     // test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 1);
