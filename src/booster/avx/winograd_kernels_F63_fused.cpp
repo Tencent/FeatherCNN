@@ -468,10 +468,6 @@ void winogradKernelTransformPack2Outch(float *transKernel, float *kernel, int ke
     k1 = _mm256_loadu_ps(kernel + kernel_stride + 3);
     k2 = _mm256_loadu_ps(kernel + kernel_stride + 6);
 
-
-    // k0 = _mm256_loadu_ps(kernel + 9);
-    // k1 = _mm256_loadu_ps(kernel + 12);
-    // k2 = _mm256_loadu_ps(kernel + 15);
     __m256 s0, s1, s2, s3, s4, s5, s6, s7;
     s0 = k0;
     s1 = k0 + k1 + k2;
@@ -515,6 +511,7 @@ void winogradKernelTransformPack2Outch(float *transKernel, float *kernel, int ke
     s6 = _mm256_mul_ps(c0, s6);
     s7 = k2;
 
+    // Interleave register contents in order to fit TensorGEMM accessing pattern.
     k0 = _mm256_permute2f128_ps(t0, s0, 0x20);
     k1 = _mm256_permute2f128_ps(t0, s0, 0x31);
     _mm256_store_ps(transKernel, k0);
@@ -554,7 +551,150 @@ void winogradKernelTransformPack2Outch(float *transKernel, float *kernel, int ke
     k1 = _mm256_permute2f128_ps(t7, s7, 0x31);
     _mm256_store_ps(transKernel + 14 * stride, k0);
     _mm256_store_ps(transKernel + 15 * stride, k1);
+}
 
+
+
+void winogradKernelTransformPack2OutchSeq(float *transKernel, float *packed_kernel, int stride)
+{
+    __m256 k0, k1, k2; // different rows of kernel.
+    k0 = _mm256_loadu_ps(packed_kernel);
+    k1 = _mm256_loadu_ps(packed_kernel + 3);
+    k2 = _mm256_loadu_ps(packed_kernel + 6);
+    // Kernel transformation.
+    // We are using eight registers for a single transformation.
+    
+    __m256 t0, t1, t2, t3, t4, t5, t6, t7, c0;
+    t0 = k0;
+    t1 = k0 + k1 + k2;
+    t2 = k0 - k1 + k2;
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    t1 = _mm256_mul_ps(c0, t1);
+    t2 = _mm256_mul_ps(c0, t2);
+    t3 = k0 + 2 * k1 + 4 * k2;
+    t4 = k0 - 2 * k1 + 4 * k2;
+    c0 = _mm256_set1_ps(1.0f / 90);
+    t3 = _mm256_mul_ps(c0, t3);
+    t4 = _mm256_mul_ps(c0, t4);
+    t5 = 4 * k0 + 2 * k1 + k2;
+    t6 = 4 * k0 - 2 * k1 + k2;
+    c0 = _mm256_set1_ps(1.0f / 180);
+    t5 = _mm256_mul_ps(c0, t5);
+    t6 = _mm256_mul_ps(c0, t6);
+    t7 = k2;
+
+    transpose8_avx_ps(t0, t1, t2, t3, t4, t5, t6, t7);
+
+    k0 = t0;
+    k1 = t1;
+    k2 = t2;
+
+    t0 = k0;
+    t1 = k0 + k1 + k2;
+    t2 = k0 - k1 + k2;
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    t1 = _mm256_mul_ps(c0, t1);
+    t2 = _mm256_mul_ps(c0, t2);
+    t3 = k0 + 2 * k1 + 4 * k2;
+    t4 = k0 - 2 * k1 + 4 * k2;
+    c0 = _mm256_set1_ps(1.0f / 90);
+    t3 = _mm256_mul_ps(c0, t3);
+    t4 = _mm256_mul_ps(c0, t4);
+    t5 = 4 * k0 + 2 * k1 + k2;
+    t6 = 4 * k0 - 2 * k1 + k2;
+    c0 = _mm256_set1_ps(1.0f / 180);
+    t5 = _mm256_mul_ps(c0, t5);
+    t6 = _mm256_mul_ps(c0, t6);
+    t7 = k2;
+
+
+    k0 = _mm256_loadu_ps(packed_kernel + 9);
+    k1 = _mm256_loadu_ps(packed_kernel + 12);
+    k2 = _mm256_loadu_ps(packed_kernel + 15);
+
+    __m256 s0, s1, s2, s3, s4, s5, s6, s7;
+    s0 = k0;
+    s1 = k0 + k1 + k2;
+    s2 = k0 - k1 + k2;
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    s1 = _mm256_mul_ps(c0, s1);
+    s2 = _mm256_mul_ps(c0, s2);
+    s3 = k0 + 2 * k1 + 4 * k2;
+    s4 = k0 - 2 * k1 + 4 * k2;
+    c0 = _mm256_set1_ps(1.0f / 90);
+    s3 = _mm256_mul_ps(c0, s3);
+    s4 = _mm256_mul_ps(c0, s4);
+    s5 = 4 * k0 + 2 * k1 + k2;
+    s6 = 4 * k0 - 2 * k1 + k2;
+    c0 = _mm256_set1_ps(1.0f / 180);
+    s5 = _mm256_mul_ps(c0, s5);
+    s6 = _mm256_mul_ps(c0, s6);
+    s7 = k2;
+
+    transpose8_avx_ps(s0, s1, s2, s3, s4, s5, s6, s7);
+
+    k0 = s0;
+    k1 = s1;
+    k2 = s2;
+
+    s0 = k0;
+    s1 = k0 + k1 + k2;
+    s2 = k0 - k1 + k2;
+    c0 = _mm256_set1_ps(-2.0f / 9);
+    s1 = _mm256_mul_ps(c0, s1);
+    s2 = _mm256_mul_ps(c0, s2);
+    s3 = k0 + 2 * k1 + 4 * k2;
+    s4 = k0 - 2 * k1 + 4 * k2;
+    c0 = _mm256_set1_ps(1.0f / 90);
+    s3 = _mm256_mul_ps(c0, s3);
+    s4 = _mm256_mul_ps(c0, s4);
+    s5 = 4 * k0 + 2 * k1 + k2;
+    s6 = 4 * k0 - 2 * k1 + k2;
+    c0 = _mm256_set1_ps(1.0f / 180);
+    s5 = _mm256_mul_ps(c0, s5);
+    s6 = _mm256_mul_ps(c0, s6);
+    s7 = k2;
+
+    // Interleave register contents in order to fit TensorGEMM accessing pattern.
+    k0 = _mm256_permute2f128_ps(t0, s0, 0x20);
+    k1 = _mm256_permute2f128_ps(t0, s0, 0x31);
+    _mm256_store_ps(transKernel, k0);
+    _mm256_store_ps(transKernel + stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t1, s1, 0x20);
+    k1 = _mm256_permute2f128_ps(t1, s1, 0x31);
+    _mm256_store_ps(transKernel + 2 * stride, k0);
+    _mm256_store_ps(transKernel + 3 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t2, s2, 0x20);
+    k1 = _mm256_permute2f128_ps(t2, s2, 0x31);
+    _mm256_store_ps(transKernel + 4 * stride, k0);
+    _mm256_store_ps(transKernel + 5 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t3, s3, 0x20);
+    k1 = _mm256_permute2f128_ps(t3, s3, 0x31);
+    _mm256_store_ps(transKernel + 6 * stride, k0);
+    _mm256_store_ps(transKernel + 7 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t4, s4, 0x20);
+    k1 = _mm256_permute2f128_ps(t4, s4, 0x31);
+    _mm256_store_ps(transKernel + 8 * stride, k0);
+    _mm256_store_ps(transKernel + 9 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t5, s5, 0x20);
+    k1 = _mm256_permute2f128_ps(t5, s5, 0x31);
+    _mm256_store_ps(transKernel + 10 * stride, k0);
+    _mm256_store_ps(transKernel + 11 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t6, s6, 0x20);
+    k1 = _mm256_permute2f128_ps(t6, s6, 0x31);
+    _mm256_store_ps(transKernel + 12 * stride, k0);
+    _mm256_store_ps(transKernel + 13 * stride, k1);
+
+    k0 = _mm256_permute2f128_ps(t7, s7, 0x20);
+    k1 = _mm256_permute2f128_ps(t7, s7, 0x31);
+    _mm256_store_ps(transKernel + 14 * stride, k0);
+    _mm256_store_ps(transKernel + 15 * stride, k1);
 }
 
 
@@ -1292,8 +1432,13 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
                         // UTp += (oc_offset / 4) * (16 * inch_block); // Big block id for every 4 output channels.
                         UTp += 16 * ic;                             // input channel offset.
                         UTp += t * 8;               // Starting point in each 4 outch batch.
+#if 0
                         const int cid = (oc + t + t) * conv_param->input_channels + ic + cur_inch;
                         winogradKernelTransformPack2Outch(UTp, conv_param->kernel_fp32 + 9 * cid, conv_param->input_channels * 9, 4 * inch_block * 4);//4 outch together
+#else
+                        const int cid = oc * conv_param->input_channels + (ic + cur_inch) * 4 + t + t;
+                        winogradKernelTransformPack2OutchSeq(UTp, conv_param->processed_kernel_fp32 + 9 * cid, 4 * inch_block * 4); //4 outch together
+#endif
                         // printf("kernel offset %d\n", cid * 9);
                         // printf("UT offset %d\n", UTp - UT_tmp_arr);
                     }
@@ -1388,9 +1533,9 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
      */
     const int depth = 16;
     const int img_cache_block = 32;
-    const int inch_cache_block = 64;
+    const int inch_cache_block = 16;
 #ifdef OUTCH_BLOCK_TEST
-    const int outch_cache_block = 128;
+    const int outch_cache_block = 96;
 #else
     const int outch_cache_block = conv_param->output_channels;
 #endif
@@ -1639,6 +1784,25 @@ template void WinogradF63Fused0<true, false>(booster::ConvParam* conv_param, flo
 template void WinogradF63Fused0<true, true>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
 
 void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int output_channels)
+{
+    //Reshape to let every 4 kernels from the sam outch placed together.
+    for (int oc = 0; oc < output_channels; oc += 4)
+    {
+        for (int ic = 0; ic < input_channels; ++ic)
+        {
+            for (int t = 0; t < 4; ++t)
+            {
+                const float* ldp = kernel + ((oc + t) * input_channels + ic) * 9;
+                float* wp = UT + (oc * input_channels + ic * 4 + t) * 9;
+                memcpy(wp, ldp, 9 * sizeof(float));
+            }
+        }
+    }
+    // print_floats(kernel, output_channels * input_channels, 9);
+    // print_floats(UT, output_channels * input_channels, 9);
+}
+
+void transformKernel_F6x6_3x3_0(float *UT, float *kernel, int input_channels, int output_channels)
 {
     /* Data layout for kernel transformation (UT):
      *
