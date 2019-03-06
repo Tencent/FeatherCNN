@@ -1436,7 +1436,11 @@ void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, flo
                         const int cid = (oc + t + t) * conv_param->input_channels + ic + cur_inch;
                         winogradKernelTransformPack2Outch(UTp, conv_param->kernel_fp32 + 9 * cid, conv_param->input_channels * 9, 4 * inch_block * 4);//4 outch together
 #else
+#if 0
                         const int cid = oc * conv_param->input_channels + (ic + cur_inch) * 4 + t + t;
+#else
+                        const int cid = cur_inch * conv_param->output_channels + oc * cur_inch_cache_block + ic * 4 + t + t;
+#endif
                         winogradKernelTransformPack2OutchSeq(UTp, conv_param->processed_kernel_fp32 + 9 * cid, 4 * inch_block * 4); //4 outch together
 #endif
                         // printf("kernel offset %d\n", cid * 9);
@@ -1535,7 +1539,8 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
     const int img_cache_block = 32;
     const int inch_cache_block = 16;
 #ifdef OUTCH_BLOCK_TEST
-    const int outch_cache_block = 96;
+    // const int outch_cache_block = 104;
+    const int outch_cache_block = 88;
 #else
     const int outch_cache_block = conv_param->output_channels;
 #endif
@@ -1784,6 +1789,35 @@ template void WinogradF63Fused0<true, false>(booster::ConvParam* conv_param, flo
 template void WinogradF63Fused0<true, true>(booster::ConvParam* conv_param, float* output, const float* input, const float* transformed_weights, const float* bias, float* buffers);
 
 void transformKernel_F6x6_3x3(float *UT, float *kernel, int input_channels, int output_channels)
+{
+    const int inch_cache_block = 16;
+    int inch_pass = input_channels / inch_cache_block;
+    if (input_channels % inch_cache_block > 0)
+        ++inch_pass;
+    
+    //Reshape to let every 4 kernels from the sam outch placed together.
+    for (int q = 0; q < inch_pass; ++q)
+    {
+        int cur_inch = q * inch_cache_block;
+        int cur_inch_block = std::min<int>(inch_cache_block, input_channels - cur_inch);
+        for (int oc = 0; oc < output_channels; oc += 4)
+        {
+            for (int ic = 0; ic < cur_inch_block; ++ic)
+            {
+                for (int t = 0; t < 4; ++t)
+                {
+                    const float *ldp = kernel + ((oc + t) * input_channels + ic + cur_inch) * 9;
+                    float *wp = UT + (cur_inch * output_channels + oc * cur_inch_block + ic * 4 + t) * 9;
+                    memcpy(wp, ldp, 9 * sizeof(float));
+                }
+            }
+        }
+    }
+    // print_floats(kernel, output_channels * input_channels, 9);
+    // print_floats(UT, output_channels * input_channels, 9);
+}
+
+void transformKernel_F6x6_3x3_1(float *UT, float *kernel, int input_channels, int output_channels)
 {
     //Reshape to let every 4 kernels from the sam outch placed together.
     for (int oc = 0; oc < output_channels; oc += 4)
