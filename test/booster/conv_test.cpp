@@ -141,12 +141,12 @@ int main()
 {
     // test_general_conv_kernels(4, 4, 12, 12, 3, 3, 1, 1, 1);
     // test_general_conv_kernels(16, 32, 8, 8, 3, 3, 1, 1, 1);
-    test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
-    // test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
+    // test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
+    test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
     test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
-    // test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
+    test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
     // test_general_conv_kernels(256, 512, 36, 36, 1, 1, 1, 1, 30);
-    // test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 30);
+    test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 30);
     
     return 0;
 }

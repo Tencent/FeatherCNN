@@ -1295,7 +1295,8 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *WTp, const float *UTp, 
     const __m128* vup = (const __m128*) UTp;
     u0 = _mm256_broadcast_ps(vup);
     u1 = _mm256_broadcast_ps(vup + 1);
-    for (int ic = 0; ic < inChannels; ic += 2)
+    int inChannels_aligned = inChannels & 0xFFFFFFFE;
+    for (int ic = 0; ic < inChannels_aligned; ic += 2)
     {
         v0 = _mm256_load_ps(vp);
         v1 = _mm256_load_ps(vp + 8);
@@ -1307,6 +1308,7 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *WTp, const float *UTp, 
         vc01 = _mm256_fmadd_ps(u0, v1, vc01);
         vc10 = _mm256_fmadd_ps(u1, v0, vc10);
         vc11 = _mm256_fmadd_ps(u1, v1, vc11);
+        
         u0 = _mm256_broadcast_ps(vup + 4);
         u1 = _mm256_broadcast_ps(vup + 5);
         vc20 = _mm256_fmadd_ps(u2, v0, vc20);
@@ -1337,12 +1339,16 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *WTp, const float *UTp, 
     }
     if (inChannels & 0x1) //Odd numbers
     {
+        // printf("ic channels %d\n", inChannels);
         v0 = _mm256_load_ps(vp);
         v1 = _mm256_load_ps(vp + 8);
-        vc00 = _mm256_fmadd_ps(u0, v0, vc00);
+        u0 = _mm256_broadcast_ps(vup);
+        u1 = _mm256_broadcast_ps(vup + 1);
         u2 = _mm256_broadcast_ps(vup + 2);
-        vc01 = _mm256_fmadd_ps(u0, v1, vc01);
         u3 = _mm256_broadcast_ps(vup + 3);
+
+        vc00 = _mm256_fmadd_ps(u0, v0, vc00);
+        vc01 = _mm256_fmadd_ps(u0, v1, vc01);
         vc10 = _mm256_fmadd_ps(u1, v0, vc10);
         vc11 = _mm256_fmadd_ps(u1, v1, vc11);
 
@@ -1361,6 +1367,7 @@ static inline void TensorGEMMInnerKernel4x4x4_avx(float *WTp, const float *UTp, 
     _mm256_store_ps(wp + 48, vc30);
     _mm256_store_ps(wp + 56, vc31);
 }
+
 template <bool HAS_RELU, bool HAS_BIAS>
 void ComputeCacheBlockFused(booster::ConvParam *conv_param, const float* UT, float* VT, float* WT, int inch_cache_block, int inch_pass, int outch_cache_block, int img_cache_block, int start_outch_id, int end_outch_id, int start_block_id, int end_block_id, float* UT_tmp_arr)
 {
@@ -1536,7 +1543,7 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
      * Each mm256 vector holds tensors for 2 Winograd tiles.
      */
     const int depth = 16;
-    const int img_cache_block = 32;
+    const int img_cache_block = 24;
     const int inch_cache_block = 16;
 #ifdef OUTCH_BLOCK_TEST
     // const int outch_cache_block = 104;
