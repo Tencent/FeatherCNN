@@ -27,6 +27,8 @@
 #include "CLHPP/clhpp_runtime.hpp"
 #endif
 
+#include <booster/thpool.h>
+
 enum DeviceType
 {
     CPU = 0,
@@ -40,7 +42,7 @@ class RuntimeParameter
     public:
         RuntimeParameter() : _common_mempool(NULL),
             _device_type(DeviceType::CPU),
-            _num_threads(1)
+            _thpool(new ThreadPool(1))
 #ifdef FEATHER_OPENCL
             , _padded_input(NULL)
             , _padded_input_size(0)
@@ -55,7 +57,7 @@ class RuntimeParameter
         }
         RuntimeParameter(CommonMemPool<Dtype> *common_mempool, DeviceType device_type, size_t num_threads)
             : _common_mempool(common_mempool),
-              _num_threads(num_threads),
+              _thpool(new ThreadPool(num_threads)),
               _device_type(device_type)
 #ifdef FEATHER_OPENCL
             , _padded_input(NULL)
@@ -71,6 +73,7 @@ class RuntimeParameter
         }
         ~RuntimeParameter()
         {
+            delete _thpool;
 #ifdef FEATHER_OPENCL
             if (_device_type == DeviceType::GPU_CL)
             {
@@ -93,9 +96,12 @@ class RuntimeParameter
         }
         size_t num_threads() const
         {
-            return _num_threads;
+            return _thpool->threadNum();
         }
-
+        ThreadPool *thpool()
+        {
+            return _thpool;
+        }
 
         DeviceType device_type() const
         {
@@ -155,8 +161,8 @@ class RuntimeParameter
 #endif
 
     private:
-        CommonMemPool<Dtype> *_common_mempool;
-        size_t _num_threads;
+        CommonMemPool<Dtype>* _common_mempool;
+        ThreadPool* _thpool;
         DeviceType _device_type;
 
 #ifdef FEATHER_OPENCL

@@ -35,8 +35,8 @@
                     }                               \
 
 #define LAYER_TIMING
-//#define LAYER_INIT_TIMING
-//#define PRINT_SETUP_LOG
+// #define LAYER_INIT_TIMING
+// #define PRINT_SETUP_LOG
 
 
 namespace feather
@@ -471,7 +471,7 @@ bool Net<Dtype>::InitFromBuffer(const void *net_buffer)
             case DeviceType::CPU:
                 layers.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param, rt_param));
 #ifdef PRINT_SETUP_LOG
-                LOGD("Setup layer %d %s\n", i, layer_param->name()->c_str());
+                LOGD("-----Setup layer %d %s-----\n", i, layer_param->name()->c_str());
 #endif
                 break;
             case DeviceType::GPU_CL:

@@ -316,15 +316,50 @@ void relu(float* arr, int len)
 }
 
 //The bias ReLU function is strangely faster than the basic relu.
+template <bool bias_term, ActivationType activation>
 void biasRelu(float* arr, int len, float bias)
 {
+    int aligned_len = len & 0xFFFFFFF0;
+    __m256 vbias, vzero;
+    vbias = _mm256_set1_ps(bias);
+    vzero = _mm256_set1_ps(0.f);
+#pragma omp parallel for
+    for (int i = 0; i < aligned_len; i += 16)
+    {
+        __m256 vld1 = _mm256_loadu_ps(arr + i);
+        __m256 vld2 = _mm256_loadu_ps(arr + i + 8);
+        if (bias_term)
+        {
+            vld1 = _mm256_add_ps(vld1, vbias);
+            vld2 = _mm256_add_ps(vld2, vbias);
+        }
+        if (activation == ReLU)
+        {
+            vld1 = _mm256_max_ps(vld1, vzero);
+            vld2 = _mm256_max_ps(vld2, vzero);
+        }
+        _mm256_storeu_ps(arr + i, vld1);
+        _mm256_storeu_ps(arr + i + 8, vld2);
+    }
     for (int i = 0; i < len; i++)
     {
-        arr[i] += bias;
-        if (arr[i] < 0)
-            arr[i] = 0;
+        if (bias_term)
+        {
+
+            arr[i] += bias;
+        }
+        if (activation == ReLU)
+        {
+
+            if (arr[i] < 0.f)
+                arr[i] = 0.f;
+        }
     }
 }
+
+template void biasRelu<true, None>(float*, int, float);
+template void biasRelu<false, ReLU>(float*, int, float);
+template void biasRelu<true, ReLU>(float*, int, float);
 
 void reluVec(float* arr, int len)
 {

@@ -39,6 +39,7 @@ bool pooling(float *A, float *B, const char *type, int input_channels, size_t ke
 void naive_gemm(int M, int N, int L, float *A, float *B, float *C);
 
 void relu(float* arr, int len);
+template <bool bias_term, ActivationType activation>
 void biasRelu(float* arr, int len, float bias);
 void reluVec(float* arr, int len);
 void biasVec(float* arr, int len, float bias);

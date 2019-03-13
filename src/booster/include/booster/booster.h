@@ -39,7 +39,7 @@
 #endif
 // #define BOOSTER_USE_MKLDNN
 #ifdef BOOSTER_USE_MKLDNN
-#include <mkldnn.hpp>
+#include <mkldnn.h>
 #endif
 
 namespace booster
@@ -190,6 +190,8 @@ struct ConvParam
 typedef int (*GET_BUFFER_SIZE_FUNC)(ConvParam *param, int* buffer_size, int* processed_kernel_size);
 typedef int (*INIT_FUNC)(ConvParam *param);
 typedef int (*FORWARD_FUNC)(ConvParam *param);
+
+bool CheckMethodCompat(ConvParam *param, ConvAlgo algo);
 
 //ConvBooster doesn't allocate any memory.
 class ConvBooster

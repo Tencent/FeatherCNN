@@ -1,6 +1,5 @@
 #include <booster/booster.h>
 #include <booster/helper.h>
-
 #include "utils.h"
 // #define RUN_NAIVE_REF
 // #define TEST_SGECONV
@@ -83,7 +82,7 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
     conv_param.activation = booster::None;
     conv_param.LogParams("TEST");
 
-    ThreadPool *thread_pool = new ThreadPool(6);
+    ThreadPool *thread_pool = new ThreadPool(4);
     conv_param.thpool = thread_pool;
 
     float* kernel_data = (float*) malloc(sizeof(float) * conv_param.kernel_h * conv_param.kernel_w * conv_param.input_channels * conv_param.output_channels);
@@ -103,27 +102,38 @@ int test_general_conv_kernels(int output_channels, int input_channels, int input
 #ifdef RUN_NAIVE_REF
     im2col_is_ref = false;
     conv_param.output_fp32 = output_data_ref;
-    test_feather_booster(&conv_param, booster::NAIVE, kernel_data, 1);
+    test_feather_booster(&conv_param, booster::NAIVE, 1);
 #endif
-    if (im2col_is_ref)
+    if (booster::CheckMethodCompat(&conv_param, booster::IM2COL))
     {
-        conv_param.output_fp32 = output_data_ref;
-        test_feather_booster(&conv_param, booster::IM2COL, 1);
-    } else {
+        if (im2col_is_ref)
+        {
+            conv_param.output_fp32 = output_data_ref;
+            test_feather_booster(&conv_param, booster::IM2COL, 1);
+        }
+        else
+        {
+            conv_param.output_fp32 = output_data;
+            test_feather_booster(&conv_param, booster::IM2COL, nloops);
+            diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
+        }
+    }
+
+#ifdef TEST_WINOGRADF63FUSED
+    if (booster::CheckMethodCompat(&conv_param, booster::WINOGRADF63FUSED))
+    {
         conv_param.output_fp32 = output_data;
-        test_feather_booster(&conv_param, booster::IM2COL, nloops);
+        test_feather_booster(&conv_param, booster::WINOGRADF63FUSED, nloops);
         diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
     }
-    
-#ifdef TEST_WINOGRADF63FUSED
-    conv_param.output_fp32 = output_data;
-    test_feather_booster(&conv_param, booster::WINOGRADF63FUSED, nloops);
-    diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
 #endif
 #ifdef TEST_MKLDNN
-    conv_param.output_fp32 = output_data;
-    test_feather_booster(&conv_param, booster::MKLDNN, nloops);
-    diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
+    if (booster::CheckMethodCompat(&conv_param, booster::MKLDNN))
+    {
+        conv_param.output_fp32 = output_data;
+        test_feather_booster(&conv_param, booster::MKLDNN, nloops);
+        diff(output_data_ref, output_data, conv_param.output_channels * conv_param.output_w * conv_param.output_h);
+    }
 #endif
 
     //Cleanup
@@ -141,12 +151,12 @@ int main()
 {
     // test_general_conv_kernels(4, 4, 12, 12, 3, 3, 1, 1, 1);
     // test_general_conv_kernels(16, 32, 8, 8, 3, 3, 1, 1, 1);
-    // test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 30);
-    test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
-    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 30);
+     test_general_conv_kernels(1024, 1280, 18, 18, 3, 3, 1, 1, 100);
+    // test_general_conv_kernels(128, 128, 18, 18, 3, 3, 1, 1, 1);
+    test_general_conv_kernels(64, 64, 224, 224, 3, 3, 1, 1, 100);
     test_general_conv_kernels(32, 3, 576, 576, 3, 3, 1, 1, 30);
-    // test_general_conv_kernels(256, 512, 36, 36, 1, 1, 1, 1, 30);
-    test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 30);
+    test_general_conv_kernels(256, 512, 36, 36, 1, 1, 1, 1, 30);
+    // test_general_conv_kernels(128, 128, 112, 112, 3, 3, 1, 1, 30);
     
     return 0;
 }

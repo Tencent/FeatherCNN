@@ -1547,7 +1547,7 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
     const int inch_cache_block = 16;
 #ifdef OUTCH_BLOCK_TEST
     // const int outch_cache_block = 104;
-    const int outch_cache_block = 88;
+    const int outch_cache_block = 64;
 #else
     const int outch_cache_block = conv_param->output_channels;
 #endif
@@ -1591,6 +1591,7 @@ void WinogradF63Fused(booster::ConvParam *conv_param, float *output, const float
                 conv_param->thpool->enqueue([conv_param, thread_buffer_stride, inch_cache_block, inch_pass, outch_cache_block, img_cache_block, start_outch_id, end_outch_id, start_block_id, end_block_id, UT_tmp_arr_base]
                 {
                 int tid = conv_param->thpool->threadID(std::this_thread::get_id());
+                // int tid = omp_get_thread_num();
                 float *VT = conv_param->common_buffer_fp32 + tid * thread_buffer_stride;
                 float *WT = VT + VT_offset;
                 const float *UT = conv_param->processed_kernel_fp32 + start_outch_id * conv_param->input_channels * 64;

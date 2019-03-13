@@ -80,6 +80,10 @@ int IM2COL_Init(ConvParam *param)
     return 0;
 }
 
+// #define BOOSTER_MKL_GEMM
+// #ifdef BOOSTER_MKL_GEMM
+// #include <mkl.h>
+// #endif
 int IM2COL_Forward(ConvParam *param)
 {
     const int nc = 160;
@@ -88,8 +92,35 @@ int IM2COL_Forward(ConvParam *param)
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
     const int K = param->input_channels * param->kernel_h * param->kernel_w;
-    float* im2col_buf = param->common_buffer_fp32 + offset;
-    im2col(param, im2col_buf, param->input_fp32);
+    float* im2col_buf = param->input_fp32;
+    
+    if (!(param->kernel_h == 1 && param->kernel_w == 1 && param->stride_h == 1 && param->stride_w == 1 && param->pad_bottom == 0 && param->pad_top == 0 && param->pad_left == 0 && param->pad_right == 0))
+    {
+        im2col_buf = param->common_buffer_fp32 + offset;
+        im2col(param, im2col_buf, param->input_fp32);
+    }
+#if 0
+//#ifdef BOOSTER_MKL_GEMM
+
+    // mkldnn::mkldnn_sgemm();
+    float alpha = 1.0;
+    float beta = 1.0;
+    const char no_trans = 'Y';
+    // int lda = param->input_channels * param->kernel_h * param->kernel_w;
+    printf("MKLDNN SGEMM!\n");
+    // mkldnn_sgemm(&no_trans, &no_trans, &M, &N, &K, &alpha, param->kernel_fp32, &K, im2col_buf, &N, &beta, param->output_fp32, &N);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, 1.0f, param->kernel_fp32, K, im2col_buf, N, 0.0f, param->output_fp32, N);
+    for (int oc = 0; oc < param->output_channels; ++oc)
+    {
+        float* arr_ptr = param->output_fp32 + oc * N;
+        if ((param->bias_term) && (param->activation == None))
+            biasRelu<true, None>(arr_ptr, N, param->bias_fp32[oc]);
+        else if ((!param->bias_term) && (param->activation == ReLU))
+            biasRelu<true, ReLU>(arr_ptr, N, param->bias_fp32[oc]);
+        else if ((param->bias_term) && (param->activation == ReLU))
+            biasRelu<true, ReLU>(arr_ptr, N, param->bias_fp32[oc]);
+    }
+#else
     if ((!param->bias_term) && (param->activation == None))
         packed_sgemm_activation<false, false>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     else if ((param->bias_term) && (param->activation == None))
@@ -98,6 +129,7 @@ int IM2COL_Forward(ConvParam *param)
         packed_sgemm_activation<false,  true>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
     else if ((param->bias_term) && (param->activation == ReLU))
         packed_sgemm_activation<true,   true>(M, N, K, param->processed_kernel_fp32, im2col_buf, N, param->output_fp32, N, nc, kc, param->bias_fp32, 1, param->common_buffer_fp32);
+#endif
     return 0;
 }
 
@@ -518,6 +550,43 @@ int MKLDNN_Destroy(ConvParam *param)
     return 0;
 }
 
+bool CheckMethodCompat(ConvParam *param, ConvAlgo algo)
+{
+    switch (algo)
+    {
+    case NAIVE:
+        if (param->group == 1)
+            return true;
+        else
+            return false;
+    case IM2COL:
+        if (param->group == 1)
+            return true;
+        else
+            return false;
+    case WINOGRADF63:
+        if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1 && param->output_channels % 4 == 0 && param->input_channels % 2 == 0)
+            return true;
+        else
+            return false;
+    case WINOGRADF63FUSED:
+        if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1 && param->output_channels % 4 == 0)
+            return true;
+        else
+            return false;
+    case DEPTHWISE:
+        if (param->group > 1)
+            return true;
+        else
+            return false;
+    case MKLDNN:
+        return true;
+    default:
+        LOGE("This algo is not supported on AVX2.");
+        return false;
+    }
+}
+
 //Class wrappers
 ConvBooster::ConvBooster()
     : GetBufferSize(NULL), Init(NULL), Forward(NULL)
@@ -531,11 +600,17 @@ int ConvBooster::SelectAlgo(ConvParam* param)
     {
         this->algo = DEPTHWISE;
     }
-    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->input_h > 8 && param->input_w > 8 &&  param->output_channels % 4 == 0 && param->input_channels % 4 == 0)
+    else if (param->group == 1 && param->kernel_h == 3 && param->kernel_w == 3 && param->stride_h == 1 && param->stride_w == 1  && param->input_h > 8 && param->input_w > 8 &&  param->output_channels % 4 == 0)
     {
         this->algo = WINOGRADF63FUSED;
         //this->algo = WINOGRADF63;
-    }
+    }   
+#ifdef BOOSTER_USE_MKLDNN
+    // else if (param->kernel_h == 1 && param->kernel_w == 1 && param->stride_h == 1 && param->stride_w == 1 && param->pad_bottom == 0 && param->pad_top == 0 && param->pad_left == 0 && param->pad_right == 0)
+    // {
+    //     this->algo = MKLDNN;
+    // }
+#endif
     else if (param->group == 1 && param->kernel_w > 1 && param->kernel_h > 1)
     {
         //this->algo = SGECONV;

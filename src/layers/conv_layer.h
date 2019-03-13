@@ -52,6 +52,8 @@ class ConvLayer : public Layer<float>
             conv_param.output_channels = this->_weight_blobs[0]->num();
             conv_param.bias_term = conv_param_in->bias_term();
             conv_param.activation = booster::None;
+            conv_param.kernel_fp32 = this->_weight_blobs[0]->data();
+            conv_param.thpool = rt_param->thpool();
             assert(this->_weight_blobs.size() > 0);
 
             if (conv_param.bias_term)
@@ -90,7 +92,7 @@ class ConvLayer : public Layer<float>
 
         int Forward()
         {
-	    //conv_param.LogParams(this->name().c_str());
+	    conv_param.LogParams(this->name().c_str());
             float* input = this->_bottom_blobs[this->_bottom[0]]->data();
             float* output = this->_top_blobs[this->_top[0]]->data();
             float* buffer = NULL;
