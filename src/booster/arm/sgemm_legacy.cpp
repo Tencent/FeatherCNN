@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include "common.h"
+#include <booster/helper.h>
 
 #ifdef __APPLE__
 #else

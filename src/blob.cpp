@@ -14,6 +14,8 @@
 
 #include "blob.h"
 
+#include <assert.h>
+
 namespace feather
 {
 template<class Dtype>

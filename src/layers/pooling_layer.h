@@ -43,7 +43,7 @@ class PoolingLayer : public Layer
 
             int slot = input_channels * output_h;
 
-            #pragma omp parallel for schedule(static) num_threads(num_threads)
+            //#pragma omp parallel for schedule(static) num_threads(num_threads)
             for (int i = 0; i < input_channels; ++i)
             {
                 for (int j = 0; j < output_h; j ++)
@@ -85,33 +85,6 @@ class PoolingLayer : public Layer
                 }
             }
             return 0;
-        }
-
-        int ForwardReshape()
-        {
-            const Blob<float> *bottom_blob = bottoms[0];
-            input_h = bottom_blob->height();
-            input_w = bottom_blob->width();
-            input_channels = bottom_blob->channels();
-            //printf("layer %s\n", _name.c_str());
-            //printf("input %lu %lu %lu\n", input_channels, input_h, input_w);
-            if (global_pooling)
-            {
-                kernel_h = input_h;
-                kernel_w = input_w;
-                output_h = 1;
-                output_w = 1;
-                output_channels = input_channels;
-            }
-            else
-            {
-                //General pooling.
-                output_channels = input_channels;
-                output_h = static_cast<int>(ceil(static_cast<float>(input_h + pad_top + pad_bottom - kernel_h) / stride_h)) + 1;
-                output_w = static_cast<int>(ceil(static_cast<float>(input_w + pad_left + pad_right - kernel_w) / stride_w)) + 1;
-            }
-            tops[0]->ReshapeWithRealloc(1, output_channels, output_h, output_w);
-            return Forward();
         }
 
         int LoadParam(const ncnn::ParamDict& pd)

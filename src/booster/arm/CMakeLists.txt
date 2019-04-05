@@ -1,5 +1,6 @@
 file(GLOB ARM_SRC ./*.cpp)
-file(GLOB ARM_HEADERS ../include/booster/*.h)
+file(GLOB ARM_HEADERS ../include/*.h)
+list(REMOVE_ITEM ARM_SRC "${CMAKE_CURRENT_SOURCE_DIR}/./sgemm_legacy.cpp")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a -fopenmp")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -Wall")

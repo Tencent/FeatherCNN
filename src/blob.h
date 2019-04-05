@@ -74,7 +74,6 @@ class Blob
             this->Free();
             CopyShape(p_blob);
             this->Alloc();
-            assert(p_blob->data_size() == this->data_size());
             CopyData(p_blob->data());
         }
 

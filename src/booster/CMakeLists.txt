@@ -27,8 +27,9 @@ add_subdirectory(./arm)
     add_library(booster STATIC $<TARGET_OBJECTS:booster_arm_obj> $<TARGET_OBJECTS:booster_cl_obj>)
   else()
     add_library(booster STATIC $<TARGET_OBJECTS:booster_arm_obj>)
-  endif()
-
+    endif()
+else()
+error("Unkown booster configuration.")
 endif()
 
 

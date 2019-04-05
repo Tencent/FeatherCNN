@@ -49,7 +49,7 @@ int ChkParamHeader(FILE* fp);
 
 int min(int a, int b);
 
-#if defined(__linux__) || defined(__APPLE_CC__)
+#if (defined(__linux__) && !defined(__aarch64__)) || defined(__APPLE_CC__)
 #include <mm_malloc.h>
 #else
 void* _mm_malloc(size_t sz, size_t align);
