@@ -173,7 +173,7 @@ template void add_relu<false>(float* dst, const float* A, const float* B, const 
 void vsub(float* dst, float* A, float* B, size_t len, size_t num_threads)
 {
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for (int i = 0; i < len - 4; ++i)
+    for (int i = 0; i < len; i += 4)
     {
         float32x4_t vA = vld1q_f32(A + i);
         float32x4_t vB = vld1q_f32(B + i);
@@ -188,7 +188,7 @@ void vsub(float* dst, float* A, float* B, size_t len, size_t num_threads)
 void vmul(float* dst, float* A, float* B, size_t len, size_t num_threads)
 {
     #pragma omp parallel for num_threads(num_threads) schedule(static)
-    for (int i = 0; i < len - 4; ++i)
+    for (int i = 0; i < len; i += 4)
     {
         float32x4_t vA = vld1q_f32(A + i);
         float32x4_t vB = vld1q_f32(B + i);
