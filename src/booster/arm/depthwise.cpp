@@ -1115,7 +1115,14 @@ void dwConvs2(float *output, float *input, int inw, int inh, int stridew, int st
                 sum1 = vfmaq_f32(sum1, r20, k6789);
 
                 sum1 = vsetq_lane_f32(0.0f, sum1, 3); //set third value of og to 0
-                *og = vaddvq_f32(sum1);               //accumulate the first three value of og
+
+                float vsum = vaddvq_f32(sum1);        //accumulate the first three value of og
+                if (fuseBias)
+                    vsum += bias_arr[g];
+                if (fuseRelu)
+                    vsum = (vsum > 0.f) ? vsum : 0.f;
+
+                *og = vsum;
                 _r0 += 2;
                 _r1 += 2;
                 _r2 += 2;
@@ -1292,8 +1299,8 @@ void dwConv_template(float *output, float *input, int input_channels, int inw, i
     }
     else if (kw == 3 && kh == 3 && stridew == 1 && strideh == 1)
         dwConvs1<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
-    //else if (kw == 3 && kh == 3 && stridew == 2 && strideh == 2)
-    //    dwConvs2<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
+    else if (kw == 3 && kh == 3 && stridew == 2 && strideh == 2)
+        dwConvs2<fuseBias, fuseRelu>(output, input, inw, inh, stridew, strideh, kernel, kw, kh, group, nThreads, bias_arr);
     else
     {
         int outw = (inw - kw) / stridew + 1; //for strided case in odd dimensions, should take the floor value as output dim.
