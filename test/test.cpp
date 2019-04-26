@@ -103,7 +103,7 @@ void test(std::string model_path, std::string data_path, int loop, int num_threa
     printf("++++++Start Loader++++++\n");
     feather::Net forward_net(num_threads);
     forward_net.InitFromPath(model_path.c_str());
-    size_t input_size = 224 * 2224 * 3 ;
+    size_t input_size = 224 * 224 * 3 ;
     float *input = new float[input_size * 20];
     std::ifstream in(data_path.c_str());
     std::string line;
