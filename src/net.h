@@ -22,25 +22,21 @@
 #include <vector>
 #include <random>
 #include <sstream>
-//#include <sys/system_properties.h>
 
 namespace feather
 {
 class Net
 {
     public:
-        Net(size_t num_threads, DeviceType device_type);
+        Net();
 
         ~Net();
-        /* Deprecated */
-        // void InitFromPath(const char *model_path);
-        // void InitFromStringPath(std::string model_path);
-        // void InitFromFile(FILE *fp);
-        // bool InitFromBuffer(const void *net_buffer);
-        
-        void LoadParam(const char * param_path);
-        void LoadWeights(const char * weights_path);
 
+        int LoadParam(const char * param_path);
+        int LoadParam(FILE* fp);
+        int LoadWeights(const char * weights_path);
+        int LoadWeights(FILE* fp);
+        
         void SetInput(const char* input_name, const void * input_data);
         int Forward();
           
@@ -48,10 +44,9 @@ class Net
         int PrintBlobData(std::string blob_name);
         int ExtractBlob(float *output_ptr, std::string blob_name);
 
-        std::map<std::string, const Blob<Dtype> *> blob_map;
+        std::map<std::string, Blob<float> *> blob_map;
     private:
-        int RemoveLayer(Layer *layer);
-        RuntimeParameter<Dtype> *rt_param;
+        RuntimeParameter<float> *rt_param;
         std::vector<Layer *> layers;
 };
 }; // namespace feather

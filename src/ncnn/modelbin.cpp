@@ -117,7 +117,7 @@ Mat ModelBinFromStdio::load(int w, int type) const
                 return m;
 
             // raw data with extra scaling
-            nread = fread(m, w * sizeof(float), 1, binfp);
+            nread = fread(m, sizeof(float), w, binfp);
             if (nread != 1)
             {
                 fprintf(stderr, "ModelBin read weight_data failed %d\n", nread);

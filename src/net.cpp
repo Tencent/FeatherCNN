@@ -15,9 +15,9 @@
 #include "layer_factory.h"
 #include "net.h"
 #include "layer.h"
-#include "layers/input_layer.h"
 
-#include "mempool.h"
+#include "ncnn/paramdict.h"
+#include "ncnn/modelbin.h"
 
 #include <stdio.h>
 #include <cstring>
@@ -30,11 +30,11 @@
 namespace feather
 {
 
-Net::Net(size_t num_threads, DeviceType device_type)
+Net::Net()
 {
     register_layer_creators();
-    CommonMemPool<Dtype> *mempool = new CommonMemPool<Dtype>();
-    rt_param = new RuntimeParameter<Dtype>(mempool, device_type, num_threads);
+    CommonMemPool<float> *mempool = new CommonMemPool<float>();
+    rt_param = new RuntimeParameter<float>(mempool, 1);
 }
 
 Net::~Net()
@@ -53,26 +53,28 @@ Net::~Net()
 int Net::LoadParam(const char* path)
 {
     FILE *fp = NULL;
-    fp = fopen(model_path, "rb");
+    fp = fopen(path, "r");
     if (fp == NULL)
     {
-        LOGE("Cannot open feather model!\n");
-        exit(-1);
+        LOGE("Cannot open param file, path: %s\n", path);
+        return -1;
     }
     this->LoadParam(fp);
     fclose(fp);
+    return 0;
 }
 
-int Net::LoadParam(FILE* fp)
+int Net::LoadParam(FILE* param_fp)
 {
-    if(ChkParamHeader(fp) == -1)
+    if(ChkParamHeader(param_fp) == -1)
     {
         return -1;
     }
     // parse
     int layer_count = 0;
     int blob_count = 0;
-    nbr = fscanf(fp, "%d %d", &layer_count, &blob_count);
+    int nbr = 0;
+    nbr = fscanf(param_fp, "%d %d", &layer_count, &blob_count);
     if (nbr != 2 || layer_count <= 0 || blob_count <= 0)
     {
         fprintf(stderr, "issue with param file\n");
@@ -80,9 +82,8 @@ int Net::LoadParam(FILE* fp)
     }
     printf("layer_size %d blob_size %d\n", layer_count, blob_count);
     layers.resize((size_t) layer_count);
-    // blobs.resize((size_t) blob_count);
 
-    ParamDict pd;
+    ncnn::ParamDict pd;
 
     int blob_index = 0;
     for (int i=0; i<layer_count; i++)
@@ -93,34 +94,21 @@ int Net::LoadParam(FILE* fp)
         char layer_name[257];
         int bottom_count = 0;
         int top_count = 0;
-        nscan = fscanf(fp, "%256s %256s %d %d", layer_type, layer_name, &bottom_count, &top_count);
+        nscan = fscanf(param_fp, "%256s %256s %d %d", layer_type, layer_name, &bottom_count, &top_count);
         if (nscan != 4)
         {
             continue;
         }
 
-//        Layer* layer = create_layer(layer_type);
-//        if (!layer)
-//        {
-//            layer = create_custom_layer(layer_type);
-//        }
-//        if (!layer)
-//        {
-//            fprintf(stderr, "layer %s not exists or registered\n", layer_type);
-//            clear();
-//            return -1;
-//        }
+        // fprintf(stderr, "new layer %d %s\n", i, layer_name);
+        Layer *layer = LayerRegistry::CreateLayer(layer_type, rt_param);
 
-
-//      fprintf(stderr, "new layer %d %s\n", i, layer_name);
-
-
-        Layer *layer = LayerRegistry::CreateLayer(rt_param);
         if (!layer)
         {
             fprintf(stderr, "layer %s not exists or registered\n", layer_type);
-            return -1;
+            return -200;
         }
+
         layer->name = std::string(layer_name);
         layer->type = std::string(layer_type);
         layer->bottoms.resize(bottom_count);
@@ -128,76 +116,104 @@ int Net::LoadParam(FILE* fp)
         for (int j=0; j<bottom_count; j++)
         {
             char bottom_name[257];
-            nscan = fscanf(fp, "%256s", bottom_name);
+            nscan = fscanf(param_fp, "%256s", bottom_name);
             if (nscan != 1)
             {
                 continue;
             }
-	        printf("bottom name %s\n", bottom_name);
-#if 0
-            int bottom_blob_index = find_blob_index_by_name(bottom_name);
-            if (bottom_blob_index == -1)
+	        // printf("bottom name %s\n", bottom_name);
+            // layer->bottoms[j] = new Blob<float>(bottom_name);
+            std::map<std::string, Blob<float> *>::iterator map_iter = blob_map.find(bottom_name); 
+            if (( map_iter == blob_map.end()) && (layer->type.compare("Input") != 0))
             {
-                Blob& blob = blobs[blob_index];
-
-                bottom_blob_index = blob_index;
-
-                blob.name = std::string(bottom_name);
-//                 fprintf(stderr, "new blob %s\n", bottom_name);
-
-                blob_index++;
+                LOGE("Topology error: bottom blob %s of layer %s type %s not found in map.", bottom_name, layer_name, layer_type);
+                return -300;
             }
-
-            Blob& blob = blobs[bottom_blob_index];
-
-            blob.consumers.push_back(i);
-
-            layer->bottoms[j] = bottom_blob_index;
-#endif
+            layer->bottoms[j] = map_iter->second;
+            printf("# Bottom name %s\n", layer->bottoms[j]->name.c_str());
         }
 
-        //layer->tops.resize(top_count);
+        layer->tops.resize(top_count);
+        
         for (int j=0; j<top_count; j++)
         {
 
-            char blob_name[257];
-            nscan = fscanf(fp, "%256s", blob_name);
+            char top_name[257];
+            nscan = fscanf(param_fp, "%256s", top_name);
             if (nscan != 1)
             {
                 continue;
             }
-	    printf("top name %s\n", blob_name);
-#if 0
-        Blob& blob = blobs[blob_index];
-        blob.name = std::string(blob_name);
-        fprintf(stderr, "new blob %s\n", blob_name);
-
-        blob.producer = i;
-
-        layer->tops[j] = blob_index;
-
-        blob_index++;
-#endif
+	        // printf("top name %s\n", top_name);
+            layer->tops[j] = new Blob<float>(top_name);
+            blob_map[top_name] = layer->tops[j];
         }
 
         // layer specific params
-        int pdlr = pd.load_param(fp);
+        int pdlr = pd.load_param(param_fp);
         if (pdlr != 0)
         {
             fprintf(stderr, "ParamDict load_param failed\n");
-            continue;
+            return pdlr;
         }
-
-        //int lr = layer->load_param(pd);
-        //if (lr != 0)
-        //{
-        //    fprintf(stderr, "layer load_param failed\n");
-        //    continue;
-        //}
-
-        //layers[i] = layer;
+        int lr = layer->LoadParam(pd);
+        if (lr != 0)
+        {
+           fprintf(stderr, "Layer %s load_param failed\n", layer_name);
+           return lr;
+        }
+        int gr = layer->GenerateTopBlobs();
+        if (gr != 0)
+        {
+            fprintf(stderr, "Layer %s failed to generate tops\n", layer_name);
+            return gr;
+        }
+        layers[i] = layer;
     }
     return 0;
+}
+
+int Net::LoadWeights(const char* path)
+{
+    FILE *fp = NULL;
+    fp = fopen(path, "rb");
+    if (fp == NULL)
+    {
+        LOGE("Cannot open param file, path: %s\n", path);
+        return -1;
+    }
+    this->LoadWeights(fp);
+    fclose(fp);
+    return 0;   
+}
+
+int Net::LoadWeights(FILE* fp)
+{
+    if (this->layers.empty())
+    {
+        LOGE("Network has not been loaded. Please load the param file first.\n");
+        return -1;
+    }
+    int ret = 0;
+    ncnn::ModelBinFromStdio mb(fp);
+    for (size_t i = 0; i < this->layers.size(); i++)
+    {
+        Layer* layer = layers[i];
+        if (!layer){
+            fprintf(stderr, "LoadWeights error at layer %d, parameter file has inconsistent content.\n", (int)i);
+            ret = -1;
+            break;
+        }
+        int lret = layer->LoadWeights(mb);
+        if (lret != 0)
+        {
+            fprintf(stderr, "Layer %s loading weights failed with exit code %d\n", layer->name.c_str(), lret);
+            ret = -1;
+            break;
+        }
+        printf("Layer %zu %s good\n", i, layer->name.c_str());
+    }
+    return ret;
 }
 
 int Net::ExtractBlob(float* output_ptr, std::string name)
@@ -277,7 +293,7 @@ int Net::Forward()
 #ifdef LAYER_TIMING
         clock_gettime(CLOCK_MONOTONIC, &tpend);
         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-        LOGD("Layer %s type %s spent %lfms", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
+        LOGD("Layer %s type %s spent %lfms", layers[i]->name.c_str(), layers[i]->type.c_str(), timedif / 1000.0);
 #endif
     }
 
@@ -290,392 +306,4 @@ int Net::Forward()
     return 0;
 }
 
-// int Net::Forward(float* input, int height, int width)
-// {
-//     InputLayer *input_layer = (InputLayer *)layers[0];
-//     input_layer->Reshape(input_layer->input_name(0), height, width);
-//     input_layer->CopyInput(input_layer->input_name(0), input);
-//     break;
-
-//     int layer_size = layers.size();
-
-//     for (int i = 1; i < layer_size; ++i)
-//     {
-//         // sleep(2);
-// #ifdef LAYER_TIMING
-//         timespec tpstart, tpend;
-//         LOGD("Entering layer %s type %s\n", layers[i]->name().c_str(), layers[i]->type().c_str());
-//         clock_gettime(CLOCK_MONOTONIC, &tpstart);
-// #endif
-//         switch (rt_param->device_type())
-//         {
-//             case DeviceType::CPU:
-//                 layers[i]->ForwardReshape();
-//                 break;
-//             case DeviceType::GPU_CL:
-// #ifdef FEATHER_OPENCL
-//                 layers[i]->ForwardReshapeCL();
-//                 break;
-// #else
-//                 LOGE("Please compile OpenCL to use device type GPU_CL.");
-//                 return -1;
-// #endif
-//             case DeviceType::GPU_GL:
-//                 LOGE("Not implemented yet");
-//                 return -1;
-//             default:
-//                 LOGE("Unsupported device type");
-//                 return -1;
-//         }
-// #ifdef LAYER_TIMING
-//         clock_gettime(CLOCK_MONOTONIC, &tpend);
-//         double timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-//         LOGD("Layer %s type %s spent %lfms\n", layers[i]->name().c_str(), layers[i]->type().c_str(), timedif / 1000.0);
-// #endif
-//     }
-
-// #ifdef FEATHER_OPENCL
-//     if (rt_param->device_type() == DeviceType::GPU_CL)
-//     {
-//         rt_param->cl_runtime()->tuner().SetTunerPram();
-//     }
-// #endif
-//     return 0;
-// }
-
-#if 0
-void Net::InitFromPath(const char *model_path)
-{
-    CHECK_TYPE();
-    FILE *fp = NULL;
-    fp = fopen(model_path, "rb");
-    if (fp == NULL)
-    {
-        LOGE("Cannot open feather model!\n");
-        exit(-1);
-    }
-    fseek(fp, 0, SEEK_SET);
-    this->InitFromFile(fp);
-    fclose(fp);
-}
-
-
-void Net::InitFromStringPath(std::string model_path)
-{
-    CHECK_TYPE();
-    LOGI("Init model path %s", model_path.c_str());
-    InitFromPath(model_path.c_str());
-}
-
-
-void Net::InitFromFile(FILE* fp)
-{
-    CHECK_TYPE();
-    if (fp == NULL)
-    {
-        LOGE("Cannot open feather model!\n");
-        exit(-1);
-    }
-    fseek(fp, 0, SEEK_END);
-    long file_size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    uint8_t *net_buffer = (uint8_t *) malloc(sizeof(uint8_t) * file_size);
-    size_t read_size = fread(net_buffer, sizeof(uint8_t), file_size, fp);
-    if (read_size != file_size)
-    {
-        LOGE("Reading model failed! file_size %ld read size %ld\n", file_size, read_size);
-        exit(-1);
-    }
-    LOGD("Finished loading from file");
-    this->InitFromBuffer(net_buffer);
-
-    free(net_buffer);
-}
-#endif
-
-int Net::RemoveLayer(Layer* target_layer)
-{
-    CHECK_TYPE(1);
-    if (target_layer->bottom_size() != 1 || target_layer->top_size() != 1)
-    {
-        LOGE("Cannot remove target layer %s type %s with mutliple input/outputs!", target_layer->name().c_str(), target_layer->type().c_str());
-        return -1;
-    }
-
-    std::string new_bottom = target_layer->bottom(0);
-    std::string old_bottom = target_layer->top(0);
-#ifdef PRINT_SETUP_LOG
-    LOGD("Old bottom %s to new bottom %s", old_bottom.c_str(), new_bottom.c_str());
-#endif
-    const Blob<Dtype> * new_bottom_blob = target_layer->bottom_blob(0);
-
-    for (int i = 0; i < layers.size(); ++i)
-    {
-        if (layers[i] == target_layer)
-        {
-            layers.erase(layers.begin() + i);
-            --i;
-            continue;
-        }
-        Layer *next_layer = layers[i];
-        for (int b = 0; b < next_layer->bottom_size(); ++b)
-        {
-            if (next_layer->bottom(b).compare(old_bottom) == 0)
-            {
-                next_layer->ReplaceBottomBlob(old_bottom, new_bottom, new_bottom_blob);
-                break;
-            }
-        }
-    }
-    delete target_layer;
-    target_layer = NULL;
-    return 0;
-}
-#if 0
-bool Net::InitFromBuffer(const void *net_buffer)
-{
-    CHECK_TYPE(false);
-    //rt_param in the param list just to distinguish.
-    const NetParameter *net_param = feather::GetNetParameter(net_buffer);
-    size_t layer_num = VectorLength(net_param->layer());
-    //Find input layer.
-#ifdef PRINT_SETUP_LOG
-    LOGD("Loading %d layers", layer_num);
-#endif
-    for (int i = 0; i < layer_num; ++i)
-    {
-        if (net_param->layer()->Get(i)->type()->str().compare("Input") == 0)
-        {
-            switch (rt_param->device_type())
-            {
-                case DeviceType::CPU:
-                    layers.push_back(LayerRegistry<Dtype>::CreateLayer(net_param->layer()->Get(i), rt_param));
-                    break;
-                case DeviceType::GPU_CL:
-#ifdef FEATHER_OPENCL
-                    layers.push_back(LayerRegistryCL<Dtype>::CreateLayer(net_param->layer()->Get(i), rt_param));
-#else
-                    LOGE("Please compile OpenCL to use device type GPU_CL.");
-#endif
-                    break;
-                case DeviceType::GPU_GL:
-                    LOGE("Not implemented yet.");
-                    break;
-                default:
-                    LOGE("Have not supported yet.");
-                    break;
-            }
-            break;
-        }
-    }
-
-    for (int i = 1; i < layer_num; ++i)
-    {
-        const LayerParameter *layer_param = net_param->layer()->Get(i);
-        switch (rt_param->device_type())
-        {
-            case DeviceType::CPU:
-                layers.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param, rt_param));
-#ifdef PRINT_SETUP_LOG
-                LOGD("Setup layer %d %s\n", i, layer_param->name()->c_str());
-#endif
-                break;
-            case DeviceType::GPU_CL:
-#ifdef FEATHER_OPENCL
-#ifdef PRINT_SETUP_LOG
-                LOGD("before Setup layer cl %d %s\n", i, layer_param->name()->c_str());
-#endif
-                layers.push_back(LayerRegistryCL<Dtype>::CreateLayer(layer_param, rt_param));
-#ifdef PRINT_SETUP_LOG
-                LOGD("Setup layer cl %d %s %s\n", i, layer_param->name()->c_str(), layer_param->type()->c_str());
-#endif
-#else
-                LOGE("Please compile OpenCL to use device type GPU_CL.");
-#endif
-                break;
-            case DeviceType::GPU_GL:
-                LOGE("Not implemented yet.");
-                break;
-            default:
-                LOGE("Have not supported yet.");
-                break;
-        }
-
-    }
-
-#ifdef PRINT_SETUP_LOG
-    LOGD("Layer setup finish");
-#endif
-
-    //Generate top blobs, will check the dependency.
-    for (int i = 0; i < layers.size(); ++i)
-    {
-        size_t top_num = layers[i]->top_size();
-        size_t top_blob_num = layers[i]->top_blob_size();
-        if (top_blob_num == 0)
-        {
-            for (int b = 0; b < layers[i]->bottom_size(); ++b)
-            {
-                std::string blob_name = layers[i]->bottom(b);
-#ifdef PRINT_SETUP_LOG
-                LOGI("Setting up blob %s", blob_name.c_str());
-#endif
-                //TODO handle error: when blob_name has not been inserted into map.
-                if (blob_map.find(blob_name) != blob_map.end())
-                    layers[i]->SetupBottomBlob(blob_map[blob_name], blob_name);
-                else
-                {
-                    LOGE("Blob %s not setup yet, may be casued by wrong layer order. Aborted.\n");
-                    return false;
-                }
-            }
-            layers[i]->GenerateTopBlobs();
-        }
-        for (int t = 0; t < top_num; ++t)
-        {
-            std::string blob_name = layers[i]->top(t);
-            blob_map[blob_name] = layers[i]->top_blob(blob_name);
-            //blob_map[blob_name]->PrintBlobInfo();
-        }
-    }
-
-    //Try to fuse some layers together
-    for (int i = 1; i < layers.size() - 1; ++i)
-    {
-        if (!layers[i]->fusible())
-            continue;
-        for (int j = i + 1; j < layers.size(); ++j)
-        {
-            Layer *next_layer = layers[j];
-            while (layers[i]->TryFuse(next_layer) == 1)
-            {
-#if 0
-                //Update the respective bottoms in other layers.
-                std::string new_bottom = layers[i]->top(0);
-                std::string old_bottom = next_layer->top(0);
-#ifdef PRINT_SETUP_LOG
-                LOGD("Old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
-#endif
-                for (int k = i + 1; k < layers.size(); ++k)
-                {
-                    if (k == j)
-                        continue;
-
-                    for (int b = 0; b < layers[k]->bottom_size(); ++b)
-                    {
-                        if (layers[k]->bottom(b).compare(old_bottom) == 0)
-                            layers[k]->ReplaceBottomBlob(old_bottom, new_bottom, layers[i]->top_blob(0));
-                    }
-                }
-                delete layers[j];
-                layers.erase(layers.begin() + j);
-#else
-// #ifdef PRINT_SETUP_LOG
-//                 LOGD("Erased layer %d %s\n", j, next_layer->name().c_str());
-// #endif
-                this->RemoveLayer(layers[j]);
-#endif
-
-                next_layer = layers[j];
-#ifdef PRINT_SETUP_LOG
-                LOGD("Layer %d after erasing: %s type %s\n", j, next_layer->name().c_str(), next_layer->type().c_str());
-#endif
-            }
-        }
-    }
-    //Remove Dropout Layers
-    for (int i = 0; i < layers.size() - 1; ++i)
-    {
-        if (layers[i]->type().compare("Dropout") == 0)
-        {
-
-#ifdef PRINT_SETUP_LOG
-            LOGD("Erase layer %d %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
-#endif
-            this->RemoveLayer(layers[i]);
-#ifdef PRINT_SETUP_LOG
-            LOGD("Layer %d after erasing: %s type %s\n", i, layers[i]->name().c_str(), layers[i]->type().c_str());
-#endif
-            --i;
-        }
-    }
-
-    //Rebuild blob map
-#ifdef LAYER_INIT_TIMING
-    timespec total_tpstart, total_tpend;
-    double total_timedif, total_timedif_s1 = 0.0, total_timedif_s2 = 0.0, total_timedif_s3 = 0.0;
-    clock_gettime(CLOCK_MONOTONIC, &total_tpstart);
-#endif
-
-    blob_map.clear();
-    //std::map<std::string, cl::Program> cl_program_map;
-    for (int i = 0; i < layers.size(); ++i)
-    {
-#ifdef LAYER_INIT_TIMING
-        timespec tpstart, tpend;
-        double timedif;
-        clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
-        for (int t = 0; t < layers[i]->top_size(); ++t)
-        {
-            std::string blob_name = layers[i]->top(t);
-            blob_map[blob_name] = layers[i]->top_blob(blob_name);
-#ifdef PRINT_SETUP_LOG
-            LOGI("Blob %s", blob_name.c_str());
-            blob_map[blob_name]->PrintBlobInfo();
-#endif
-        }
-        switch (rt_param->device_type())
-        {
-            case DeviceType::CPU:
-                layers[i]->Init();
-                break;
-            case DeviceType::GPU_CL:
-#ifdef FEATHER_OPENCL
-                layers[i]->SetBuildOptions();
-#ifdef LAYER_INIT_TIMING
-                clock_gettime(CLOCK_MONOTONIC, &tpend);
-                timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-                LOGD("%s SetBuildOptions spent %lfms\n", layers[i]->name().c_str(), timedif / 1000.0);
-                total_timedif_s1 += timedif;
-                clock_gettime(CLOCK_MONOTONIC, &tpstart);
-#endif
-                if (layers[i]->SetKernelParameters())
-                {
-                    LOGE("Set up kernel parameters failed");
-                    return false;
-                }
-#ifdef LAYER_INIT_TIMING
-                clock_gettime(CLOCK_MONOTONIC, &tpend);
-                timedif = 1000000.0 * (tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_nsec - tpstart.tv_nsec) / 1000.0;
-                LOGD("%s SetKernelParameters spent %lfms\n", layers[i]->name().c_str(), timedif / 1000.0);
-                total_timedif_s2 += timedif;
-#endif
-#else
-                LOGE("Please compile OpenCL to use device type GPU_CL.");
-#endif
-                break;
-            case DeviceType::GPU_GL:
-                LOGE("Not implemented yet.");
-                break;
-            default:
-                LOGE("Have not supported yet.");
-                break;
-        }
-
-    }
-
-#ifdef LAYER_INIT_TIMING
-    clock_gettime(CLOCK_MONOTONIC, &total_tpend);
-    total_timedif = 1000000.0 * (total_tpend.tv_sec - total_tpstart.tv_sec) + (total_tpend.tv_nsec - total_tpstart.tv_nsec) / 1000.0;
-    LOGD("Net Layer Init spent %lfms\n", total_timedif / 1000.0);
-    LOGD("Total SetBuildOptions spent %lfms\n", total_timedif_s1 / 1000.0);
-    LOGD("Total SetKernelParameters spent %lfms\n", total_timedif_s2 / 1000.0);
-#endif
-
-    //Allocate for common mempool.
-    rt_param->common_mempool()->Alloc();
-    return true;
-}
-#endif
 };

@@ -84,7 +84,7 @@ void register_layer_creators();
 
 #define DEFINE_LAYER_CREATOR(feather_layer_name) \
     static Layer *GetLayer##feather_layer_name(RuntimeParameter<float> * rt_param) \
-    {return (Layer *) feather_layer_name##Layer;}
+    {return (Layer *) new feather_layer_name##Layer(rt_param);}
 
 #define REGISTER_LAYER_CREATOR(ncnn_type_name, feather_layer_name) \
     static LayerRegisterer g_creator_f_##ncnn_type_name(#ncnn_type_name, GetLayer##feather_layer_name);

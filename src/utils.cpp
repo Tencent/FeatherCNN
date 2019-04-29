@@ -13,7 +13,7 @@
 //specific language governing permissions and limitations under the License.
 
 #include "utils.h"
-#include "booster/helper.h"
+// #include "booster/helper.h"
 #include <cstring>
 #include <vector>
 #include <cstdlib>
@@ -39,6 +39,7 @@ int ChkParamHeader(FILE* fp)
         fprintf(stderr, "param is too old, please regenerate\n");
         return -1;
     }
+    return 0;
 }
 
 int min(int a, int b)

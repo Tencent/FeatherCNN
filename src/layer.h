@@ -18,6 +18,10 @@
 #include "mempool.h"
 #include "rt_param.h"
 #include "utils.h"
+
+#include "ncnn/paramdict.h"
+#include "ncnn/modelbin.h"
+
 #include <vector>
 
 namespace feather
@@ -28,28 +32,27 @@ class Layer
         Layer(RuntimeParameter<float>* rt_param);
         ~Layer();
 
-        int SetupBottomBlob(const Blob<float>* p_blob, std::string name);
-        int ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, const Blob<float>* p_blob);
-        int TryFuse(Layer *next_layer);
 
-        const Blob<float> *FindBottomByName(std::string name);
-        Blob<float> *FindTopByName(std::string name);
+        virtual int LoadParam(const ncnn::ParamDict& pd); //Load layer parameters.
+        virtual int LoadWeights(const ncnn::ModelBin& mb); //Load model weights into memory.
+        virtual int Fuse(Layer* next_layer); //Fuse layers when possible.
 
-        virtual int LoadParams();
-        virtual int LoadWeights();
-        virtual int Fuse(Layer* next_layer);
-        virtual int GenerateTopBlobs();
+        virtual int GenerateTopBlobs(); //Infer top blob shape and allocate space.
         virtual int Init();
         virtual int Forward();
         virtual int ForwardReshape();
 
+        int TryFuse(Layer *next_layer);
+
+        int FindBottomIDByName(std::string name);
+        int FindTopIDByName(std::string name);
         //For fusing
         bool fusible() const;
 
         std::string name;
         std::string type;
 
-        std::vector<const Blob<float>* > bottoms; // Don't write bottom blobs.
+        std::vector<Blob<float>* > bottoms; // Don't write bottom blobs.
         std::vector<Blob<float>* > tops;
 
         std::vector<Blob<float>* > weights;

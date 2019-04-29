@@ -20,7 +20,6 @@
 
 namespace feather
 {
-
 Layer::Layer(RuntimeParameter<float>* rt_param)
     : _fusible(false),
       _inplace(false),
@@ -44,61 +43,41 @@ Layer::~Layer()
     }
 }
 
-const Blob<float>* Layer::FindBottomByName(std::string name)
+int Layer::FindBottomIDByName(std::string name)
 {
     for( int i = 0; i < this->bottoms.size(); ++i)
     {
         if (this->bottoms[i]->name.compare(name) == 0)
         {
-            return this->bottoms[i];
+            return i;
         }
     }
-    return NULL;
+    return -1;
 }
 
-Blob<float>* Layer::FindTopByName(std::string name)
+int Layer::FindTopIDByName(std::string name)
 {
     for( int i = 0; i < this->tops.size(); ++i)
     {
         if (this->tops[i]->name.compare(name) == 0)
         {
-            return tops[i];
+            return i;
         }
     }
-    return NULL;
+    return -1;
 }
 
-// int Layer::SetupBottomBlob(const Blob<float>* p_blob, std::string name)
-// {
-//     if (std::find(bottoms.begin(), bottoms.end(), name) == bottoms.end())
-//         return -1;
-//     bottom_blobs[name] = p_blob;
-//     return 0;
-// }
+int Layer::LoadParam(const ncnn::ParamDict& pd)
+{
+    // Do nothing.
+    return 0;
+}
 
-
-// int Layer::ReplaceBottomBlob(std::string old_bottom, std::string new_bottom, const Blob<float>* p_blob)
-// {
-//     //printf("*old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
-//     std::vector<std::string>::iterator name_iter = _bottom.begin();
-//     typedef typename std::map<std::string, const Blob<float>* >::iterator STDMAPITER;
-//     STDMAPITER blob_iter = _bottom_blobs.begin();
-
-//     name_iter = std::find(_bottom.begin(), _bottom.end(), old_bottom);
-//     blob_iter = _bottom_blobs.find(old_bottom);
-
-//     if (name_iter == _bottom.end() || blob_iter == _bottom_blobs.end())
-//         return -1;
-
-//     *name_iter = new_bottom;//should not change order
-//     _bottom_blobs.erase(blob_iter);
-
-//     _bottom_blobs[new_bottom] = p_blob;
-//     //printf("+old bottom %s to new bottom %s\n", old_bottom.c_str(), new_bottom.c_str());
-//     return 0;
-
-// }
-
+int Layer::LoadWeights(const ncnn::ModelBin& mb)
+{
+    // Do nothing
+    return 0;
+}
 
 int Layer::TryFuse(Layer *next_layer)
 {
@@ -116,44 +95,39 @@ int Layer::TryFuse(Layer *next_layer)
     return 0;
 }
 
-
 int Layer::Fuse(Layer* next_layer)
 {
     return 0;
 }
 
-
 int Layer::GenerateTopBlobs()
 {
     /* GenerateTopBlobs
      * infers top blob shape and allocate space.
+     * 
      * The default behavior is allocate a top with the same shape of bottom
      */
     if (tops.size() != 1 || bottoms.size() != 1)
-        return -1;
-    Blob<float>* p_blob = new Blob<float>();
-    p_blob->CopyShape(bottoms[0]);
-    p_blob->Alloc();
-    tops[0] = p_blob;
+        return -400; //False calling base layer.
+    tops[0]->CopyShape(bottoms[0]);
+    tops[0]->Alloc();
     return 0;
 }
-
 
 int Layer::Init()
 {
     return 0;
 }
 
-
 int Layer::Forward()
 {
     return false;
 }
 
-
 int Layer::ForwardReshape()
 {
     //Default Reshape Assertation:
+    //
     //There should be a single top blob as well as bottom blob.
     //The default behaviour is that the top blob is identical to the bottom blob
     //Use default reallocation.
@@ -162,7 +136,6 @@ int Layer::ForwardReshape()
     this->Forward();
     return true;
 }
-
 
 bool Layer::fusible() const
 {

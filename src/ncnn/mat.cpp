@@ -19,13 +19,14 @@
 #endif // __ARM_NEON
 #include <math.h>
 
-#include "cpu.h"
+// #include "cpu.h"
 
-#include "layer_type.h"
-#include "layer.h"
+// #include "layer_type.h"
+// #include "layer.h"
 
 namespace ncnn {
 
+#ifndef COMPILE_WITH_FEATHERCNN
 void Mat::substract_mean_normalize(const float* mean_vals, const float* norm_vals)
 {
     ncnn::Layer* op;
@@ -99,7 +100,7 @@ void Mat::substract_mean_normalize(const float* mean_vals, const float* norm_val
 
     delete op;
 }
-
+#endif
 // convert half precision floating point to float
 static float half2float(unsigned short value)
 {
@@ -220,6 +221,7 @@ Mat Mat::from_float16(const unsigned short* data, int size)
     return m;
 }
 
+#ifndef COMPILE_WITH_FEATHERCNN
 void copy_make_border(const Mat& src, Mat& dst, int top, int bottom, int left, int right, int type, float v, Allocator* allocator, int num_threads)
 {
     ncnn::Layer* padding = ncnn::create_layer(ncnn::LayerType::Padding);
@@ -361,5 +363,5 @@ void cast_float16_to_float32(const Mat& src, Mat& dst, Allocator* allocator, int
 
     delete cast;
 }
-
+#endif
 } // namespace ncnn
