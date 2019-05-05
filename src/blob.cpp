@@ -65,6 +65,33 @@ void Blob<Dtype>::Realloc(size_t elem_size)
     }
 }
 
+template<class Dtype>
+int Blob<Dtype>::CopyFromMat(const ncnn::Mat& mat)
+{
+    this->ReshapeWithRealloc(1, mat.c, mat.h, mat.w);
+    this->CopyDataFromMat(mat);
+    return 0;
+}
+
+template<class Dtype>
+int Blob<Dtype>::CopyDataFromMat(const ncnn::Mat& mat)
+{
+    if (this->data_size() != mat.c * mat.h * mat.w)
+    {
+        LOGE("In Blob %s: Mat and target blob shape mismatch. blob shape (%zu %zu %zu %zu), mat shape (%d %d %d)\n", this->name.c_str(), num(), channels(), height(), width(), mat.c, mat.h, mat.w);
+        return -500; // BAD DATA DIMENSION
+    }
+    Dtype* dst_p = (Dtype *) this->_data;
+    size_t copy_stride = mat.h * mat.w;
+    for (int c = 0; c < mat.c; ++c )
+    {
+        ncnn::Mat channel_mat = mat.channel(c);
+        memcpy(dst_p, channel_mat.data, copy_stride * sizeof(Dtype));
+        dst_p += copy_stride;
+    }
+    return 0;
+}
+
 template class Blob<float>;
 template class Blob<uint16_t>;
 template class Blob<char>;

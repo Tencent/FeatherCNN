@@ -285,9 +285,9 @@ inline Mat::Mat(int _w, int _h, void* _data, size_t _elemsize, Allocator* _alloc
 inline Mat::Mat(int _w, int _h, int _c, void* _data, size_t _elemsize, Allocator* _allocator)
     : data(_data), refcount(0), elemsize(_elemsize), packing(1), allocator(_allocator), dims(3), w(_w), h(_h), c(_c)
 {
-    // cstep = alignSize(w * h * elemsize, 16) / elemsize;
+    cstep = alignSize(w * h * elemsize, 16) / elemsize;
     // FeatherCNN doesn't support gapped memory. Use a consequtive memory layout.
-    cstep = w * h;
+    // cstep = w * h;
 }
 
 inline Mat::Mat(int _w, void* _data, size_t _elemsize, int _packing, Allocator* _allocator)
@@ -305,9 +305,9 @@ inline Mat::Mat(int _w, int _h, void* _data, size_t _elemsize, int _packing, All
 inline Mat::Mat(int _w, int _h, int _c, void* _data, size_t _elemsize, int _packing, Allocator* _allocator)
     : data(_data), refcount(0), elemsize(_elemsize), packing(_packing), allocator(_allocator), dims(3), w(_w), h(_h), c(_c)
 {
-    // cstep = alignSize(w * h * elemsize, 16) / elemsize;
+    cstep = alignSize(w * h * elemsize, 16) / elemsize;
     // FeatherCNN doesn't support gapped memory. Use a consequtive memory layout.
-    cstep = w * h;
+    // cstep = w * h;
 }
 
 inline Mat::~Mat()

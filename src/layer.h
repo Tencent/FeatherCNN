@@ -32,27 +32,50 @@ class Layer
         Layer(RuntimeParameter<float>* rt_param);
         ~Layer();
 
+        /* LoadParam LoadWeights
+         * 
+         * Load layer specifc paramters and corresponding weight data into memory.
+         * The two functions rely on `ncnn` model files.
+         */
+        virtual int LoadParam(const ncnn::ParamDict& pd); 
+        virtual int LoadWeights(const ncnn::ModelBin& mb); 
+        // int CopyDataFromMat(Blob<float>* dst, const ncnn::Mat &src);
+        
+        /* GenerateTopBlobs
+         *
+         * Infer top blob shape and allocate memory.
+         */
+        virtual int Reshape(); 
 
-        virtual int LoadParam(const ncnn::ParamDict& pd); //Load layer parameters.
-        virtual int LoadWeights(const ncnn::ModelBin& mb); //Load model weights into memory.
-        virtual int Fuse(Layer* next_layer); //Fuse layers when possible.
-
-        virtual int GenerateTopBlobs(); //Infer top blob shape and allocate space.
+        /* Init
+         *
+         * Preprocess the weights in order to reduce inference overhead.
+         * Common memory pool first memory allocation occurs in this place
+         * when specify an initial input.
+         */
         virtual int Init();
+        
         virtual int Forward();
         virtual int ForwardReshape();
 
+        /* Fusion functions
+         * 
+         * Layer fusion is an important technique to imporove memory accessing efficiency.
+         * We currently support three patterns: Convolutoin-Bias-ReLU, BN-Scale-Relu, InnerProduct-Bias-ReLU
+         */
+        virtual int Fuse(Layer* next_layer); //Fuse layers when possible.
         int TryFuse(Layer *next_layer);
-
-        int FindBottomIDByName(std::string name);
-        int FindTopIDByName(std::string name);
-        //For fusing
         bool fusible() const;
 
+        /* Utility functions for blob retrieval by name*/
+        int FindBottomIDByName(std::string name);
+        int FindTopIDByName(std::string name);
+
+    public: // We just make everything public. Take care when you write a derived layer.
         std::string name;
         std::string type;
 
-        std::vector<Blob<float>* > bottoms; // Don't write bottom blobs.
+        std::vector<Blob<float>* > bottoms;
         std::vector<Blob<float>* > tops;
 
         std::vector<Blob<float>* > weights;
@@ -61,8 +84,6 @@ class Layer
         bool _inplace;
 
         CommonMemPool<float>    *common_mempool;
-        PrivateMemPool<float>   private_mempool;
         RuntimeParameter<float> *rt_param;
 };
-
 };

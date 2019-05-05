@@ -23,6 +23,8 @@
 #include <random>
 #include <sstream>
 
+#include <ncnn/mat.h>
+
 namespace feather
 {
 class Net
@@ -37,16 +39,33 @@ class Net
         int LoadWeights(const char * weights_path);
         int LoadWeights(FILE* fp);
         
-        void SetInput(const char* input_name, const void * input_data);
+        // int FeedInput(const char* input_name, const int w, const int h, const int c, const float* input_data);
+        
+        int FeedInput(const char* input_name, ncnn::Mat& in);
+
         int Forward();
           
-        int GetBlobDataSize(size_t *data_size, std::string blob_name);
-        int PrintBlobData(std::string blob_name);
-        int ExtractBlob(float *output_ptr, std::string blob_name);
+        int Extract(std::string blob_name, float** output_ptr, int* n, int *c, int* h, int* w);
 
+        int Extract(std::string blob_name, ncnn::Mat& out);
+        
+        int BuildBlobMap();
+        
         std::map<std::string, Blob<float> *> blob_map;
+    
     private:
+        int InitLayers();
+        int Reshape();
         RuntimeParameter<float> *rt_param;
         std::vector<Layer *> layers;
+
+        /* Flag varibles indicating Net status.
+         * 
+         * _weights_loaded: if Net has loaded the weights.
+         * _net_initialized: if the weights are already initialized.
+         */
+        int _param_loaded;
+        int _weights_loaded;
+        int _net_initialized;
 };
 }; // namespace feather

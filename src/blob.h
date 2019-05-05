@@ -16,6 +16,8 @@
 
 #include "utils.h"
 
+#include "ncnn/mat.h"
+
 #include <string>
 
 namespace feather
@@ -51,6 +53,9 @@ class Blob
         void ReshapeWithRealloc(const Blob<Dtype> *p_blob);
         void ReshapeWithRealloc(int num, int channels, int height, int width);
         void Realloc(size_t elem_size);
+
+        int CopyFromMat(const ncnn::Mat &src_mat);
+        int CopyDataFromMat(const ncnn::Mat &src_mat);
 
         void CopyData(const Dtype* data)
         {

@@ -100,7 +100,7 @@ int Layer::Fuse(Layer* next_layer)
     return 0;
 }
 
-int Layer::GenerateTopBlobs()
+int Layer::Reshape()
 {
     /* GenerateTopBlobs
      * infers top blob shape and allocate space.
@@ -109,8 +109,7 @@ int Layer::GenerateTopBlobs()
      */
     if (tops.size() != 1 || bottoms.size() != 1)
         return -400; //False calling base layer.
-    tops[0]->CopyShape(bottoms[0]);
-    tops[0]->Alloc();
+    tops[0]->ReshapeWithRealloc(bottoms[0]->num(), bottoms[0]->channels(), bottoms[0]->height(), bottoms[0]->width());
     return 0;
 }
 
