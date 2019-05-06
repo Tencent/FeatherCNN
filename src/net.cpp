@@ -101,7 +101,7 @@ int Net::LoadParam(FILE* param_fp)
             continue;
         }
 
-        // fprintf(stderr, "new layer %d %s\n", i, layer_name);
+        fprintf(stderr, "Loading param for layer %d %s\n", i, layer_name);
         Layer *layer = LayerRegistry::CreateLayer(layer_type, rt_param);
 
         if (!layer)
@@ -205,6 +205,9 @@ int Net::LoadWeights(FILE* fp)
             ret = -1;
             break;
         }
+        
+        fprintf(stderr, "Loading weights for layer %d %s\n", i, layer->name.c_str());
+
         int lret = layer->LoadWeights(mb);
         if (lret != 0)
         {

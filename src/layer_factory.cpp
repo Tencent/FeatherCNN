@@ -20,6 +20,11 @@
 #include "layers/inner_product_layer.h"
 #include "layers/dropout_layer.h"
 #include "layers/softmax_layer.h"
+#include "layers/batchnorm_layer.h"
+#include "layers/scale_layer.h"
+#include "layers/split_layer.h"
+#include "layers/eltwise_layer.h"
+#include "layers/concat_layer.h"
 
 #include <stdio.h>
 
@@ -39,6 +44,11 @@ DEFINE_LAYER_CREATOR(Pooling)
 DEFINE_LAYER_CREATOR(InnerProduct)
 DEFINE_LAYER_CREATOR(Dropout)
 DEFINE_LAYER_CREATOR(Softmax)
+DEFINE_LAYER_CREATOR(BatchNorm)
+DEFINE_LAYER_CREATOR(Scale)
+DEFINE_LAYER_CREATOR(Split)
+DEFINE_LAYER_CREATOR(Eltwise)
+// DEFINE_LAYER_CREATOR(Concat)
 
 void register_layer_creators()
 {
@@ -49,5 +59,10 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(InnerProduct, InnerProduct);
     REGISTER_LAYER_CREATOR(Dropout, Dropout);
     REGISTER_LAYER_CREATOR(Softmax, Softmax);
+    REGISTER_LAYER_CREATOR(BatchNorm, BatchNorm);
+    REGISTER_LAYER_CREATOR(Scale, Scale);
+    REGISTER_LAYER_CREATOR(Split, Split);
+    REGISTER_LAYER_CREATOR(Eltwise, Eltwise);
+    // REGISTER_LAYER_CREATOR(Concat, Concat);
 }
 };

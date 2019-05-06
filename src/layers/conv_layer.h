@@ -130,20 +130,6 @@ class ConvLayer : public Layer
             return 0;
         }
 
-        // int Reshape()
-        // {
-        //     const Blob<float> *bottom_blob = this->bottoms[0];
-        //     conv_param.input_h = bottom_blob->height();
-        //     conv_param.input_w = bottom_blob->width();
-        //     conv_param.AssignOutputDim();
-        //     this->tops[0]->ReshapeWithRealloc(1, conv_param.output_channels, conv_param.output_h, conv_param.output_w);
-        //     int buffer_size = 0;
-        //     int dull = 0;
-        //     int ret = conv_booster.GetBufferSize(&conv_param, &buffer_size, &dull);
-        //     MEMPOOL_CHECK_RETURN(this->common_mempool->Request(sizeof(float) * buffer_size));
-        //     return 0;
-        // }
-
         int Forward()
         {
 	        // conv_param.LogParams(this->name().c_str());
