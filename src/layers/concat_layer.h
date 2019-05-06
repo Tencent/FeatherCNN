@@ -22,12 +22,13 @@ class ConcatLayer : public Layer
 {
     public:
         ConcatLayer(RuntimeParameter<float>* rt_param)
-            : Layer(rt_param)
+            : Layer(rt_param),
+              axis(0)
         {
 
         }
         
-        int load_param(const ncnn::ParamDict& pd)
+        int LoadParam(const ncnn::ParamDict& pd)
         {
             this->axis = pd.get(0, 0);
             return 0;
@@ -40,7 +41,7 @@ class ConcatLayer : public Layer
             {
                 const float* bottom_ptr = bottoms[i]->data();
                 memcpy(top_ptr, bottom_ptr, sizeof(float) * bottoms[i]->data_size());
-                top_ptr += sizeof(float) * bottoms[i]->data_size();
+                top_ptr += bottoms[i]->data_size();
             }
             return 0;
         }
@@ -52,10 +53,11 @@ class ConcatLayer : public Layer
             size_t channels = first_blob->channels();
             size_t width = first_blob->width();
             size_t height = first_blob->height();
-
+            // printf("bottom %s\n", first_blob->name.c_str());
             for (int i = 1; i < bottoms.size(); ++i)
             {
                 auto p_blob = bottoms[i];
+                // printf("bottom %s\n", p_blob->name.c_str());
                 if (this->axis == 0)
                 {
                     if(!(width == p_blob->width() && height == p_blob->height()))

@@ -267,7 +267,6 @@ int Net::Extract(std::string name, float** output_ptr, int* n, int *c, int* h, i
     const Blob<float> *p_blob = blob_map[name];
     const size_t data_size = p_blob->data_size();
     float *data = p_blob->data();
-    // memcpy(output_ptr, data, sizeof(float) * data_size);
     *output_ptr = p_blob->data();
     *n = p_blob->num();
     *c = p_blob->channels();

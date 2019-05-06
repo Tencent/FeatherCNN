@@ -48,7 +48,7 @@ DEFINE_LAYER_CREATOR(BatchNorm)
 DEFINE_LAYER_CREATOR(Scale)
 DEFINE_LAYER_CREATOR(Split)
 DEFINE_LAYER_CREATOR(Eltwise)
-// DEFINE_LAYER_CREATOR(Concat)
+DEFINE_LAYER_CREATOR(Concat)
 
 void register_layer_creators()
 {
@@ -63,6 +63,6 @@ void register_layer_creators()
     REGISTER_LAYER_CREATOR(Scale, Scale);
     REGISTER_LAYER_CREATOR(Split, Split);
     REGISTER_LAYER_CREATOR(Eltwise, Eltwise);
-    // REGISTER_LAYER_CREATOR(Concat, Concat);
+    REGISTER_LAYER_CREATOR(Concat, Concat);
 }
 };
