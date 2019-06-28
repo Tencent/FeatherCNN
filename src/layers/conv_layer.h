@@ -66,7 +66,15 @@ class ConvLayer : public Layer
             conv_param.bias_term = pd.get(5, 0);
             conv_param.activation = booster::None;
             int weight_data_size = pd.get(6, 0);
+	    if(conv_param.group==0 || conv_param.output_channels%conv_param.group)	
+	    {
+		printf("Layer %s output_channels is not divisible by its group\n", this->name);
+		exit(0);
+	    }
+	    else	conv_param.output_channels /= conv_param.group;
             conv_param.input_channels = weight_data_size / conv_param.output_channels / conv_param.kernel_h / conv_param.kernel_w;
+
+//            printf("ic=%d oc=%d (kw,kh)=(%d,%d) (sw,sh)=(%d,%d) (pad)=(%d,%d,%d,%d) group=%d\n", conv_param.input_channels, conv_param.output_channels, conv_param.kernel_w, conv_param.kernel_h, conv_param.stride_w, conv_param.stride_h, conv_param.pad_left, conv_param.pad_bottom, conv_param.pad_right, conv_param.pad_top, conv_param.group);
 
             // The params are known, therefore we can allocate space for weights.
             Blob<float> *conv_weights = new Blob<float>(this->name + "_weights");
