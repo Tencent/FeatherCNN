@@ -150,7 +150,7 @@ struct ConvParam
 
 typedef int (*GET_BUFFER_SIZE_FUNC)(ConvParam *param, int* buffer_size, int* processed_kernel_size);
 typedef int (*INIT_FUNC)(ConvParam *param, float* processed_kernel, float* kernel);
-typedef int (*FORWARD_FUNC)(ConvParam *param, float* output, float* input, float* kernel, float* buffer, float* bias_arr);
+typedef int (*FORWARD_FUNC)(ConvParam *param, float* output, float* input, float* kernel, float* buffer, float* bias_arr, int num_threads);
 
 //ConvBooster doesn't allocate any memory.
 class ConvBooster

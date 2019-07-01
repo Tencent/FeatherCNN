@@ -54,6 +54,7 @@ void register_layer_creators()
 {
     REGISTER_LAYER_CREATOR(Input, Input);
     REGISTER_LAYER_CREATOR(Convolution, Conv);
+    REGISTER_LAYER_CREATOR(ConvolutionDepthWise, Conv);
     REGISTER_LAYER_CREATOR(ReLU, Relu);
     REGISTER_LAYER_CREATOR(Pooling, Pooling);
     REGISTER_LAYER_CREATOR(InnerProduct, InnerProduct);

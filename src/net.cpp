@@ -22,8 +22,8 @@
 #include <stdio.h>
 #include <cstring>
 
-#define LAYER_TIMING
-#define PRINT_SETUP_LOG
+//#define LAYER_TIMING
+//#define PRINT_SETUP_LOG
 
 namespace feather
 {
@@ -35,7 +35,7 @@ Net::Net() :
 {
     register_layer_creators();
     CommonMemPool<float> *mempool = new CommonMemPool<float>();
-    rt_param = new RuntimeParameter<float>(mempool, 1);
+    rt_param = new RuntimeParameter<float>(mempool, 2);
 }
 
 Net::~Net()
