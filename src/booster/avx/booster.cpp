@@ -38,7 +38,7 @@ int NAIVE_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int NAIVE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int NAIVE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     const int M = param->output_channels;
     const int N = param->output_h * param->output_w;
@@ -80,7 +80,7 @@ int IM2COL_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int IM2COL_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int IM2COL_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     const int nc = 160;
     const int kc = 320;
@@ -112,7 +112,7 @@ int SGECONV_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int SGECONV_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int SGECONV_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     return 0;
 }
@@ -133,7 +133,7 @@ int DEPTHWISE_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int DEPTHWISE_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     void (*dwConv)(float *, float *, int, int, int, int, int, float *, int, int, int, int, float *);
 	dwConv = nullptr;
@@ -169,7 +169,7 @@ int WINOGRADF23_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int WINOGRADF23_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF23_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     return 0;
 }
@@ -202,7 +202,7 @@ int WINOGRADF63_Init(ConvParam *param, float* processed_kernel, float* kernel)
     return 0;
 }
 
-int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     const size_t inputw = param->input_w + param->pad_left + param->pad_right;
     const size_t inputh = param->input_h + param->pad_top + param->pad_bottom;
@@ -225,7 +225,7 @@ int WINOGRADF63_Forward(ConvParam *param, float* output, float* input, float* pr
         out_type = Relu;
     else if ((param->bias_term) && (param->activation == ReLU))
         out_type = BiasReLU;
-    winogradNonFusedTransform_F6x6_3x3(output, param->output_channels, WT, VT, processed_kernel, padded_input, param->input_channels, inputh, inputw, out_type, bias_arr, pack_array, 1);
+    winogradNonFusedTransform_F6x6_3x3(output, param->output_channels, WT, VT, processed_kernel, padded_input, param->input_channels, inputh, inputw, out_type, bias_arr, pack_array, num_threads);
     return 0;
 }
 
@@ -249,7 +249,7 @@ int WINOGRADF63FUSED_Init(ConvParam *param, float* processed_kernel, float* kern
     return 0;
 }
 
-int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr)
+int WINOGRADF63FUSED_Forward(ConvParam *param, float* output, float* input, float* processed_kernel, float* buffer, float* bias_arr, int num_threads)
 {
     // printf("Fused Winograd Forward\n");
     // param->LogParams("FORWARD_TEST");
